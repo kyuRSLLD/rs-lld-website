@@ -1,0 +1,20 @@
+sku,name,category,unit_price,bulk_price,bulk_quantity,unit_size,brand,in_stock
+TC-28,Crushed Tomatoes - 28oz Can,Canned Goods,2.79,2.49,24,28 oz,Hunt's,true
+WB-15,White Beans - 15oz Can,Canned Goods,2.19,1.99,24,15 oz,Goya,true
+CB-15,Chickpeas - 15oz Can,Canned Goods,1.99,1.79,24,15 oz,Goya,true
+PEN-16,Penne Pasta - 1lb Box,Dry Ingredients,1.49,1.29,20,1 lb,Barilla,true
+SPA-16,Spaghetti - 1lb Box,Dry Ingredients,1.49,1.29,20,1 lb,Barilla,true
+BR-25,Brown Rice - 25lb Bag,Dry Ingredients,22.99,19.99,6,25 lb,Lundberg,true
+QU-5,Quinoa - 5lb Bag,Dry Ingredients,18.99,16.99,8,5 lb,Ancient Harvest,true
+EVOO-500,Extra Virgin Olive Oil - 500ml,Condiments & Sauces,8.99,7.99,12,500 ml,Colavita,true
+BS-32,Balsamic Vinegar - 32oz,Condiments & Sauces,12.99,11.49,8,32 oz,Modena,true
+SR-24,Marinara Sauce - 24oz Jar,Condiments & Sauces,3.99,3.49,12,24 oz,Rao's,true
+GP-5,Garlic Powder - 5oz,Condiments & Sauces,4.99,4.49,12,5 oz,McCormick,true
+OP-3,Onion Powder - 3oz,Condiments & Sauces,3.99,3.49,12,3 oz,McCormick,true
+DS-1G,Dish Soap - 1 Gallon,Cleaning Supplies,8.99,7.99,6,1 gallon,Dawn,true
+SAN-1G,Sanitizer - 1 Gallon,Cleaning Supplies,15.99,13.99,4,1 gallon,Ecolab,true
+PT-8,Paper Towels - 8 Roll Pack,Paper Products,12.99,11.49,8,8 rolls,Bounty,true
+NAP-500,Napkins - 500 Count,Paper Products,6.99,5.99,12,500 count,Georgia Pacific,true
+TC-16,To-Go Containers - 16oz (50pk),Packaging Materials,18.99,16.99,10,50 pack,Dart,true
+PB-1000,Paper Bags - Small (1000pk),Packaging Materials,24.99,21.99,6,1000 pack,Duro,true
+
