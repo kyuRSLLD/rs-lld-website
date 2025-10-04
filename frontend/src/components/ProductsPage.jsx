@@ -154,10 +154,10 @@ const ProductsPage = () => {
                               (123) 456-7890
                             </a>
                             <a 
-                              href="mailto:sales@rslld.com" 
+                              href="mailto:sales@lldrestaurantsupply.com" 
                               className="block text-sm text-orange-600 hover:text-orange-700 transition-colors"
                             >
-                              sales@rslld.com
+                              sales@lldrestaurantsupply.com
                             </a>
                           </div>
                         </div>
