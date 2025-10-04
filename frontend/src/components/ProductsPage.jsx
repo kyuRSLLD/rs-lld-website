@@ -136,37 +136,40 @@ const ProductsPage = () => {
                       {product.category_name}
                     </span>
 
-                    {/* Pricing */}
+                    {/* Call for Pricing Box */}
                     <div className="pt-2">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-lg font-bold text-gray-900">
-                            {formatPrice(product.unit_price)}
+                      <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-300 rounded-lg p-4 mt-2">
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-orange-900 mb-2">
+                            📞 Call for Pricing
                           </p>
-                          {product.bulk_price && (
-                            <p className="text-sm text-green-600">
-                              {formatPrice(product.bulk_price)} bulk ({product.bulk_quantity}+ units)
-                            </p>
-                          )}
-                        </div>
-                        <div className={`text-xs px-2 py-1 rounded ${
-                          product.in_stock 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                          <p className="text-xs text-orange-800 mb-3">
+                            Contact us for the best bulk pricing
+                          </p>
+                          <div className="space-y-1">
+                            <a 
+                              href="tel:+1234567890" 
+                              className="block text-lg font-bold text-orange-600 hover:text-orange-700 transition-colors"
+                            >
+                              (123) 456-7890
+                            </a>
+                            <a 
+                              href="mailto:sales@rslld.com" 
+                              className="block text-sm text-orange-600 hover:text-orange-700 transition-colors"
+                            >
+                              sales@rslld.com
+                            </a>
+                          </div>
                         </div>
                       </div>
+                      <div className={`text-xs px-2 py-1 rounded mt-2 text-center ${
+                        product.in_stock 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                      </div>
                     </div>
-
-                    {/* Add to Cart Button */}
-                    <Button 
-                      className="w-full mt-4" 
-                      disabled={!product.in_stock}
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Add to Cart
-                    </Button>
                   </div>
                 </div>
               </div>
