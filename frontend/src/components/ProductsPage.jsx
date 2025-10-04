@@ -108,9 +108,21 @@ const ProductsPage = () => {
             {products.map((product) => (
               <div key={product.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                 <div className="p-6">
-                  {/* Product Image Placeholder */}
-                  <div className="w-full h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                    <span className="text-gray-400 text-sm">No Image</span>
+                  {/* Product Image */}
+                  <div className="w-full h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+                    {product.image_url ? (
+                      <img 
+                        src={product.image_url} 
+                        alt={product.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = '<span class="text-gray-400 text-sm">No Image</span>';
+                        }}
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-sm">No Image</span>
+                    )}
                   </div>
 
                   {/* Product Info */}
