@@ -10,32 +10,37 @@ const ProductsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('')
 
   useEffect(() => {
-    fetchCategories()
-    fetchProducts()
+    fetchData()
   }, [selectedCategory, searchTerm])
 
-  const fetchCategories = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/categories')
+      // Fetch static JSON file
+      const response = await fetch('/products.json')
       if (response.ok) {
         const data = await response.json()
-        setCategories(data)
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-    }
-  }
-
-  const fetchProducts = async () => {
-    try {
-      const params = new URLSearchParams()
-      if (selectedCategory) params.append('category_id', selectedCategory)
-      if (searchTerm) params.append('search', searchTerm)
-      
-      const response = await fetch(`/api/products?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setProducts(data.products || [])
+        setCategories(data.categories || [])
+        
+        // Filter products based on search and category
+        let filteredProducts = data.products || []
+        
+        if (selectedCategory) {
+          filteredProducts = filteredProducts.filter(
+            product => product.category === categories.find(cat => cat.id === parseInt(selectedCategory))?.name
+          )
+        }
+        
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase()
+          filteredProducts = filteredProducts.filter(
+            product => 
+              product.name.toLowerCase().includes(search) ||
+              product.description.toLowerCase().includes(search) ||
+              product.category.toLowerCase().includes(search)
+          )
+        }
+        
+        setProducts(filteredProducts)
       }
     } catch (error) {
       console.error('Error fetching products:', error)
@@ -163,11 +168,11 @@ const ProductsPage = () => {
                         </div>
                       </div>
                       <div className={`text-xs px-2 py-1 rounded mt-2 text-center ${
-                        product.in_stock 
+                        product.stock_status === 'in_stock'
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                        {product.stock_status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
                       </div>
                     </div>
                   </div>
