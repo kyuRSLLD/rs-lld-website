@@ -15,7 +15,7 @@ def get_products():
     category_id = request.args.get('category_id', type=int)
     search = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
+    per_page = request.args.get('per_page', 100, type=int)
     
     # Build query
     query = Product.query

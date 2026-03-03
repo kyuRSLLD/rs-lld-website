@@ -23,7 +23,7 @@ const ProductsPage = () => {
   const labels = {
     en: {
       title: 'Product Catalog',
-      subtitle: 'Browse our extensive selection of non-perishable goods for your restaurant',
+      subtitle: 'Browse our full selection of restaurant supplies — from disposables to kitchen tools',
       searchPlaceholder: 'Search products or ask in natural language...',
       aiSearchPlaceholder: 'Try: "ingredients for Italian pasta" or "cleaning supplies"',
       allCategories: 'All Categories',
@@ -183,12 +183,12 @@ const ProductsPage = () => {
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 
   const categoryIcons = {
-    'Canned Goods': '🥫',
-    'Dry Ingredients': '🌾',
-    'Condiments & Sauces': '🍶',
+    'Disposable Goods': '🧤',
+    'Kitchen Tools': '🔪',
     'Cleaning Supplies': '🧹',
-    'Paper Products': '🧻',
-    'Packaging Materials': '📦',
+    'Packaging Supplies': '📦',
+    'Pest Control': '🐜',
+    'Dry Ingredients': '🌾',
   }
 
   return (
