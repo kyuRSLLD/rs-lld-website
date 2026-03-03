@@ -1,7 +1,7 @@
 import { Heart, Users, Award, ChefHat, Clock, Star } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
-import simonPortrait from '../assets/simon-portrait.jpg'
-import robertPortrait from '../assets/robert-portrait.jpg'
+import simonPortrait from '../assets/simon-portrait.png'
+import robertPortrait from '../assets/robert-portrait.png'
 
 const AboutPage = () => {
   const { currentLanguage } = useLanguage()
