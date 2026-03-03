@@ -8,6 +8,7 @@ import AboutPage from './components/AboutPage'
 import ContactPage from './components/ContactPage'
 import LoginModal from './components/LoginModal'
 import Dashboard from './components/Dashboard'
+import ChatBot from './components/ChatBot'
 import './App.css'
 
 function App() {
@@ -74,6 +75,8 @@ function App() {
               onLogin={handleLogin}
             />
           )}
+
+          <ChatBot />
         </div>
       </Router>
     </LanguageProvider>
