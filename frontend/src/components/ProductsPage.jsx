@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Search, Filter, ShoppingCart, Sparkles, X, Tag, Package } from 'lucide-react'
+import { Search, ShoppingCart, Sparkles, X, Tag, CheckCircle, Package } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useCart } from '../contexts/CartContext'
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([])
@@ -12,10 +14,11 @@ const ProductsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [aiSuggestion, setAiSuggestion] = useState('')
   const [isAiSearch, setIsAiSearch] = useState(false)
-  const [cart, setCart] = useState([])
-  const [cartOpen, setCartOpen] = useState(false)
+  const [addedProductId, setAddedProductId] = useState(null)
   const searchTimeout = useRef(null)
   const { currentLanguage } = useLanguage()
+  const { addToCart, cartCount } = useCart()
+  const navigate = useNavigate()
 
   const labels = {
     en: {
@@ -170,24 +173,11 @@ const ProductsPage = () => {
     fetchProducts()
   }
 
-  const addToCart = (product) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === product.id)
-      if (existing) {
-        return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
-      }
-      return [...prev, { ...product, qty: 1 }]
-    })
+  const handleAddToCart = (product) => {
+    addToCart(product, 1)
+    setAddedProductId(product.id)
+    setTimeout(() => setAddedProductId(null), 1500)
   }
-
-  const removeFromCart = (productId) => {
-    setCart(prev => prev.filter(i => i.id !== productId))
-  }
-
-  const cartTotal = cart.reduce((sum, item) => {
-    const price = item.qty >= (item.bulk_quantity || 999) ? item.bulk_price : item.unit_price
-    return sum + price * item.qty
-  }, 0)
 
   const formatPrice = (price) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
@@ -213,11 +203,11 @@ const ProductsPage = () => {
           </div>
           {/* Cart Button */}
           <button
-            onClick={() => setCartOpen(true)}
+            onClick={() => navigate('/checkout')}
             className="relative bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <ShoppingCart className="w-5 h-5" />
-            <span className="font-medium">{cart.reduce((s, i) => s + i.qty, 0)}</span>
+            <span className="font-medium">{cartCount}</span>
           </button>
         </div>
 
@@ -366,12 +356,19 @@ const ProductsPage = () => {
                     )}
 
                     <Button
-                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                      className={`w-full mt-3 text-white text-sm transition-all ${
+                        addedProductId === product.id
+                          ? 'bg-green-500 hover:bg-green-500'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                       disabled={!product.in_stock}
-                      onClick={() => addToCart(product)}
+                      onClick={() => handleAddToCart(product)}
                     >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      {L.addToCart}
+                      {addedProductId === product.id ? (
+                        <><CheckCircle className="w-4 h-4 mr-2" /> Added!</>
+                      ) : (
+                        <><ShoppingCart className="w-4 h-4 mr-2" /> {L.addToCart}</>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -381,10 +378,10 @@ const ProductsPage = () => {
         )}
       </div>
 
-      {/* Cart Sidebar */}
-      {cartOpen && (
+      {/* Cart Sidebar removed - cart managed globally via CartContext and Header */}
+      {false && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setCartOpen(false)} />
+          <div className="absolute inset-0 bg-black/40" onClick={() => {}} />
           <div className="relative bg-white w-full max-w-sm h-full flex flex-col shadow-2xl">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-blue-700 text-white">
               <h2 className="font-semibold text-lg flex items-center gap-2">

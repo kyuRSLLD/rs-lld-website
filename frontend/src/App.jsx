@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { LanguageProvider } from './contexts/LanguageContext'
+import { CartProvider } from './contexts/CartContext'
 import Header from './components/Header'
 import HomePage from './components/HomePage'
 import ProductsPage from './components/ProductsPage'
@@ -9,6 +10,9 @@ import ContactPage from './components/ContactPage'
 import LoginModal from './components/LoginModal'
 import Dashboard from './components/Dashboard'
 import ChatBot from './components/ChatBot'
+import CheckoutPage from './components/CheckoutPage'
+import OrderTrackingPage from './components/OrderTrackingPage'
+import StaffPortal from './components/StaffPortal'
 import './App.css'
 
 function App() {
@@ -16,15 +20,12 @@ function App() {
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
-    // Check if user is logged in on app start
     checkAuthStatus()
   }, [])
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/api/me', {
-        credentials: 'include'
-      })
+      const response = await fetch('/api/me', { credentials: 'include' })
       if (response.ok) {
         const userData = await response.json()
         setUser(userData)
@@ -41,10 +42,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include'
-      })
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' })
       setUser(null)
     } catch (error) {
       console.error('Logout error:', error)
@@ -53,32 +51,44 @@ function App() {
 
   return (
     <LanguageProvider>
-      <Router>
-        <div className="min-h-screen bg-background">
-          <Header 
-            user={user} 
-            onLoginClick={() => setShowLoginModal(true)}
-            onLogout={handleLogout}
-          />
-          
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <HomePage />} />
-          </Routes>
+      <CartProvider>
+        <Router>
+          <div className="min-h-screen bg-background">
+            {/* Staff portal has its own full-screen layout, no shared header */}
+            <Routes>
+              <Route path="/staff/*" element={<StaffPortal />} />
+              <Route path="*" element={
+                <>
+                  <Header
+                    user={user}
+                    onLoginClick={() => setShowLoginModal(true)}
+                    onLogout={handleLogout}
+                  />
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/products" element={<ProductsPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <HomePage />} />
+                    <Route path="/checkout" element={<CheckoutPage user={user} />} />
+                    <Route path="/track" element={<OrderTrackingPage user={user} />} />
+                    <Route path="/track/:orderNumber" element={<OrderTrackingPage user={user} />} />
+                  </Routes>
 
-          {showLoginModal && (
-            <LoginModal 
-              onClose={() => setShowLoginModal(false)}
-              onLogin={handleLogin}
-            />
-          )}
+                  {showLoginModal && (
+                    <LoginModal
+                      onClose={() => setShowLoginModal(false)}
+                      onLogin={handleLogin}
+                    />
+                  )}
 
-          <ChatBot />
-        </div>
-      </Router>
+                  <ChatBot />
+                </>
+              } />
+            </Routes>
+          </div>
+        </Router>
+      </CartProvider>
     </LanguageProvider>
   )
 }

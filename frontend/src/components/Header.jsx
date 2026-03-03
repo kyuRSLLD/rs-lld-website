@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Menu, X, User, LogOut, Globe, ChevronDown } from 'lucide-react'
+import { Menu, X, User, LogOut, Globe, ChevronDown, ShoppingCart, Package } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useCart } from '../contexts/CartContext'
 
 const Header = ({ user, onLoginClick, onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -10,6 +11,7 @@ const Header = ({ user, onLoginClick, onLogout }) => {
   const [showLanguageMenu, setShowLanguageMenu] = useState(false)
   const navigate = useNavigate()
   const { t, currentLanguage, changeLanguage, getLanguageLabel, availableLanguages } = useLanguage()
+  const { cartCount } = useCart()
 
   const handleDashboardClick = () => {
     navigate('/dashboard')
@@ -20,6 +22,9 @@ const Header = ({ user, onLoginClick, onLogout }) => {
     changeLanguage(language)
     setShowLanguageMenu(false)
   }
+
+  const trackLabel = currentLanguage === 'zh' ? '追踪订单' : currentLanguage === 'ko' ? '주문 추적' : 'Track Order'
+  const checkoutLabel = currentLanguage === 'zh' ? '结账' : currentLanguage === 'ko' ? '결제' : 'Checkout'
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -34,23 +39,26 @@ const Header = ({ user, onLoginClick, onLogout }) => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
+          <nav className="hidden md:flex items-center space-x-6">
+            <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors text-sm">
               {t('nav.home')}
             </Link>
-            <Link to="/products" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/products" className="text-gray-700 hover:text-blue-600 transition-colors text-sm">
               {t('nav.products')}
             </Link>
-            <Link to="/about" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/about" className="text-gray-700 hover:text-blue-600 transition-colors text-sm">
               {t('nav.about')}
             </Link>
-            <Link to="/contact" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/contact" className="text-gray-700 hover:text-blue-600 transition-colors text-sm">
               {t('nav.contact')}
+            </Link>
+            <Link to="/track" className="text-gray-700 hover:text-blue-600 transition-colors text-sm flex items-center gap-1">
+              <Package className="w-3.5 h-3.5" /> {trackLabel}
             </Link>
           </nav>
 
-          {/* Right side - Language Toggle and User Actions */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Right side */}
+          <div className="hidden md:flex items-center space-x-3">
             {/* Language Toggle */}
             <div className="relative language-toggle">
               <Button
@@ -63,7 +71,6 @@ const Header = ({ user, onLoginClick, onLogout }) => {
                 <span>{getLanguageLabel(currentLanguage)}</span>
                 <ChevronDown className="w-3 h-3" />
               </Button>
-              
               {showLanguageMenu && (
                 <div className="language-dropdown">
                   {availableLanguages.map((lang) => (
@@ -79,6 +86,19 @@ const Header = ({ user, onLoginClick, onLogout }) => {
               )}
             </div>
 
+            {/* Cart Button */}
+            <Link to="/checkout">
+              <Button variant="outline" size="sm" className="relative flex items-center gap-1.5">
+                <ShoppingCart className="w-4 h-4" />
+                <span className="hidden sm:inline text-xs">{checkoutLabel}</span>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
             {/* User Actions */}
             {user ? (
               <div className="relative">
@@ -92,7 +112,6 @@ const Header = ({ user, onLoginClick, onLogout }) => {
                   <span>{user.username}</span>
                   <ChevronDown className="w-3 h-3" />
                 </Button>
-                
                 {showUserMenu && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
                     <button
@@ -102,6 +121,14 @@ const Header = ({ user, onLoginClick, onLogout }) => {
                       <User className="w-4 h-4 mr-2" />
                       {t('nav.dashboard')}
                     </button>
+                    <Link
+                      to="/track"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <Package className="w-4 h-4 mr-2" />
+                      {trackLabel}
+                    </Link>
                     <button
                       onClick={onLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -119,8 +146,18 @@ const Header = ({ user, onLoginClick, onLogout }) => {
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
+          {/* Mobile: cart + menu */}
+          <div className="md:hidden flex items-center gap-2">
+            <Link to="/checkout" className="relative">
+              <Button variant="ghost" size="sm">
+                <ShoppingCart className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="sm"
@@ -135,35 +172,23 @@ const Header = ({ user, onLoginClick, onLogout }) => {
         {isMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t">
-              <Link
-                to="/"
-                className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('nav.home')}
-              </Link>
-              <Link
-                to="/products"
-                className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('nav.products')}
-              </Link>
-              <Link
-                to="/about"
-                className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('nav.about')}
-              </Link>
-              <Link
-                to="/contact"
-                className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('nav.contact')}
-              </Link>
-              
+              {[
+                { to: '/', label: t('nav.home') },
+                { to: '/products', label: t('nav.products') },
+                { to: '/about', label: t('nav.about') },
+                { to: '/contact', label: t('nav.contact') },
+                { to: '/track', label: trackLabel },
+              ].map(link => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+
               {/* Mobile Language Toggle */}
               <div className="px-3 py-2">
                 <div className="text-sm font-medium text-gray-700 mb-2">Language</div>
@@ -171,14 +196,9 @@ const Header = ({ user, onLoginClick, onLogout }) => {
                   {availableLanguages.map((lang) => (
                     <button
                       key={lang}
-                      onClick={() => {
-                        handleLanguageChange(lang)
-                        setIsMenuOpen(false)
-                      }}
+                      onClick={() => { handleLanguageChange(lang); setIsMenuOpen(false) }}
                       className={`block w-full text-left px-2 py-1 text-sm rounded ${
-                        currentLanguage === lang 
-                          ? 'bg-blue-100 text-blue-600' 
-                          : 'text-gray-600 hover:bg-gray-50'
+                        currentLanguage === lang ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
                       }`}
                     >
                       {getLanguageLabel(lang)}
@@ -191,39 +211,22 @@ const Header = ({ user, onLoginClick, onLogout }) => {
               <div className="px-3 py-2 border-t">
                 {user ? (
                   <div className="space-y-1">
-                    <div className="text-sm font-medium text-gray-700 mb-2">
-                      {user.username}
-                    </div>
+                    <div className="text-sm font-medium text-gray-700 mb-2">{user.username}</div>
                     <button
-                      onClick={() => {
-                        handleDashboardClick()
-                        setIsMenuOpen(false)
-                      }}
+                      onClick={() => { handleDashboardClick(); setIsMenuOpen(false) }}
                       className="flex items-center w-full px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded"
                     >
-                      <User className="w-4 h-4 mr-2" />
-                      {t('nav.dashboard')}
+                      <User className="w-4 h-4 mr-2" /> {t('nav.dashboard')}
                     </button>
                     <button
-                      onClick={() => {
-                        onLogout()
-                        setIsMenuOpen(false)
-                      }}
+                      onClick={() => { onLogout(); setIsMenuOpen(false) }}
                       className="flex items-center w-full px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded"
                     >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      {t('nav.logout')}
+                      <LogOut className="w-4 h-4 mr-2" /> {t('nav.logout')}
                     </button>
                   </div>
                 ) : (
-                  <Button
-                    onClick={() => {
-                      onLoginClick()
-                      setIsMenuOpen(false)
-                    }}
-                    size="sm"
-                    className="w-full"
-                  >
+                  <Button onClick={() => { onLoginClick(); setIsMenuOpen(false) }} size="sm" className="w-full">
                     {t('nav.login')}
                   </Button>
                 )}
@@ -237,4 +240,3 @@ const Header = ({ user, onLoginClick, onLogout }) => {
 }
 
 export default Header
-
