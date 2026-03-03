@@ -59,14 +59,14 @@ export const translations = {
     
     // Products Section
     products: {
-      title: "Non-Perishable Essentials for Your Kitchen",
+      title: "Restaurant Supplies for Your Kitchen",
       categories: {
-        canned: "Canned Goods",
-        dry: "Dry Ingredients", 
-        condiments: "Condiments & Sauces",
+        disposable: "Disposable Goods",
+        kitchen: "Kitchen Tools",
         cleaning: "Cleaning Supplies",
-        paper: "Paper Products",
-        packaging: "Packaging Materials"
+        packaging: "Packaging Supplies",
+        pest: "Pest Control",
+        dry: "Dry Ingredients"
       },
       searchPlaceholder: "Search products...",
       allCategories: "All Categories",
@@ -188,14 +188,14 @@ export const translations = {
     
     // Products Section
     products: {
-      title: "您厨房的非易腐必需品",
+      title: "餐厅厨房必备供应品",
       categories: {
-        canned: "罐装食品",
-        dry: "干货原料",
-        condiments: "调料和酱汁",
+        disposable: "一次性用品",
+        kitchen: "厨房工具",
         cleaning: "清洁用品",
-        paper: "纸制品",
-        packaging: "包装材料"
+        packaging: "包装用品",
+        pest: "害虫防治",
+        dry: "干货原料"
       },
       searchPlaceholder: "搜索产品...",
       allCategories: "所有类别",
@@ -317,14 +317,14 @@ export const translations = {
     
     // Products Section
     products: {
-      title: "주방을 위한 비부패성 필수품",
+      title: "주방을 위한 레스토랑 공급품",
       categories: {
-        canned: "통조림 제품",
-        dry: "건조 재료",
-        condiments: "조미료 및 소스",
+        disposable: "일회용품",
+        kitchen: "주방 도구",
         cleaning: "청소용품",
-        paper: "종이 제품",
-        packaging: "포장재"
+        packaging: "포장재",
+        pest: "해충 방제",
+        dry: "건조 재료"
       },
       searchPlaceholder: "제품 검색...",
       allCategories: "모든 카테고리",

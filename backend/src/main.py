@@ -32,50 +32,63 @@ with app.app_context():
     # Seed categories
     if Category.query.count() == 0:
         categories = [
-            Category(name="Canned Goods", description="Canned vegetables, fruits, and proteins"),
-            Category(name="Dry Ingredients", description="Flour, rice, pasta, and grains"),
-            Category(name="Condiments & Sauces", description="Sauces, dressings, and seasonings"),
-            Category(name="Cleaning Supplies", description="Commercial cleaning products"),
-            Category(name="Paper Products", description="Napkins, towels, and disposables"),
-            Category(name="Packaging Materials", description="Containers, bags, and wrapping"),
+            Category(name="Disposable Goods", description="Gloves, disposable cups, containers, and lids"),
+            Category(name="Kitchen Tools", description="Knives, ladles, cutting boards, and utensils"),
+            Category(name="Cleaning Supplies", description="Brushes, cloths, and commercial cleaning products"),
+            Category(name="Packaging Supplies", description="Takeout bags, containers, and packaging materials"),
+            Category(name="Pest Control", description="Commercial pest control products for food service"),
+            Category(name="Dry Ingredients", description="Seasonings, MSG, and dry pantry staples"),
         ]
         for c in categories:
             db.session.add(c)
         db.session.commit()
 
-    # Seed products (expanded catalog)
+    # Seed products
     if Product.query.count() == 0:
         products = [
-            # Canned Goods
-            Product(name="Diced Tomatoes - 28oz Can", category_id=1, sku="DT-28", unit_price=2.49, bulk_price=2.19, bulk_quantity=24, unit_size="28 oz", brand="Hunt's"),
-            Product(name="Black Beans - 15oz Can", category_id=1, sku="BB-15", unit_price=1.89, bulk_price=1.69, bulk_quantity=24, unit_size="15 oz", brand="Goya"),
-            Product(name="Whole Kernel Corn - 15oz Can", category_id=1, sku="WKC-15", unit_price=1.49, bulk_price=1.29, bulk_quantity=24, unit_size="15 oz", brand="Del Monte"),
-            Product(name="Chicken Broth - 32oz Carton", category_id=1, sku="CB-32", unit_price=3.29, bulk_price=2.89, bulk_quantity=12, unit_size="32 oz", brand="Swanson"),
-            Product(name="Crushed Tomatoes - 28oz Can", category_id=1, sku="CT-28", unit_price=2.29, bulk_price=1.99, bulk_quantity=24, unit_size="28 oz", brand="Muir Glen"),
-            # Dry Ingredients
-            Product(name="All-Purpose Flour - 50lb Bag", category_id=2, sku="APF-50", unit_price=18.99, bulk_price=16.99, bulk_quantity=10, unit_size="50 lb", brand="King Arthur"),
-            Product(name="Long Grain Rice - 25lb Bag", category_id=2, sku="LGR-25", unit_price=15.49, bulk_price=13.99, bulk_quantity=8, unit_size="25 lb", brand="Mahatma"),
-            Product(name="Penne Pasta - 20lb Box", category_id=2, sku="PP-20", unit_price=12.99, bulk_price=11.49, bulk_quantity=6, unit_size="20 lb", brand="Barilla"),
-            Product(name="Granulated Sugar - 25lb Bag", category_id=2, sku="GS-25", unit_price=14.99, bulk_price=13.49, bulk_quantity=8, unit_size="25 lb", brand="Domino"),
-            Product(name="Bread Crumbs - 10lb Bag", category_id=2, sku="BC-10", unit_price=8.99, bulk_price=7.99, bulk_quantity=10, unit_size="10 lb", brand="Progresso"),
-            # Condiments & Sauces
-            Product(name="Olive Oil - 1 Gallon", category_id=3, sku="OO-1G", unit_price=24.99, bulk_price=22.49, bulk_quantity=6, unit_size="1 gallon", brand="Colavita"),
-            Product(name="Ketchup - 32oz Bottle", category_id=3, sku="K-32", unit_price=3.99, bulk_price=3.49, bulk_quantity=12, unit_size="32 oz", brand="Heinz"),
-            Product(name="Soy Sauce - 1 Gallon", category_id=3, sku="SS-1G", unit_price=9.99, bulk_price=8.49, bulk_quantity=6, unit_size="1 gallon", brand="Kikkoman"),
-            Product(name="Hot Sauce - 12oz Bottle", category_id=3, sku="HS-12", unit_price=4.49, bulk_price=3.99, bulk_quantity=12, unit_size="12 oz", brand="Tabasco"),
-            Product(name="Mayonnaise - 1 Gallon", category_id=3, sku="MAY-1G", unit_price=11.99, bulk_price=10.49, bulk_quantity=4, unit_size="1 gallon", brand="Hellmann's"),
-            # Cleaning Supplies
-            Product(name="Commercial Degreaser - 1 Gallon", category_id=4, sku="CD-1G", unit_price=12.99, bulk_price=11.49, bulk_quantity=4, unit_size="1 gallon", brand="Ecolab"),
-            Product(name="Dish Soap - 1 Gallon", category_id=4, sku="DS-1G", unit_price=8.99, bulk_price=7.99, bulk_quantity=4, unit_size="1 gallon", brand="Dawn"),
-            Product(name="Sanitizing Wipes - 300ct", category_id=4, sku="SW-300", unit_price=14.99, bulk_price=12.99, bulk_quantity=6, unit_size="300 count", brand="Clorox"),
-            # Paper Products
-            Product(name="Paper Towels - 12 Roll Pack", category_id=5, sku="PT-12", unit_price=18.99, bulk_price=16.99, bulk_quantity=6, unit_size="12 rolls", brand="Bounty"),
-            Product(name="Dinner Napkins - 500ct", category_id=5, sku="DN-500", unit_price=7.99, bulk_price=6.99, bulk_quantity=10, unit_size="500 count", brand="Tork"),
-            Product(name="Deli Tissue Paper - 500ct", category_id=5, sku="DTP-500", unit_price=5.99, bulk_price=4.99, bulk_quantity=12, unit_size="500 count", brand="Bagcraft"),
-            # Packaging
-            Product(name="Aluminum Foil Containers - 50ct", category_id=6, sku="AFC-50", unit_price=12.99, bulk_price=10.99, bulk_quantity=6, unit_size="50 count", brand="Handi-Foil"),
-            Product(name="Hinged Foam Containers - 200ct", category_id=6, sku="HFC-200", unit_price=19.99, bulk_price=17.49, bulk_quantity=4, unit_size="200 count", brand="Dart"),
-            Product(name="Kraft Paper Bags - 500ct", category_id=6, sku="KPB-500", unit_price=24.99, bulk_price=21.99, bulk_quantity=4, unit_size="500 count", brand="Duro"),
+            # Disposable Goods (category_id=1)
+            Product(name="Vinyl Gloves - Medium (100ct)", category_id=1, sku="VG-M-100", unit_price=8.99, bulk_price=7.49, bulk_quantity=10, unit_size="100 count", brand="SafeGuard"),
+            Product(name="Vinyl Gloves - Large (100ct)", category_id=1, sku="VG-L-100", unit_price=8.99, bulk_price=7.49, bulk_quantity=10, unit_size="100 count", brand="SafeGuard"),
+            Product(name="Nitrile Gloves - Medium (100ct)", category_id=1, sku="NG-M-100", unit_price=12.99, bulk_price=10.99, bulk_quantity=10, unit_size="100 count", brand="Kimberly-Clark"),
+            Product(name="Nitrile Gloves - Large (100ct)", category_id=1, sku="NG-L-100", unit_price=12.99, bulk_price=10.99, bulk_quantity=10, unit_size="100 count", brand="Kimberly-Clark"),
+            Product(name="Foam Cups - 8oz (1000ct)", category_id=1, sku="FC-8-1000", unit_price=22.99, bulk_price=19.99, bulk_quantity=4, unit_size="1000 count", brand="Dart"),
+            Product(name="Foam Cups - 12oz (1000ct)", category_id=1, sku="FC-12-1000", unit_price=26.99, bulk_price=23.49, bulk_quantity=4, unit_size="1000 count", brand="Dart"),
+            Product(name="Foam Cups - 16oz (1000ct)", category_id=1, sku="FC-16-1000", unit_price=29.99, bulk_price=26.49, bulk_quantity=4, unit_size="1000 count", brand="Dart"),
+            Product(name="Plastic Cup Lids - 8oz (1000ct)", category_id=1, sku="LID-8-1000", unit_price=14.99, bulk_price=12.99, bulk_quantity=6, unit_size="1000 count", brand="Dart"),
+            Product(name="Plastic Cup Lids - 12oz/16oz (1000ct)", category_id=1, sku="LID-16-1000", unit_price=15.99, bulk_price=13.49, bulk_quantity=6, unit_size="1000 count", brand="Dart"),
+            Product(name="Disposable Food Containers - 32oz (150ct)", category_id=1, sku="DFC-32-150", unit_price=18.99, bulk_price=15.99, bulk_quantity=6, unit_size="150 count", brand="Pactiv"),
+            Product(name="Disposable Food Containers - 16oz (150ct)", category_id=1, sku="DFC-16-150", unit_price=16.99, bulk_price=13.99, bulk_quantity=6, unit_size="150 count", brand="Pactiv"),
+            # Kitchen Tools (category_id=2)
+            Product(name="Chef Knife - 8 inch", category_id=2, sku="CK-8", unit_price=24.99, bulk_price=21.99, bulk_quantity=6, unit_size="8 inch", brand="Victorinox"),
+            Product(name="Chef Knife - 10 inch", category_id=2, sku="CK-10", unit_price=29.99, bulk_price=26.49, bulk_quantity=6, unit_size="10 inch", brand="Victorinox"),
+            Product(name="Paring Knife - 3.5 inch", category_id=2, sku="PK-3", unit_price=12.99, bulk_price=10.99, bulk_quantity=6, unit_size="3.5 inch", brand="Victorinox"),
+            Product(name="Stainless Steel Ladle - 6oz", category_id=2, sku="LAD-6", unit_price=9.99, bulk_price=8.49, bulk_quantity=6, unit_size="6 oz", brand="Winco"),
+            Product(name="Stainless Steel Ladle - 8oz", category_id=2, sku="LAD-8", unit_price=11.99, bulk_price=9.99, bulk_quantity=6, unit_size="8 oz", brand="Winco"),
+            Product(name="Stainless Steel Ladle - 12oz", category_id=2, sku="LAD-12", unit_price=13.99, bulk_price=11.99, bulk_quantity=6, unit_size="12 oz", brand="Winco"),
+            Product(name="Cutting Board - 18x12 inch (White)", category_id=2, sku="CB-18-W", unit_price=19.99, bulk_price=16.99, bulk_quantity=4, unit_size="18x12 inch", brand="San Jamar"),
+            Product(name="Cutting Board - 24x18 inch (White)", category_id=2, sku="CB-24-W", unit_price=29.99, bulk_price=25.99, bulk_quantity=4, unit_size="24x18 inch", brand="San Jamar"),
+            Product(name="Cutting Board - 18x12 inch (Yellow)", category_id=2, sku="CB-18-Y", unit_price=19.99, bulk_price=16.99, bulk_quantity=4, unit_size="18x12 inch", brand="San Jamar"),
+            # Cleaning Supplies (category_id=3)
+            Product(name="Grill Brush - Heavy Duty", category_id=3, sku="GB-HD", unit_price=14.99, bulk_price=12.49, bulk_quantity=6, unit_size="18 inch", brand="Carlisle"),
+            Product(name="Pot & Pan Scrub Brush", category_id=3, sku="PPB-1", unit_price=4.99, bulk_price=3.99, bulk_quantity=12, unit_size="Standard", brand="Carlisle"),
+            Product(name="Floor Scrub Brush - Long Handle", category_id=3, sku="FSB-LH", unit_price=12.99, bulk_price=10.99, bulk_quantity=6, unit_size="Standard", brand="Carlisle"),
+            Product(name="Microfiber Cleaning Cloths (12ct)", category_id=3, sku="MCC-12", unit_price=15.99, bulk_price=12.99, bulk_quantity=6, unit_size="12 count", brand="Simpli-Magic"),
+            Product(name="Bar Mop Towels / Kitchen Cloths (12ct)", category_id=3, sku="BMT-12", unit_price=12.99, bulk_price=10.49, bulk_quantity=6, unit_size="12 count", brand="Monarch Brands"),
+            Product(name="Heavy Duty Scrubbing Pads (10ct)", category_id=3, sku="SP-10", unit_price=7.99, bulk_price=6.49, bulk_quantity=10, unit_size="10 count", brand="Scotch-Brite"),
+            # Packaging Supplies (category_id=4)
+            Product(name="Kraft Takeout Bags - Small (500ct)", category_id=4, sku="KTB-S-500", unit_price=19.99, bulk_price=16.99, bulk_quantity=4, unit_size="500 count", brand="Duro"),
+            Product(name="Kraft Takeout Bags - Large (500ct)", category_id=4, sku="KTB-L-500", unit_price=24.99, bulk_price=21.49, bulk_quantity=4, unit_size="500 count", brand="Duro"),
+            Product(name="Plastic Takeout Bags (500ct)", category_id=4, sku="PTB-500", unit_price=14.99, bulk_price=12.49, bulk_quantity=6, unit_size="500 count", brand="Inteplast"),
+            Product(name="Hinged Clamshell Container - 9 inch (200ct)", category_id=4, sku="HCC-9-200", unit_price=22.99, bulk_price=19.49, bulk_quantity=4, unit_size="200 count", brand="Pactiv"),
+            Product(name="Hinged Clamshell Container - 6 inch (250ct)", category_id=4, sku="HCC-6-250", unit_price=18.99, bulk_price=15.99, bulk_quantity=4, unit_size="250 count", brand="Pactiv"),
+            Product(name="Aluminum Foil Containers - Half Size (100ct)", category_id=4, sku="AFC-H-100", unit_price=24.99, bulk_price=21.49, bulk_quantity=4, unit_size="100 count", brand="Handi-Foil"),
+            Product(name="Deli Paper Sheets - 12x12 (1000ct)", category_id=4, sku="DP-12-1000", unit_price=9.99, bulk_price=7.99, bulk_quantity=6, unit_size="1000 count", brand="Bagcraft"),
+            # Pest Control (category_id=5)
+            Product(name="Orthene PCO Pellets - 10lb Pail", category_id=5, sku="OPC-10LB", unit_price=89.99, bulk_price=79.99, bulk_quantity=2, unit_size="10 lb pail", brand="Orthene PCO"),
+            Product(name="Orthene PCO Pellets - 1lb Bag", category_id=5, sku="OPC-1LB", unit_price=12.99, bulk_price=10.99, bulk_quantity=6, unit_size="1 lb bag", brand="Orthene PCO"),
+            # Dry Ingredients (category_id=6)
+            Product(name="MSG (Monosodium Glutamate) - Low Sodium - 5lb", category_id=6, sku="MSG-LS-5", unit_price=14.99, bulk_price=12.49, bulk_quantity=6, unit_size="5 lb", brand="Ajinomoto"),
+            Product(name="MSG (Monosodium Glutamate) - Low Sodium - 25lb", category_id=6, sku="MSG-LS-25", unit_price=49.99, bulk_price=42.99, bulk_quantity=2, unit_size="25 lb", brand="Ajinomoto"),
         ]
         for p in products:
             db.session.add(p)
