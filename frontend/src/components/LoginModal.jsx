@@ -1,3 +1,4 @@
+import API_BASE from '../config/api'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Eye, EyeOff, User, Mail, Building, Phone } from 'lucide-react'

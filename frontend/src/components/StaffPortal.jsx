@@ -1,3 +1,4 @@
+import API_BASE from '../config/api'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
@@ -32,7 +33,7 @@ const StaffLogin = ({ onLogin }) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/staff/login', {
+      const res = await fetch(`${API_BASE}/api/staff/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -299,7 +300,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                   </span>
                 </div>
                 <img
-                  src={`/api/staff/checks/${order.order_number}`}
+                  src={`${API_BASE}/api/staff/checks/${order.order_number}`}
                   alt="Check image"
                   className="max-h-48 rounded-lg border border-gray-200 object-contain w-full"
                   onError={(e) => { e.target.style.display='none' }}
@@ -310,7 +311,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                       size="sm"
                       onClick={async () => {
                         if (!window.confirm('Approve this check and confirm the order?')) return
-                        const res = await fetch(`/api/staff/checks/${order.order_number}/approve`, {
+                        const res = await fetch(`${API_BASE}/api/staff/checks/${order.order_number}/approve`, {
                           method: 'POST', credentials: 'include'
                         })
                         const d = await res.json()
@@ -326,7 +327,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                       variant="outline"
                       onClick={async () => {
                         if (!window.confirm('Reject this check and cancel the order?')) return
-                        const res = await fetch(`/api/staff/checks/${order.order_number}/reject`, {
+                        const res = await fetch(`${API_BASE}/api/staff/checks/${order.order_number}/reject`, {
                           method: 'POST', credentials: 'include'
                         })
                         const d = await res.json()
@@ -576,7 +577,7 @@ const StaffPortal = () => {
 
   // Check if already logged in
   useEffect(() => {
-    fetch('/api/staff/me', { credentials: 'include' })
+    fetch(`${API_BASE}/api/staff/me`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setStaff(d) })
       .catch(() => {})
@@ -595,7 +596,7 @@ const StaffPortal = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch('/api/staff/stats', { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/staff/stats`, { credentials: 'include' })
       const data = await res.json()
       setStats(data)
     } catch {}
@@ -603,7 +604,7 @@ const StaffPortal = () => {
 
   const fetchCustomers = useCallback(async () => {
     try {
-      const res = await fetch('/api/staff/customers', { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/staff/customers`, { credentials: 'include' })
       const data = await res.json()
       setCustomers(Array.isArray(data) ? data : [])
     } catch {}
@@ -611,7 +612,7 @@ const StaffPortal = () => {
 
   const fetchInventory = useCallback(async () => {
     try {
-      const res = await fetch('/api/staff/inventory', { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/staff/inventory`, { credentials: 'include' })
       const data = await res.json()
       setInventory(Array.isArray(data) ? data : [])
     } catch {}
@@ -632,7 +633,7 @@ const StaffPortal = () => {
 
   const fetchProductCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/staff/categories', { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/staff/categories`, { credentials: 'include' })
       const data = await res.json()
       setProductCategories(Array.isArray(data) ? data : [])
     } catch {}
@@ -653,7 +654,7 @@ const StaffPortal = () => {
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
-      await fetch(`/api/staff/orders/${orderId}/status`, {
+      await fetch(`${API_BASE}/api/staff/orders/${orderId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -666,7 +667,7 @@ const StaffPortal = () => {
 
   const handleNotesUpdate = async (orderId, notes, assignedTo) => {
     try {
-      await fetch(`/api/staff/orders/${orderId}/notes`, {
+      await fetch(`${API_BASE}/api/staff/orders/${orderId}/notes`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -678,7 +679,7 @@ const StaffPortal = () => {
 
   const handleInventoryToggle = async (productId, inStock) => {
     try {
-      await fetch(`/api/staff/inventory/${productId}`, {
+      await fetch(`${API_BASE}/api/staff/inventory/${productId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -690,7 +691,7 @@ const StaffPortal = () => {
 
   const handleProductSave = async (productId, form) => {
     try {
-      const res = await fetch(`/api/staff/products/${productId}`, {
+      const res = await fetch(`${API_BASE}/api/staff/products/${productId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -704,7 +705,7 @@ const StaffPortal = () => {
 
   const handleProductAdd = async (form) => {
     try {
-      const res = await fetch('/api/staff/products', {
+      const res = await fetch(`${API_BASE}/api/staff/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -719,20 +720,20 @@ const StaffPortal = () => {
   const handleProductDelete = async (productId, name) => {
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
     try {
-      await fetch(`/api/staff/products/${productId}`, { method: 'DELETE', credentials: 'include' })
+      await fetch(`${API_BASE}/api/staff/products/${productId}`, { method: 'DELETE', credentials: 'include' })
       fetchProducts()
     } catch {}
   }
 
   const handleProductToggleStock = async (productId) => {
     try {
-      await fetch(`/api/staff/products/${productId}/toggle-stock`, { method: 'POST', credentials: 'include' })
+      await fetch(`${API_BASE}/api/staff/products/${productId}/toggle-stock`, { method: 'POST', credentials: 'include' })
       fetchProducts()
     } catch {}
   }
 
   const handleCsvExport = () => {
-    window.open('/api/staff/products/export-csv', '_blank')
+    window.open(`${API_BASE}/api/staff/products/export-csv`, '_blank')
   }
 
   const handleCsvImport = async (e) => {
@@ -743,7 +744,7 @@ const StaffPortal = () => {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      const res = await fetch('/api/staff/products/import-csv', {
+      const res = await fetch(`${API_BASE}/api/staff/products/import-csv`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -760,7 +761,7 @@ const StaffPortal = () => {
   }
 
   const handleLogout = async () => {
-    await fetch('/api/staff/logout', { method: 'POST', credentials: 'include' })
+    await fetch(`${API_BASE}/api/staff/logout`, { method: 'POST', credentials: 'include' })
     setStaff(null)
   }
 

@@ -1,3 +1,4 @@
+import API_BASE from '../config/api'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -102,7 +103,7 @@ const OrderTrackingPage = ({ user }) => {
     setError('')
     setOrder(null)
     try {
-      const res = await fetch(`/api/orders/${num.trim()}`, { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/orders/${num.trim()}`, { credentials: 'include' })
       if (!res.ok) { setError(t.orderNotFound); return }
       const data = await res.json()
       setOrder(data)
@@ -117,7 +118,7 @@ const OrderTrackingPage = ({ user }) => {
     if (!user) return
     setLoadingMyOrders(true)
     try {
-      const res = await fetch('/api/orders', { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/orders`, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
         setMyOrders(data.slice(0, 5))
@@ -128,7 +129,7 @@ const OrderTrackingPage = ({ user }) => {
 
   const handleReorder = async (orderNum) => {
     try {
-      const res = await fetch(`/api/orders/${orderNum}/reorder`, { method: 'POST', credentials: 'include' })
+      const res = await fetch(`${API_BASE}/api/orders/${orderNum}/reorder`, { method: 'POST', credentials: 'include' })
       const data = await res.json()
       if (data.success) {
         // Store reorder items in localStorage for cart to pick up

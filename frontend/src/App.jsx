@@ -1,3 +1,4 @@
+import API_BASE from './config/api'
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { LanguageProvider } from './contexts/LanguageContext'
@@ -25,7 +26,7 @@ function App() {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/api/me', { credentials: 'include' })
+      const response = await fetch(`${API_BASE}/api/me`, { credentials: 'include' })
       if (response.ok) {
         const userData = await response.json()
         setUser(userData)
@@ -42,7 +43,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout', { method: 'POST', credentials: 'include' })
+      await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' })
       setUser(null)
     } catch (error) {
       console.error('Logout error:', error)
