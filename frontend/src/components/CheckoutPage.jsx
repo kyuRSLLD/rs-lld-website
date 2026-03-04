@@ -10,8 +10,8 @@ import {
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
-// Stripe publishable key
-const stripePromise = loadStripe('pk_live_51T7GH2PbWfdV8QXTNrRtKUC4lMWiQFOPTROowvgHj8scemBG1SPA2ryuhZ9ShBu6xVA6VQVj9dHIn4CEVeWD98KV00YvqGo4Nd')
+// Stripe publishable key - uses VITE_STRIPE_PUBLISHABLE_KEY env var
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_live_51T7GH2PbWfdV8QXTNrRtKUC4lMWiQFOPTROowvgHj8scemBG1SPA2ryuhZ9ShBu6xVA6VQVj9dHIn4CEVeWD98KV00YvqGo4Nd')
 
 // ─── Stripe Card Form Component ───────────────────────────────────────────────
 const StripeCardForm = ({ orderTotal, orderNumber, onSuccess, onError, t }) => {
