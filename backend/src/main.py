@@ -16,8 +16,8 @@ from src.routes.payment import payment_bp
 from src.routes.product_admin import product_admin_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
-CORS(app, supports_credentials=True)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+CORS(app, supports_credentials=True, origins='*')
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(product_bp, url_prefix='/api')
@@ -26,7 +26,10 @@ app.register_blueprint(order_bp, url_prefix='/api')
 app.register_blueprint(payment_bp, url_prefix='/api')
 app.register_blueprint(product_admin_bp, url_prefix='/api')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+# Ensure database directory exists
+_db_dir = os.path.join(os.path.dirname(__file__), 'database')
+os.makedirs(_db_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(_db_dir, 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
