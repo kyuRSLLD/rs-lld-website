@@ -1,3 +1,4 @@
+import API_BASE from '../config/api'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
@@ -28,7 +29,7 @@ const StripeCardForm = ({ orderTotal, orderNumber, onSuccess, onError, t }) => {
 
     try {
       // Create payment intent on backend
-      const intentRes = await fetch('/api/payments/create-intent', {
+      const intentRes = await fetch(`${API_BASE}/api/payments/create-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -54,7 +55,7 @@ const StripeCardForm = ({ orderTotal, orderNumber, onSuccess, onError, t }) => {
 
       if (result.paymentIntent.status === 'succeeded') {
         // Confirm with backend
-        await fetch('/api/payments/confirm', {
+        await fetch(`${API_BASE}/api/payments/confirm`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -152,7 +153,7 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
       const formData = new FormData()
       formData.append('check_image', file)
       formData.append('order_number', orderNumber)
-      const res = await fetch('/api/payments/upload-check', {
+      const res = await fetch(`${API_BASE}/api/payments/upload-check`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -398,7 +399,7 @@ const CheckoutPage = ({ user }) => {
         ...form,
         items: cart.map(item => ({ product_id: item.product_id, quantity: item.quantity }))
       }
-      const res = await fetch('/api/orders', {
+      const res = await fetch(`${API_BASE}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

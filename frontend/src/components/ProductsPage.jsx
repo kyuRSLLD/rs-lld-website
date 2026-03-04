@@ -1,3 +1,4 @@
+import API_BASE from '../config/api'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -95,7 +96,7 @@ const ProductsPage = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories')
+      const response = await fetch(`${API_BASE}/api/categories`)
       if (response.ok) {
         const data = await response.json()
         setCategories(data)
@@ -113,7 +114,7 @@ const ProductsPage = () => {
       const params = new URLSearchParams()
       if (selectedCategory) params.append('category_id', selectedCategory)
       if (search) params.append('search', search)
-      const response = await fetch(`/api/products?${params}`)
+      const response = await fetch(`${API_BASE}/api/products?${params}`)
       if (response.ok) {
         const data = await response.json()
         setProducts(data.products || [])
@@ -133,7 +134,7 @@ const ProductsPage = () => {
     setAiLoading(true)
     setIsAiSearch(true)
     try {
-      const response = await fetch('/api/search/ai', {
+      const response = await fetch(`${API_BASE}/api/search/ai`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, language: currentLanguage })
