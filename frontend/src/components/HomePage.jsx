@@ -65,7 +65,7 @@ const HomePage = () => {
             <div>
               <img 
                 src={stressedOwnerImg} 
-                alt="Stressed restaurant owner" 
+                alt="Restaurant owner managing operations - LLD Restaurant Supply serves Illinois restaurant owners" 
                 className="rounded-lg shadow-lg w-full h-64 object-cover"
               />
             </div>
@@ -141,7 +141,7 @@ const HomePage = () => {
             <div>
               <img 
                 src={partnershipImg} 
-                alt="Business partnership" 
+                alt="LLD Restaurant Supply partnership with restaurant owners in Mundelein Illinois" 
                 className="rounded-lg shadow-lg w-full h-64 object-cover"
               />
             </div>
@@ -171,6 +171,47 @@ const HomePage = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SEO Content Section - Rich keyword text for search engines */}
+      <section className="py-12 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="p-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">30+</div>
+              <div className="text-lg font-semibold text-gray-900 mb-1">Years of Experience</div>
+              <p className="text-gray-600 text-sm">Serving restaurant owners across Mundelein, Lake County, and the greater Chicago area since the 1990s.</p>
+            </div>
+            <div className="p-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">37+</div>
+              <div className="text-lg font-semibold text-gray-900 mb-1">Products In Stock</div>
+              <p className="text-gray-600 text-sm">Wholesale disposable goods, kitchen tools, cleaning supplies, packaging, pest control, and dry ingredients.</p>
+            </div>
+            <div className="p-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">$0</div>
+              <div className="text-lg font-semibold text-gray-900 mb-1">Delivery on Large Orders</div>
+              <p className="text-gray-600 text-sm">Free delivery on orders over $200. Bulk pricing available on all products for restaurant owners.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Service Area Section */}
+      <section className="py-10 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Serving Restaurant Owners Across Illinois</h2>
+          <p className="text-gray-600 max-w-3xl mx-auto mb-6">
+            LLD Restaurant Supply is located at 218 Terrace Dr, Mundelein, IL 60060. We supply restaurants, 
+            Chinese restaurants, Asian restaurants, and food service businesses throughout Lake County, 
+            Cook County, and the greater Chicago metropolitan area. Call us at (224) 424-7271 or email 
+            sales@lldrestaurantsupply.com for wholesale pricing.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 text-sm text-gray-500">
+            {['Mundelein', 'Vernon Hills', 'Libertyville', 'Gurnee', 'Waukegan', 'Buffalo Grove', 'Schaumburg', 'Chicago', 'Northbrook', 'Deerfield'].map(city => (
+              <span key={city} className="bg-white border border-gray-200 rounded-full px-3 py-1">{city}, IL</span>
+            ))}
           </div>
         </div>
       </section>
