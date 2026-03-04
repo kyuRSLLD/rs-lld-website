@@ -17,7 +17,7 @@ const statusConfig = {
   cancelled: { label: 'Cancelled',  color: 'text-red-700',    bg: 'bg-red-50',     border: 'border-red-200',    icon: XCircle },
 }
 
-const paymentLabels = { net30: 'Net 30', net15: 'Net 15', cod: 'COD', credit_card: 'Credit Card' }
+const paymentLabels = { net30: 'Net 30', net15: 'Net 15', cod: 'COD', credit_card: 'Credit Card', check: 'Check' }
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 const StaffLogin = ({ onLogin }) => {
@@ -279,6 +279,67 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
               </div>
             </div>
           </div>
+
+          {/* Check Image Review */}
+          {order.has_check_image && (
+            <div>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Check Payment Review</h4>
+              <div className="bg-white rounded-lg p-3 border border-amber-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    order.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
+                    order.payment_status === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {order.payment_status === 'paid' ? '✓ Check Approved' :
+                     order.payment_status === 'rejected' ? '✗ Check Rejected' :
+                     '⏳ Pending Review'}
+                  </span>
+                </div>
+                <img
+                  src={`/api/staff/checks/${order.order_number}`}
+                  alt="Check image"
+                  className="max-h-48 rounded-lg border border-gray-200 object-contain w-full"
+                  onError={(e) => { e.target.style.display='none' }}
+                />
+                {order.payment_status === 'pending_review' && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!window.confirm('Approve this check and confirm the order?')) return
+                        const res = await fetch(`/api/staff/checks/${order.order_number}/approve`, {
+                          method: 'POST', credentials: 'include'
+                        })
+                        const d = await res.json()
+                        if (d.success) window.location.reload()
+                        else alert(d.error)
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                    >
+                      ✓ Approve Check
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        if (!window.confirm('Reject this check and cancel the order?')) return
+                        const res = await fetch(`/api/staff/checks/${order.order_number}/reject`, {
+                          method: 'POST', credentials: 'include'
+                        })
+                        const d = await res.json()
+                        if (d.success) window.location.reload()
+                        else alert(d.error)
+                      }}
+                      className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
+                    >
+                      ✗ Reject Check
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Timeline */}
           <div>
