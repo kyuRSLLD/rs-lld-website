@@ -12,6 +12,7 @@ from src.routes.user import user_bp
 from src.routes.product import product_bp
 from src.routes.chat import chat_bp
 from src.routes.order import order_bp
+from src.routes.payment import payment_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -21,6 +22,7 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(product_bp, url_prefix='/api')
 app.register_blueprint(chat_bp, url_prefix='/api')
 app.register_blueprint(order_bp, url_prefix='/api')
+app.register_blueprint(payment_bp, url_prefix='/api')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
