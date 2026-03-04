@@ -17,7 +17,15 @@ from src.routes.product_admin import product_admin_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
-CORS(app, supports_credentials=True, origins='*')
+CORS(app, supports_credentials=True, origins=[
+    'http://lldrestaurantsupply.com',
+    'https://lldrestaurantsupply.com',
+    'http://www.lldrestaurantsupply.com',
+    'https://www.lldrestaurantsupply.com',
+    'http://localhost:5173',
+    'http://localhost:5000',
+    'http://localhost:3000'
+])
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(product_bp, url_prefix='/api')
