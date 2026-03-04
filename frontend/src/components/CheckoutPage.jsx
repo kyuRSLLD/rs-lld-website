@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -115,11 +115,25 @@ const StripeCardForm = ({ orderTotal, orderNumber, onSuccess, onError, t }) => {
 }
 
 // ─── Check Upload Component ───────────────────────────────────────────────────
-const CheckUploadForm = ({ orderNumber, onSuccess, t }) => {
+const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [cameraMode, setCameraMode] = useState(true) // default to camera
+  const fileInputRef = useRef(null)
+  const galleryInputRef = useRef(null)
+
+  // Auto-open camera when component mounts (triggered by selecting check payment)
+  useEffect(() => {
+    if (autoOpen && fileInputRef.current) {
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        fileInputRef.current.click()
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [autoOpen])
 
   const handleFileChange = (e) => {
     const f = e.target.files[0]
@@ -131,7 +145,7 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t }) => {
   }
 
   const handleUpload = async () => {
-    if (!file) { setError('Please select a check image'); return }
+    if (!file) { setError('Please take or select a check photo'); return }
     setUploading(true)
     setError('')
     try {
@@ -163,30 +177,70 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t }) => {
         <ol className="list-decimal list-inside space-y-1 text-xs">
           <li>Make your check payable to: <strong>LLD Restaurant Supply</strong></li>
           <li>Take a clear photo of the front of the check</li>
-          <li>Upload the photo below</li>
           <li>Your order will be confirmed once we review and verify your check</li>
         </ol>
       </div>
 
-      {/* File Upload Area */}
-      <label className={`block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-        preview ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-      }`}>
-        <input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="hidden" />
-        {preview ? (
-          <div>
-            <img src={preview} alt="Check preview" className="max-h-48 mx-auto rounded-lg mb-2 object-contain" />
-            <p className="text-sm text-green-700 font-medium">✓ {file?.name}</p>
-            <p className="text-xs text-gray-500 mt-1">Click to change</p>
+      {/* Hidden camera input — opens rear camera directly */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      {/* Hidden gallery input — for choosing from photo library */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*,.pdf"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {/* Preview or camera prompt */}
+      {preview ? (
+        <div className="border-2 border-green-400 bg-green-50 rounded-xl p-4 text-center">
+          <img src={preview} alt="Check preview" className="max-h-56 mx-auto rounded-lg mb-3 object-contain shadow" />
+          <p className="text-sm text-green-700 font-semibold">✓ Check photo captured</p>
+          <div className="flex gap-2 mt-3 justify-center">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs text-blue-600 underline hover:text-blue-800"
+            >
+              📷 Retake Photo
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={() => galleryInputRef.current?.click()}
+              className="text-xs text-blue-600 underline hover:text-blue-800"
+            >
+              🖼 Choose from Gallery
+            </button>
           </div>
-        ) : (
-          <div>
-            <Camera className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">Click to upload check photo</p>
-            <p className="text-xs text-gray-400 mt-1">JPG, PNG, or PDF accepted</p>
+        </div>
+      ) : (
+        <div className="border-2 border-dashed border-amber-300 bg-amber-50 rounded-xl p-6 text-center">
+          <Camera className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-gray-700 mb-1">Take a photo of your check</p>
+          <p className="text-xs text-gray-500 mb-4">Position your check clearly in frame</p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Camera className="w-4 h-4" /> Open Camera
+            </button>
+            <button
+              onClick={() => galleryInputRef.current?.click()}
+              className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Upload className="w-4 h-4" /> Choose from Gallery
+            </button>
           </div>
-        )}
-      </label>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>
@@ -218,6 +272,7 @@ const CheckoutPage = ({ user }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [confirmedOrder, setConfirmedOrder] = useState(null)
   const [paymentDone, setPaymentDone] = useState(false)
+  const [checkJustSelected, setCheckJustSelected] = useState(false)
 
   const [form, setForm] = useState({
     delivery_name: user?.username || '',
@@ -323,7 +378,16 @@ const CheckoutPage = ({ user }) => {
     { num: 5, label: t.confirmed, icon: CheckCircle },
   ]
 
-  const handleFormChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  const handleFormChange = (e) => {
+    const { name, value } = e.target
+    // When user selects 'check' payment, flag autoOpen so camera opens immediately
+    if (name === 'payment_method' && value === 'check') {
+      setCheckJustSelected(true)
+    } else if (name === 'payment_method') {
+      setCheckJustSelected(false)
+    }
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
   const validateDelivery = () => form.delivery_name && form.delivery_address && form.delivery_city && form.delivery_state && form.delivery_zip
 
   // Place order (creates order in DB, then goes to payment step)
@@ -669,6 +733,7 @@ const CheckoutPage = ({ user }) => {
                     orderNumber={confirmedOrder.order_number}
                     onSuccess={handleCheckSuccess}
                     t={t}
+                    autoOpen={checkJustSelected}
                   />
                 )}
               </div>
