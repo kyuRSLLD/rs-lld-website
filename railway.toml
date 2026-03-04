@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+startCommand = "python src/main.py"
+healthcheckPath = "/api/products"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+
+[build.env]
+NIXPACKS_PYTHON_VERSION = "3.11"
