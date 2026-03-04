@@ -1,12 +1,9 @@
 [build]
-builder = "nixpacks"
-buildCommand = "pip install -r requirements.txt"
+builder = "dockerfile"
+dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "python src/main.py"
+startCommand = "gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 src.main:app"
 healthcheckPath = "/api/products"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
-
-[build.env]
-NIXPACKS_PYTHON_VERSION = "3.11"
