@@ -33,7 +33,7 @@ const LoginModal = ({ onClose, onLogin }) => {
     setError('')
 
     try {
-      const endpoint = isLogin ? '/api/login' : '/api/register'
+      const endpoint = isLogin ? `${API_BASE}/api/login` : `${API_BASE}/api/register`
       const payload = isLogin 
         ? { username: formData.username, password: formData.password }
         : formData
