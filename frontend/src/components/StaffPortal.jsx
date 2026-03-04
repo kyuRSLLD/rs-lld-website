@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
-  Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye
+  Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye,
+  Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
+  PenLine, Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -357,6 +359,200 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
   )
 }
 
+// ─── Product Row (inline editable) ──────────────────────────────────────────
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock }) => {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    name: product.name,
+    sku: product.sku,
+    brand: product.brand || '',
+    unit_size: product.unit_size || '',
+    unit_price: product.unit_price,
+    bulk_price: product.bulk_price || '',
+    bulk_quantity: product.bulk_quantity || '',
+    category_id: product.category_id,
+    description: product.description || '',
+  })
+  const [error, setError] = useState('')
+  const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
+
+  const handleSave = async () => {
+    setSaving(true)
+    setError('')
+    const result = await onSave(product.id, form)
+    if (result?.error) setError(result.error)
+    else setEditing(false)
+    setSaving(false)
+  }
+
+  const handleCancel = () => {
+    setForm({
+      name: product.name, sku: product.sku, brand: product.brand || '',
+      unit_size: product.unit_size || '', unit_price: product.unit_price,
+      bulk_price: product.bulk_price || '', bulk_quantity: product.bulk_quantity || '',
+      category_id: product.category_id, description: product.description || '',
+    })
+    setEditing(false)
+    setError('')
+  }
+
+  const inp = 'border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 w-full'
+
+  if (editing) {
+    return (
+      <>
+        <tr className="bg-blue-50 border-l-4 border-blue-500">
+          <td className="px-3 py-2"><input className={inp} value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder="Product name" /></td>
+          <td className="px-3 py-2"><input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e => setForm(p=>({...p,sku:e.target.value}))} placeholder="SKU" /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.brand} onChange={e => setForm(p=>({...p,brand:e.target.value}))} placeholder="Brand" /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.unit_size} onChange={e => setForm(p=>({...p,unit_size:e.target.value}))} placeholder="e.g. 100ct" /></td>
+          <td className="px-3 py-2">
+            <select className={inp} value={form.category_id} onChange={e => setForm(p=>({...p,category_id:parseInt(e.target.value)}))}>              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </td>
+          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => setForm(p=>({...p,unit_price:e.target.value}))} placeholder="0.00" /></td>
+          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => setForm(p=>({...p,bulk_price:e.target.value}))} placeholder="0.00" /></td>
+          <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder="Min qty" /></td>
+          <td className="px-3 py-2">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${product.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {product.in_stock ? 'In Stock' : 'Out'}
+            </span>
+          </td>
+          <td className="px-3 py-2">
+            <div className="flex gap-1">
+              <button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                {saving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
+              </button>
+              <button onClick={handleCancel} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-2 py-1 rounded">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          </td>
+        </tr>
+      </>
+    )
+  }
+
+  return (
+    <tr className={`hover:bg-gray-50 transition-colors ${!product.in_stock ? 'opacity-60' : ''}`}>
+      <td className="px-3 py-2.5 font-medium text-gray-900 text-sm">{product.name}</td>
+      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{product.sku}</td>
+      <td className="px-3 py-2.5 text-gray-600 text-sm">{product.brand || '—'}</td>
+      <td className="px-3 py-2.5 text-gray-500 text-xs">{product.unit_size || '—'}</td>
+      <td className="px-3 py-2.5 text-xs">
+        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{product.category_name}</span>
+      </td>
+      <td className="px-3 py-2.5 text-gray-900 font-semibold text-sm">{formatPrice(product.unit_price)}</td>
+      <td className="px-3 py-2.5 text-green-700 text-sm">{product.bulk_price ? formatPrice(product.bulk_price) : '—'}</td>
+      <td className="px-3 py-2.5 text-gray-500 text-sm">{product.bulk_quantity ? `${product.bulk_quantity}+` : '—'}</td>
+      <td className="px-3 py-2.5">
+        <button onClick={() => onToggleStock(product.id)} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
+          product.in_stock ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-700 hover:bg-red-100'
+        }`}>
+          {product.in_stock ? '✓ In Stock' : '✗ Out'}
+        </button>
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex gap-1">
+          <button onClick={() => setEditing(true)} className="text-blue-600 hover:bg-blue-50 p-1 rounded" title="Edit">
+            <PenLine className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => onDelete(product.id, product.name)} className="text-red-500 hover:bg-red-50 p-1 rounded" title="Delete">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// ─── Add Product Form ─────────────────────────────────────────────────────────
+const AddProductForm = ({ categories, onAdd, onClose }) => {
+  const [form, setForm] = useState({
+    name: '', sku: '', brand: '', unit_size: '', description: '',
+    category_id: categories[0]?.id || 1,
+    unit_price: '', bulk_price: '', bulk_quantity: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const inp = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 w-full'
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    const result = await onAdd(form)
+    if (result?.error) setError(result.error)
+    else onClose()
+    setSaving(false)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b">
+          <h2 className="text-lg font-bold text-gray-900">Add New Product</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+              <input className={inp} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} required placeholder="e.g. Vinyl Gloves - Medium (100ct)" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
+              <input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e=>setForm(p=>({...p,sku:e.target.value.toUpperCase()}))} required placeholder="e.g. VG-M-100" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+              <select className={inp} value={form.category_id} onChange={e=>setForm(p=>({...p,category_id:parseInt(e.target.value)}))} required>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+              <input className={inp} value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} placeholder="e.g. SafeGuard" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Size</label>
+              <input className={inp} value={form.unit_size} onChange={e=>setForm(p=>({...p,unit_size:e.target.value}))} placeholder="e.g. 100 count, 5 lb" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price ($) *</label>
+              <input className={inp} type="number" step="0.01" min="0" value={form.unit_price} onChange={e=>setForm(p=>({...p,unit_price:e.target.value}))} required placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bulk Price ($)</label>
+              <input className={inp} type="number" step="0.01" min="0" value={form.bulk_price} onChange={e=>setForm(p=>({...p,bulk_price:e.target.value}))} placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bulk Min Qty</label>
+              <input className={inp} type="number" min="1" value={form.bulk_quantity} onChange={e=>setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder="e.g. 6" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea className={inp} rows={2} value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Optional product description" />
+            </div>
+          </div>
+          {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2">
+              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Add Product
+            </button>
+            <button type="button" onClick={onClose} className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Staff Portal ─────────────────────────────────────────────────────────
 const StaffPortal = () => {
   const [staff, setStaff] = useState(null)
@@ -365,6 +561,13 @@ const StaffPortal = () => {
   const [stats, setStats] = useState(null)
   const [customers, setCustomers] = useState([])
   const [inventory, setInventory] = useState([])
+  const [products, setProducts] = useState([])
+  const [productCategories, setProductCategories] = useState([])
+  const [productSearch, setProductSearch] = useState('')
+  const [productCategoryFilter, setProductCategoryFilter] = useState('')
+  const [showAddProduct, setShowAddProduct] = useState(false)
+  const [csvImporting, setCsvImporting] = useState(false)
+  const [csvMessage, setCsvMessage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -414,13 +617,39 @@ const StaffPortal = () => {
     } catch {}
   }, [])
 
+  const fetchProducts = useCallback(async () => {
+    try {
+      let url = '/api/staff/products'
+      const params = []
+      if (productSearch) params.push(`search=${encodeURIComponent(productSearch)}`)
+      if (productCategoryFilter) params.push(`category_id=${productCategoryFilter}`)
+      if (params.length) url += '?' + params.join('&')
+      const res = await fetch(url, { credentials: 'include' })
+      const data = await res.json()
+      setProducts(Array.isArray(data) ? data : [])
+    } catch {}
+  }, [productSearch, productCategoryFilter])
+
+  const fetchProductCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/staff/categories', { credentials: 'include' })
+      const data = await res.json()
+      setProductCategories(Array.isArray(data) ? data : [])
+    } catch {}
+  }, [])
+
   useEffect(() => {
     if (!staff) return
     fetchStats()
     if (activeTab === 'orders') fetchOrders()
     if (activeTab === 'customers') fetchCustomers()
     if (activeTab === 'inventory') fetchInventory()
-  }, [staff, activeTab, fetchOrders, fetchStats, fetchCustomers, fetchInventory])
+    if (activeTab === 'products') { fetchProducts(); fetchProductCategories() }
+  }, [staff, activeTab, fetchOrders, fetchStats, fetchCustomers, fetchInventory, fetchProducts, fetchProductCategories])
+
+  useEffect(() => {
+    if (activeTab === 'products') fetchProducts()
+  }, [productSearch, productCategoryFilter, activeTab, fetchProducts])
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
@@ -459,6 +688,77 @@ const StaffPortal = () => {
     } catch {}
   }
 
+  const handleProductSave = async (productId, form) => {
+    try {
+      const res = await fetch(`/api/staff/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (data.success) { fetchProducts(); return null }
+      return { error: data.error || 'Failed to save' }
+    } catch { return { error: 'Network error' } }
+  }
+
+  const handleProductAdd = async (form) => {
+    try {
+      const res = await fetch('/api/staff/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (data.success) { fetchProducts(); return null }
+      return { error: data.error || 'Failed to add product' }
+    } catch { return { error: 'Network error' } }
+  }
+
+  const handleProductDelete = async (productId, name) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
+    try {
+      await fetch(`/api/staff/products/${productId}`, { method: 'DELETE', credentials: 'include' })
+      fetchProducts()
+    } catch {}
+  }
+
+  const handleProductToggleStock = async (productId) => {
+    try {
+      await fetch(`/api/staff/products/${productId}/toggle-stock`, { method: 'POST', credentials: 'include' })
+      fetchProducts()
+    } catch {}
+  }
+
+  const handleCsvExport = () => {
+    window.open('/api/staff/products/export-csv', '_blank')
+  }
+
+  const handleCsvImport = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setCsvImporting(true)
+    setCsvMessage(null)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/staff/products/import-csv', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCsvMessage({ type: 'success', text: `✅ Updated ${data.updated} products. Skipped: ${data.skipped}.${data.errors?.length ? ' Errors: ' + data.errors.join('; ') : ''}` })
+        fetchProducts()
+      } else {
+        setCsvMessage({ type: 'error', text: `❌ ${data.error}` })
+      }
+    } catch { setCsvMessage({ type: 'error', text: '❌ Network error during import' }) }
+    finally { setCsvImporting(false); e.target.value = '' }
+  }
+
   const handleLogout = async () => {
     await fetch('/api/staff/logout', { method: 'POST', credentials: 'include' })
     setStaff(null)
@@ -478,7 +778,8 @@ const StaffPortal = () => {
   const tabs = [
     { id: 'orders', label: 'Orders', icon: ClipboardList },
     { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'inventory', label: 'Inventory', icon: ShoppingBag },
+    { id: 'products', label: 'Products', icon: Tag },
+    { id: 'inventory', label: 'Stock', icon: ShoppingBag },
     { id: 'stats', label: 'Dashboard', icon: BarChart2 },
   ]
 
@@ -624,6 +925,103 @@ const StaffPortal = () => {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PRODUCTS TAB ── */}
+        {activeTab === 'products' && (
+          <div>
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <h2 className="text-xl font-bold text-gray-900">Product Management</h2>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={handleCsvExport} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                  <Download className="w-4 h-4" /> Export CSV
+                </button>
+                <label className={`flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer ${csvImporting ? 'opacity-50' : ''}`}>
+                  {csvImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Import CSV
+                  <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
+                </label>
+                <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+                  <Plus className="w-4 h-4" /> Add Product
+                </button>
+              </div>
+            </div>
+
+            {/* CSV Message */}
+            {csvMessage && (
+              <div className={`mb-4 p-3 rounded-lg text-sm ${csvMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                {csvMessage.text}
+                <button onClick={() => setCsvMessage(null)} className="ml-2 opacity-60 hover:opacity-100"><X className="w-3 h-3 inline" /></button>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3 mb-4">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text" value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  placeholder="Search by name, SKU, brand..."
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <select
+                value={productCategoryFilter}
+                onChange={e => setProductCategoryFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Categories</option>
+                {productCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <button onClick={fetchProducts} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </button>
+            </div>
+
+            {/* CSV Template Note */}
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              <strong>CSV Import:</strong> Download the CSV first to use as a template. Update prices/SKUs in the spreadsheet and re-import. Only existing SKUs will be updated — new rows are ignored.
+            </div>
+
+            {/* Products Table */}
+            <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    {['Product Name', 'SKU', 'Brand', 'Size', 'Category', 'Unit Price', 'Bulk Price', 'Bulk Min', 'Stock', 'Actions'].map(h => (
+                      <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {products.length === 0 ? (
+                    <tr><td colSpan={10} className="text-center py-12 text-gray-400">No products found</td></tr>
+                  ) : products.map(p => (
+                    <ProductRow
+                      key={p.id}
+                      product={p}
+                      categories={productCategories}
+                      onSave={handleProductSave}
+                      onDelete={handleProductDelete}
+                      onToggleStock={handleProductToggleStock}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">{products.length} products shown. Click the ✏️ edit icon on any row to edit inline.</p>
+
+            {/* Add Product Modal */}
+            {showAddProduct && (
+              <AddProductForm
+                categories={productCategories}
+                onAdd={handleProductAdd}
+                onClose={() => setShowAddProduct(false)}
+              />
             )}
           </div>
         )}
