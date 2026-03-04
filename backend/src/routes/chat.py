@@ -5,8 +5,17 @@ from src.models.product import Product, Category
 
 chat_bp = Blueprint('chat', __name__)
 
-# Initialize OpenAI client (API key is already in environment)
-client = OpenAI()
+# Initialize OpenAI client lazily to avoid startup crash if key not set
+_client = None
+
+def get_openai_client():
+    global _client
+    if _client is None:
+        api_key = os.environ.get('OPENAI_API_KEY')
+        if not api_key:
+            return None
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 
 def get_product_context():
@@ -89,6 +98,10 @@ def chat():
 
         messages.append({"role": "user", "content": user_message})
 
+        client = get_openai_client()
+        if not client:
+            return jsonify({'success': False, 'error': 'AI service not configured.'}), 503
+
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=messages,
@@ -164,6 +177,10 @@ def ai_search():
             f"2. 'suggestion': a brief helpful message about the search results (1-2 sentences). {lang_instruction}\n\n"
             f"Only return valid JSON, no extra text."
         )
+
+        client = get_openai_client()
+        if not client:
+            return jsonify({'error': 'AI service not configured.'}), 503
 
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
