@@ -473,18 +473,74 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock }) =>
 const AddProductForm = ({ categories, onAdd, onClose }) => {
   const [form, setForm] = useState({
     name: '', sku: '', brand: '', unit_size: '', description: '',
-    category_id: categories[0]?.id || 1,
+    category_id: categories[0]?.id || '',
     unit_price: '', bulk_price: '', bulk_quantity: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const inp = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 w-full'
+
+  // Update category_id when categories load
+  useEffect(() => {
+    if (categories.length > 0 && !form.category_id) {
+      setForm(p => ({ ...p, category_id: categories[0].id }))
+    }
+  }, [categories])
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB')
+      return
+    }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setError('')
+  }
+
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     setError('')
-    const result = await onAdd(form)
+    let imageUrl = null
+    // Upload image first if one was selected
+    if (imageFile) {
+      setUploadingImage(true)
+      const imgData = new FormData()
+      imgData.append('image', imageFile)
+      try {
+        const imgRes = await fetch(`${API_BASE}/api/staff/products/upload-image`, {
+          method: 'POST',
+          credentials: 'include',
+          body: imgData,
+        })
+        const imgJson = await imgRes.json()
+        if (imgJson.success) {
+          imageUrl = imgJson.image_url
+        } else {
+          setError(imgJson.error || 'Image upload failed')
+          setSaving(false)
+          setUploadingImage(false)
+          return
+        }
+      } catch {
+        setError('Image upload failed — network error')
+        setSaving(false)
+        setUploadingImage(false)
+        return
+      }
+      setUploadingImage(false)
+    }
+    const result = await onAdd({ ...form, image_url: imageUrl })
     if (result?.error) setError(result.error)
     else onClose()
     setSaving(false)
@@ -510,6 +566,7 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
               <select className={inp} value={form.category_id} onChange={e=>setForm(p=>({...p,category_id:parseInt(e.target.value)}))} required>
+                {categories.length === 0 && <option value="">Loading categories...</option>}
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -537,12 +594,38 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <textarea className={inp} rows={2} value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Optional product description" />
             </div>
+            {/* ── Product Image Upload ── */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Photo</label>
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-xl border-2 border-blue-200 shadow" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow hover:bg-red-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1">{imageFile?.name}</p>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
+                  <div className="flex flex-col items-center gap-1 text-gray-400">
+                    <Upload className="w-8 h-8" />
+                    <span className="text-sm font-medium">Click to upload photo</span>
+                    <span className="text-xs">JPG, PNG, WEBP — max 5MB</span>
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                </label>
+              )}
+            </div>
           </div>
           {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2">
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Add Product
+            <button type="submit" disabled={saving || uploadingImage} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2">
+              {saving || uploadingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {uploadingImage ? 'Uploading image...' : saving ? 'Adding...' : 'Add Product'}
             </button>
             <button type="button" onClick={onClose} className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
               Cancel
