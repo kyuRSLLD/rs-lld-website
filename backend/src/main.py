@@ -14,6 +14,7 @@ from src.routes.chat import chat_bp
 from src.routes.order import order_bp
 from src.routes.payment import payment_bp
 from src.routes.product_admin import product_admin_bp
+from src.routes.inventory_api import inventory_api_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'REDACTED_SECRET_KEY')
@@ -33,12 +34,15 @@ app.register_blueprint(chat_bp, url_prefix='/api')
 app.register_blueprint(order_bp, url_prefix='/api')
 app.register_blueprint(payment_bp, url_prefix='/api')
 app.register_blueprint(product_admin_bp, url_prefix='/api')
+app.register_blueprint(inventory_api_bp, url_prefix='/api')
 
 # Ensure database directory exists
 _db_dir = os.path.join(os.path.dirname(__file__), 'database')
 os.makedirs(_db_dir, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(_db_dir, 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Max upload size: 10MB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 db.init_app(app)
 
 with app.app_context():
