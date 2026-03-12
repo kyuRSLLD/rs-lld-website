@@ -30,7 +30,7 @@ const KEY_TYPES = [
     prefix: 'pk_live',
     label: 'Public Client Key',
     labelZh: '公开客户端密钥',
-    badge: 'bg-blue-100 text-blue-700 border-blue-200',
+    badge: 'bg-blue-100 text-stone-900 border-blue-200',
     desc: 'Read-only public key. Safe to use in frontend/client code.',
     descZh: '只读公钥，可安全用于前端代码。',
     icon: '🔵',
@@ -38,7 +38,7 @@ const KEY_TYPES = [
 ]
 
 function prefixConfig(prefix) {
-  return KEY_TYPES.find(k => k.prefix === prefix) || { label: prefix, badge: 'bg-gray-100 text-gray-600', icon: '⚪' }
+  return KEY_TYPES.find(k => k.prefix === prefix) || { label: prefix, badge: 'bg-stone-100 text-stone-600', icon: '⚪' }
 }
 
 // ── Copy to clipboard helper ──────────────────────────────────────────────────
@@ -81,25 +81,25 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-stone-900/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+          <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
             <Key className="w-4 h-4 text-purple-600" />
             {t?.createTitle || 'Create API Key'}
           </h3>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5 text-gray-500" /></button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-stone-100"><X className="w-5 h-5 text-stone-500" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Key type selector */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">{t?.keyType || 'Key Type'}</label>
+            <label className="block text-xs font-medium text-stone-600 mb-2">{t?.keyType || 'Key Type'}</label>
             <div className="space-y-2">
               {KEY_TYPES.map(kt => (
                 <label key={kt.prefix}
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                    form.prefix === kt.prefix ? 'border-purple-400 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
+                    form.prefix === kt.prefix ? 'border-purple-400 bg-purple-50' : 'border-stone-200 hover:border-stone-200'
                   }`}>
                   <input type="radio" name="prefix" value={kt.prefix}
                     checked={form.prefix === kt.prefix}
@@ -108,12 +108,12 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm">{kt.icon}</span>
-                      <code className="text-xs font-mono font-bold text-gray-800">{kt.prefix}_...</code>
+                      <code className="text-xs font-mono font-bold text-stone-800">{kt.prefix}_...</code>
                       <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${kt.badge}`}>
                         {lang === 'zh' ? kt.labelZh : kt.label}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{lang === 'zh' ? kt.descZh : kt.desc}</p>
+                    <p className="text-xs text-stone-500 mt-0.5">{lang === 'zh' ? kt.descZh : kt.desc}</p>
                   </div>
                 </label>
               ))}
@@ -122,9 +122,9 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
 
           {/* Name */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t?.keyName || 'Key Name'} *</label>
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t?.keyName || 'Key Name'} *</label>
             <input required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder={t?.keyNamePlaceholder || 'e.g. Mobile App Integration, Partner API'}
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
@@ -132,9 +132,9 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t?.description || 'Description (optional)'}</label>
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t?.description || 'Description (optional)'}</label>
             <textarea rows={2}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
               placeholder={t?.descriptionPlaceholder || 'What is this key used for?'}
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
@@ -142,18 +142,18 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
 
           {/* Expiry */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t?.expiresAt || 'Expiry Date (optional — leave blank for no expiry)'}</label>
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t?.expiresAt || 'Expiry Date (optional — leave blank for no expiry)'}</label>
             <input type="date"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               value={form.expires_at}
               onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))} />
           </div>
 
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{error}</div>}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+          <div className="flex justify-end gap-3 pt-2 border-t border-stone-100">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+              className="px-4 py-2 text-sm text-stone-600 border border-stone-200 rounded-lg hover:bg-stone-50">
               {t?.cancel || 'Cancel'}
             </button>
             <button type="submit" disabled={saving}
@@ -176,8 +176,8 @@ function NewKeyDisplay({ keyData, t, lang, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+        <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
+          <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
             {t?.keyCreated || 'API Key Created'}
           </h3>
@@ -199,24 +199,24 @@ function NewKeyDisplay({ keyData, t, lang, onClose }) {
               <span className={`text-xs px-2 py-0.5 rounded border font-medium ${cfg.badge}`}>
                 {cfg.icon} {lang === 'zh' ? cfg.labelZh : cfg.label}
               </span>
-              <span className="text-sm font-medium text-gray-800">{keyData.name}</span>
+              <span className="text-sm font-medium text-stone-800">{keyData.name}</span>
             </div>
           </div>
 
           {/* Raw key display */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t?.rawKey || 'Your API Key'}</label>
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t?.rawKey || 'Your API Key'}</label>
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-900 rounded-lg px-3 py-2.5 font-mono text-xs text-green-400 overflow-x-auto whitespace-nowrap">
+              <div className="flex-1 bg-stone-950 rounded-lg px-3 py-2.5 font-mono text-xs text-green-400 overflow-x-auto whitespace-nowrap">
                 {revealed ? keyData.raw_key : '•'.repeat(Math.min(keyData.raw_key.length, 60))}
               </div>
               <button onClick={() => setRevealed(r => !r)}
-                className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+                className="p-2 text-stone-500 hover:text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50">
                 {revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
               <button onClick={() => copy(keyData.raw_key, 'new')}
                 className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
-                  copied === 'new' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  copied === 'new' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
                 }`}>
                 {copied === 'new' ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied === 'new' ? (t?.copied || 'Copied!') : (t?.copy || 'Copy')}
@@ -225,14 +225,14 @@ function NewKeyDisplay({ keyData, t, lang, onClose }) {
           </div>
 
           {/* Key hash (for reference) */}
-          <div className="bg-gray-50 rounded-lg px-4 py-3">
-            <p className="text-xs text-gray-500 mb-1">{t?.storedAs || 'Stored in database as SHA-256 hash:'}</p>
-            <p className="font-mono text-xs text-gray-600 break-all">{keyData.key_preview}</p>
+          <div className="bg-stone-50 rounded-lg px-4 py-3">
+            <p className="text-xs text-stone-500 mb-1">{t?.storedAs || 'Stored in database as SHA-256 hash:'}</p>
+            <p className="font-mono text-xs text-stone-600 break-all">{keyData.key_preview}</p>
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-gray-100">
+          <div className="flex justify-end pt-2 border-t border-stone-100">
             <button onClick={onClose}
-              className="px-5 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium">
+              className="px-5 py-2 text-sm bg-stone-950 text-white rounded-lg hover:bg-stone-900 font-medium">
               {t?.iSavedIt || "I've saved the key — Close"}
             </button>
           </div>
@@ -301,17 +301,17 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
             <Key className="w-5 h-5 text-purple-600" />
             {t?.title || 'API Key Management'}
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-stone-500 mt-0.5">
             {t?.subtitle || 'Create and manage API keys for external integrations. Keys are stored as SHA-256 hashes.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchKeys}
-            className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+            className="p-2 text-stone-500 hover:text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={() => setShowCreate(true)}
@@ -323,8 +323,8 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
 
       {/* Security notice */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-5 flex items-start gap-3">
-        <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-blue-700">
+        <Info className="w-4 h-4 text-stone-700 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-stone-900">
           {t?.securityNote || 'Keys are generated with 256 bits of entropy and stored as SHA-256 hashes. The raw key is shown only once at creation. RS LLD never stores plaintext keys.'}
         </p>
       </div>
@@ -332,13 +332,13 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         {[
-          { label: t?.totalKeys || 'Total Keys', value: keys.length, color: 'text-gray-700', bg: 'bg-gray-50' },
+          { label: t?.totalKeys || 'Total Keys', value: keys.length, color: 'text-stone-700', bg: 'bg-stone-50' },
           { label: t?.activeKeys || 'Active', value: activeCount, color: 'text-green-700', bg: 'bg-green-50' },
           { label: t?.revokedKeys || 'Revoked / Expired', value: keys.length - activeCount, color: 'text-red-700', bg: 'bg-red-50' },
         ].map(s => (
           <div key={s.label} className={`${s.bg} rounded-lg px-4 py-3`}>
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+            <p className="text-xs text-stone-500 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
@@ -348,7 +348,7 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
         {['all', 'active', 'revoked', 'expired'].map(f => (
           <button key={f} onClick={() => setFilterActive(f)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-              filterActive === f ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+              filterActive === f ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-stone-600 border-stone-200 hover:border-stone-200'
             }`}>
             {t?.[`filter_${f}`] || f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
@@ -357,11 +357,11 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
 
       {/* Keys list */}
       {loading ? (
-        <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-gray-300 mx-auto" /></div>
+        <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-stone-300 mx-auto" /></div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-xl border border-stone-100">
           <Key className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">{t?.noKeys || 'No API keys yet. Create your first key above.'}</p>
+          <p className="text-stone-400 text-sm">{t?.noKeys || 'No API keys yet. Create your first key above.'}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -372,13 +372,13 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
             return (
               <div key={key.id}
                 className={`bg-white rounded-xl border p-4 transition-all ${
-                  isValid ? 'border-gray-200' : 'border-gray-100 opacity-70'
+                  isValid ? 'border-stone-200' : 'border-stone-100 opacity-70'
                 }`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     {/* Top row: name + badges */}
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-semibold text-gray-900 text-sm">{key.name}</span>
+                      <span className="font-semibold text-stone-900 text-sm">{key.name}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${cfg.badge}`}>
                         {cfg.icon} {lang === 'zh' ? cfg.labelZh : cfg.label}
                       </span>
@@ -399,11 +399,11 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
 
                     {/* Key preview */}
                     <div className="flex items-center gap-2 mb-2">
-                      <code className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                      <code className="text-xs font-mono bg-stone-100 text-stone-700 px-2 py-0.5 rounded">
                         {key.key_preview}
                       </code>
                       <button onClick={() => copy(key.key_preview, key.id)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors">
+                        className="text-stone-400 hover:text-stone-600 transition-colors">
                         {copied === key.id
                           ? <CheckCircle className="w-3.5 h-3.5 text-green-500" />
                           : <Copy className="w-3.5 h-3.5" />}
@@ -411,8 +411,8 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
                     </div>
 
                     {/* Meta info */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400">
-                      <span>{t?.createdBy || 'Created by'} <span className="text-gray-600 font-medium">{key.created_by}</span></span>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-400">
+                      <span>{t?.createdBy || 'Created by'} <span className="text-stone-600 font-medium">{key.created_by}</span></span>
                       <span>{t?.createdAt || 'on'} {new Date(key.created_at).toLocaleDateString()}</span>
                       {key.last_used_at && (
                         <span>{t?.lastUsed || 'Last used'} {new Date(key.last_used_at).toLocaleDateString()}</span>
@@ -431,7 +431,7 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
                     </div>
 
                     {key.description && (
-                      <p className="text-xs text-gray-500 mt-1 italic">{key.description}</p>
+                      <p className="text-xs text-stone-500 mt-1 italic">{key.description}</p>
                     )}
                   </div>
 

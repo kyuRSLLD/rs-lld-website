@@ -32,7 +32,7 @@ const paymentLabels = { net30: 'Net 30', net15: 'Net 15', cod: 'COD', credit_car
 const LangToggle = ({ lang, onToggle }) => (
   <button
     onClick={onToggle}
-    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium transition-all border border-slate-600"
+    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-xs font-medium transition-all"
     title="Switch language / 切换语言"
   >
     <Globe className="w-3.5 h-3.5" />
@@ -73,12 +73,12 @@ const StaffLogin = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8">
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-sm p-8">
         <div className="flex justify-end mb-2">
           <button
             onClick={toggleLang}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-medium transition-all"
           >
             <Globe className="w-3.5 h-3.5" />
             {lang === 'en' ? '中文' : 'EN'}
@@ -88,35 +88,35 @@ const StaffLogin = ({ onLogin }) => {
           <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
             <span className="text-white font-bold text-xl">RS</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">RS LLD {t.login.title}</h1>
-          <p className="text-gray-500 text-sm mt-1">{t.login.subtitle}</p>
+          <h1 className="text-2xl font-bold text-stone-900">RS LLD {t.login.title}</h1>
+          <p className="text-stone-500 text-sm mt-1">{t.login.subtitle}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.login.username}</label>
+            <label className="block text-sm font-medium text-stone-700 mb-1">{t.login.username}</label>
             <input
               type="text" value={form.username}
               onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
               placeholder={t.login.usernamePlaceholder}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.login.password}</label>
+            <label className="block text-sm font-medium text-stone-700 mb-1">{t.login.password}</label>
             <input
               type="password" value={form.password}
               onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
               placeholder={t.login.passwordPlaceholder}
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+          <Button type="submit" disabled={loading} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
             {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
             {loading ? t.login.loggingIn : t.login.loginButton}
           </Button>
         </form>
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500">
+        <div className="mt-4 p-3 bg-stone-50 rounded-lg text-xs text-stone-500">
           <p className="font-medium mb-1">Demo Credentials:</p>
           <p>Admin: <code>admin</code> / <code>rslld2024</code></p>
           <p>Staff: <code>staff</code> / <code>staff2024</code></p>
@@ -166,7 +166,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
   }
 
   return (
-    <div className={`bg-white rounded-xl border-2 ${cfg.border} overflow-hidden transition-all`}>
+    <div className={`bg-white rounded-xl border ${cfg.border} overflow-hidden transition-all`}>
       {/* Card Header */}
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -176,22 +176,22 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900">{order.order_number}</span>
+                <span className="font-bold text-stone-900">{order.order_number}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.color}`}>{statusLabel(order.status)}</span>
               </div>
-              <p className="text-sm text-gray-600">{order.customer_company || order.customer_name}</p>
-              {order.customer_email && <p className="text-xs text-gray-400">{order.customer_email}</p>}
+              <p className="text-sm text-stone-600">{order.customer_company || order.customer_name}</p>
+              {order.customer_email && <p className="text-xs text-stone-400">{order.customer_email}</p>}
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="font-bold text-gray-900 text-lg">{formatPrice(order.total_amount)}</p>
-            <p className="text-xs text-gray-500">{order.item_count} items</p>
-            <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
+            <p className="font-bold text-stone-900 text-lg">{formatPrice(order.total_amount)}</p>
+            <p className="text-xs text-stone-500">{order.item_count} items</p>
+            <p className="text-xs text-stone-400">{formatDate(order.created_at)}</p>
           </div>
         </div>
 
         {/* Quick Info Row */}
-        <div className="flex flex-wrap gap-3 mt-3 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-3 mt-3 text-xs text-stone-500">
           <span className="flex items-center gap-1">
             <Truck className="w-3 h-3" />
             {order.delivery_city}, {order.delivery_state}
@@ -226,7 +226,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
               size="sm"
               onClick={handleAdvanceStatus}
               disabled={updating}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+              className="bg-stone-900 hover:bg-stone-700 text-white text-xs"
             >
               {updating ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <nextCfg.icon className="w-3 h-3 mr-1" />}
               {t.orders.markAs} {statusLabel(nextStatus)}
@@ -252,21 +252,21 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 
         {/* Staff Notes Editor */}
         {editingNotes && (
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-2">
+          <div className="mt-3 p-3 bg-stone-50 rounded-lg space-y-2">
             <input
               type="text" value={assignedTo}
               onChange={e => setAssignedTo(e.target.value)}
               placeholder={t.orders.assignTo}
-              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-stone-400 focus:border-stone-400"
             />
             <textarea
               value={notes} onChange={e => setNotes(e.target.value)}
               placeholder={t.orders.internalNotes}
               rows={2}
-              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-stone-400 focus:border-stone-400 resize-none"
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveNotes} className="bg-green-600 hover:bg-green-700 text-white text-xs">{t.orders.save}</Button>
+              <Button size="sm" onClick={handleSaveNotes} className="bg-stone-900 hover:bg-stone-700 text-white text-xs">{t.orders.save}</Button>
               <Button size="sm" variant="outline" onClick={() => setEditingNotes(false)} className="text-xs">{t.orders.cancelEdit}</Button>
             </div>
           </div>
@@ -275,21 +275,21 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 
       {/* Expanded Details */}
       {expanded && (
-        <div className="border-t border-gray-100 p-4 bg-gray-50 space-y-4">
+        <div className="border-t border-stone-100 p-4 bg-stone-50 space-y-4">
           {/* Line Items */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.orderItems}</h4>
+            <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">{t.orders.orderItems}</h4>
             <div className="space-y-1.5">
               {order.items?.map(item => (
-                <div key={item.id} className="flex justify-between items-center text-sm bg-white rounded-lg px-3 py-2 border border-gray-100">
+                <div key={item.id} className="flex justify-between items-center text-sm bg-white rounded-lg px-3 py-2 border border-stone-100">
                   <div>
                     <span className="font-medium text-gray-800">{item.product_name}</span>
-                    <span className="text-gray-400 text-xs ml-2">{t.orders.sku}: {item.product_sku}</span>
+                    <span className="text-stone-400 text-xs ml-2">{t.orders.sku}: {item.product_sku}</span>
                     {item.is_bulk_price && <span className="text-green-600 text-xs ml-2">● {t.orders.bulk}</span>}
                   </div>
                   <div className="text-right text-xs">
-                    <span className="text-gray-600">×{item.quantity} @ {formatPrice(item.unit_price)}</span>
-                    <span className="font-bold text-gray-900 ml-3">{formatPrice(item.line_total)}</span>
+                    <span className="text-stone-600">×{item.quantity} @ {formatPrice(item.unit_price)}</span>
+                    <span className="font-bold text-stone-900 ml-3">{formatPrice(item.line_total)}</span>
                   </div>
                 </div>
               ))}
@@ -299,25 +299,25 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
           {/* Delivery + Totals */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.deliveryAddress}</h4>
-              <div className="bg-white rounded-lg p-3 border border-gray-100 text-sm text-gray-700 space-y-0.5">
+              <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">{t.orders.deliveryAddress}</h4>
+              <div className="bg-white rounded-lg p-3 border border-stone-100 text-sm text-stone-700 space-y-0.5">
                 <p className="font-medium">{order.delivery_name}</p>
                 {order.delivery_company && <p>{order.delivery_company}</p>}
                 <p>{order.delivery_address}</p>
                 <p>{order.delivery_city}, {order.delivery_state} {order.delivery_zip}</p>
-                {order.delivery_phone && <p className="text-gray-500">{order.delivery_phone}</p>}
+                {order.delivery_phone && <p className="text-stone-500">{order.delivery_phone}</p>}
               </div>
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.orderSummary}</h4>
-              <div className="bg-white rounded-lg p-3 border border-gray-100 text-sm space-y-1">
-                <div className="flex justify-between text-gray-600"><span>{t.orders.subtotal}</span><span>{formatPrice(order.subtotal)}</span></div>
+              <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">{t.orders.orderSummary}</h4>
+              <div className="bg-white rounded-lg p-3 border border-stone-100 text-sm space-y-1">
+                <div className="flex justify-between text-stone-600"><span>{t.orders.subtotal}</span><span>{formatPrice(order.subtotal)}</span></div>
                 {order.discount_amount > 0 && (
                   <div className="flex justify-between text-green-600"><span>{t.orders.bulkSavings}</span><span>-{formatPrice(order.discount_amount)}</span></div>
                 )}
-                <div className="flex justify-between text-gray-600"><span>{t.orders.delivery}</span><span>{order.delivery_fee === 0 ? t.orders.free : formatPrice(order.delivery_fee)}</span></div>
-                <div className="flex justify-between font-bold text-gray-900 border-t pt-1"><span>{t.orders.total}</span><span>{formatPrice(order.total_amount)}</span></div>
-                <p className="text-xs text-gray-500 pt-1">{t.orders.payment}: {t.payment[order.payment_method] || paymentLabels[order.payment_method]}</p>
+                <div className="flex justify-between text-stone-600"><span>{t.orders.delivery}</span><span>{order.delivery_fee === 0 ? t.orders.free : formatPrice(order.delivery_fee)}</span></div>
+                <div className="flex justify-between font-bold text-stone-900 border-t pt-1"><span>{t.orders.total}</span><span>{formatPrice(order.total_amount)}</span></div>
+                <p className="text-xs text-stone-500 pt-1">{t.orders.payment}: {t.payment[order.payment_method] || paymentLabels[order.payment_method]}</p>
               </div>
             </div>
           </div>
@@ -325,7 +325,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
           {/* Check Image Review */}
           {order.has_check_image && (
             <div>
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.checkReview}</h4>
+              <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">{t.orders.checkReview}</h4>
               <div className="bg-white rounded-lg p-3 border border-amber-200 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
@@ -341,7 +341,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
                 <img
                   src={`${API_BASE}/api/staff/checks/${order.order_number}`}
                   alt="Check image"
-                  className="max-h-48 rounded-lg border border-gray-200 object-contain w-full"
+                  className="max-h-48 rounded-lg border border-stone-200 object-contain w-full"
                   onError={(e) => { e.target.style.display='none' }}
                 />
                 {order.payment_status === 'pending_review' && (
@@ -357,7 +357,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
                         if (d.success) window.location.reload()
                         else alert(d.error)
                       }}
-                      className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                      className="bg-stone-900 hover:bg-stone-700 text-white text-xs"
                     >
                       ✓ {t.orders.approveCheck}
                     </Button>
@@ -385,8 +385,8 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 
           {/* Timeline */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.timeline}</h4>
-            <div className="space-y-1 text-xs text-gray-500">
+            <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">{t.orders.timeline}</h4>
+            <div className="space-y-1 text-xs text-stone-500">
               <p>📥 {formatDate(order.created_at)}</p>
               {order.confirmed_at && <p>✅ {t.status.confirmed}: {formatDate(order.confirmed_at)}</p>}
               {order.shipped_at && <p>🚚 {t.status.shipped}: {formatDate(order.shipped_at)}</p>}
@@ -437,7 +437,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t })
     setError('')
   }
 
-  const inp = 'border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 w-full'
+  const inp = 'border border-stone-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-stone-400 w-full'
 
   if (editing) {
     return (
@@ -462,10 +462,10 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t })
           </td>
           <td className="px-3 py-2">
             <div className="flex gap-1">
-              <button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+              <button onClick={handleSave} disabled={saving} className="bg-stone-900 hover:bg-stone-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                 {saving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} {t.products.saving.replace('...', '') || 'Save'}
               </button>
-              <button onClick={handleCancel} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-2 py-1 rounded">
+              <button onClick={handleCancel} className="bg-stone-200 hover:bg-gray-300 text-stone-700 text-xs px-2 py-1 rounded">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -477,17 +477,17 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t })
   }
 
   return (
-    <tr className={`hover:bg-gray-50 transition-colors ${!product.in_stock ? 'opacity-60' : ''}`}>
-      <td className="px-3 py-2.5 font-medium text-gray-900 text-sm">{product.name}</td>
-      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{product.sku}</td>
-      <td className="px-3 py-2.5 text-gray-600 text-sm">{product.brand || '—'}</td>
-      <td className="px-3 py-2.5 text-gray-500 text-xs">{product.unit_size || '—'}</td>
+    <tr className={`hover:bg-stone-50 transition-colors ${!product.in_stock ? 'opacity-60' : ''}`}>
+      <td className="px-3 py-2.5 font-medium text-stone-900 text-sm">{product.name}</td>
+      <td className="px-3 py-2.5 text-stone-500 font-mono text-xs">{product.sku}</td>
+      <td className="px-3 py-2.5 text-stone-600 text-sm">{product.brand || '—'}</td>
+      <td className="px-3 py-2.5 text-stone-500 text-xs">{product.unit_size || '—'}</td>
       <td className="px-3 py-2.5 text-xs">
-        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{product.category_name}</span>
+        <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">{product.category_name}</span>
       </td>
-      <td className="px-3 py-2.5 text-gray-900 font-semibold text-sm">{formatPrice(product.unit_price)}</td>
+      <td className="px-3 py-2.5 text-stone-900 font-semibold text-sm">{formatPrice(product.unit_price)}</td>
       <td className="px-3 py-2.5 text-green-700 text-sm">{product.bulk_price ? formatPrice(product.bulk_price) : '—'}</td>
-      <td className="px-3 py-2.5 text-gray-500 text-sm">{product.bulk_quantity ? `${product.bulk_quantity}+` : '—'}</td>
+      <td className="px-3 py-2.5 text-stone-500 text-sm">{product.bulk_quantity ? `${product.bulk_quantity}+` : '—'}</td>
       <td className="px-3 py-2.5">
         <button onClick={() => onToggleStock(product.id)} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
           product.in_stock ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-700 hover:bg-red-100'
@@ -521,7 +521,7 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const inp = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 w-full'
+  const inp = 'border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 w-full'
 
   useEffect(() => {
     if (categories.length > 0 && !form.category_id) {
@@ -588,53 +588,53 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b">
-          <h2 className="text-lg font-bold text-gray-900">{t.products.addProductTitle}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+          <h2 className="text-lg font-bold text-stone-900">{t.products.addProductTitle}</h2>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.name} *</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.name} *</label>
               <input className={inp} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} required placeholder={t.products.productName} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.sku} *</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.sku} *</label>
               <input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e=>setForm(p=>({...p,sku:e.target.value.toUpperCase()}))} required placeholder={t.products.enterSku} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.category} *</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.category} *</label>
               <select className={inp} value={form.category_id} onChange={e=>setForm(p=>({...p,category_id:parseInt(e.target.value)}))} required>
                 {categories.length === 0 && <option value="">{t.common.loading}</option>}
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.brand}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.brand}</label>
               <input className={inp} value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} placeholder={t.products.enterBrand} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.size}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.size}</label>
               <input className={inp} value={form.unit_size} onChange={e=>setForm(p=>({...p,unit_size:e.target.value}))} placeholder={t.products.enterSize} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.unitPrice} ($) *</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.unitPrice} ($) *</label>
               <input className={inp} type="number" step="0.01" min="0" value={form.unit_price} onChange={e=>setForm(p=>({...p,unit_price:e.target.value}))} required placeholder={t.products.enterPrice} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.bulkPrice} ($)</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.bulkPrice} ($)</label>
               <input className={inp} type="number" step="0.01" min="0" value={form.bulk_price} onChange={e=>setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.bulkQty}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.bulkQty}</label>
               <input className={inp} type="number" min="1" value={form.bulk_quantity} onChange={e=>setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.description}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.description}</label>
               <textarea className={inp} rows={2} value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder={t.products.description} />
             </div>
             {/* ── Product Image Upload ── */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t.products.uploadImage}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-2">{t.products.uploadImage}</label>
               {imagePreview ? (
                 <div className="relative inline-block">
                   <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-xl border-2 border-blue-200 shadow" />
@@ -645,11 +645,11 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                  <p className="text-xs text-gray-500 mt-1">{imageFile?.name}</p>
+                  <p className="text-xs text-stone-500 mt-1">{imageFile?.name}</p>
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
-                  <div className="flex flex-col items-center gap-1 text-gray-400">
+                  <div className="flex flex-col items-center gap-1 text-stone-400">
                     <Upload className="w-8 h-8" />
                     <span className="text-sm font-medium">{t.products.uploadImage}</span>
                     <span className="text-xs">JPG, PNG, WEBP — max 5MB</span>
@@ -661,11 +661,11 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
           </div>
           {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={saving || uploadingImage} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2">
+            <button type="submit" disabled={saving || uploadingImage} className="flex-1 bg-stone-900 hover:bg-stone-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2">
               {saving || uploadingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {uploadingImage ? t.products.uploading : saving ? t.products.adding : t.products.addProduct}
             </button>
-            <button type="button" onClick={onClose} className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            <button type="button" onClick={onClose} className="px-6 py-2.5 border border-stone-200 rounded-lg text-stone-700 hover:bg-stone-50">
               {t.products.cancelAdd}
             </button>
           </div>
@@ -921,14 +921,14 @@ const StaffPortal = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-stone-50">
       {/* Top Nav */}
-      <div className="bg-slate-800 text-white px-6 py-3 flex items-center justify-between">
+      <div className="bg-white border-b border-stone-200 text-stone-900 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-sm">RS</div>
+          <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center font-bold text-sm text-white">RS</div>
           <div>
-            <span className="font-semibold">RS LLD {t.header.title}</span>
-            <span className="text-slate-400 text-xs ml-2">Internal</span>
+            <span className="font-semibold text-stone-900">RS LLD {t.header.title}</span>
+            <span className="text-stone-400 text-xs ml-2">Internal</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -938,15 +938,15 @@ const StaffPortal = () => {
             </div>
           )}
           <LangToggle lang={lang} onToggle={toggleLang} />
-          <span className="text-slate-300 text-sm">👤 {staff.full_name || staff.username}</span>
-          <Button size="sm" variant="ghost" onClick={handleLogout} className="text-slate-300 hover:text-white text-xs">
+          <span className="text-stone-500 text-sm">👤 {staff.full_name || staff.username}</span>
+          <Button size="sm" variant="ghost" onClick={handleLogout} className="text-stone-500 hover:text-stone-900 text-xs">
             <LogOut className="w-3 h-3 mr-1" /> {t.header.logout}
           </Button>
         </div>
       </div>
 
       {/* Tab Bar */}
-      <div className="bg-white border-b border-gray-200 px-6">
+      <div className="bg-white border-b border-stone-200 px-6">
         <div className="flex gap-0">
           {tabs.map(tab => (
             <button
@@ -954,14 +954,14 @@ const StaffPortal = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
                 activeTab === tab.id
-                  ? tab.adminOnly ? 'border-purple-600 text-purple-600' : 'border-blue-600 text-blue-600'
-                  : tab.adminOnly ? 'border-transparent text-purple-400 hover:text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? tab.adminOnly ? 'border-stone-900 text-stone-900' : 'border-stone-900 text-stone-900'
+                  : tab.adminOnly ? 'border-transparent text-stone-400 hover:text-stone-700' : 'border-transparent text-stone-400 hover:text-stone-700'
               }`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
               {tab.adminOnly && (
-                <span className="text-xs bg-purple-100 text-purple-600 px-1 py-0.5 rounded font-semibold ml-0.5">A</span>
+                <span className="text-xs bg-stone-900 text-white px-1.5 py-0.5 rounded-full font-semibold ml-0.5">A</span>
               )}
             </button>
           ))}
@@ -975,12 +975,12 @@ const StaffPortal = () => {
           <div>
             <div className="flex flex-wrap gap-3 mb-5">
               <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                 <input
                   type="text" value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder={t.orders.searchPlaceholder}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-stone-400"
                 />
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -993,7 +993,7 @@ const StaffPortal = () => {
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                         statusFilter === s
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : cfg ? `${cfg.bg} ${cfg.color} ${cfg.border}` : 'bg-gray-100 text-gray-600 border-gray-200'
+                          : cfg ? `${cfg.bg} ${cfg.color} ${cfg.border}` : 'bg-stone-100 text-stone-600 border-stone-200'
                       }`}
                     >
                       {s ? t.status[s] : t.status.all}
@@ -1012,11 +1012,11 @@ const StaffPortal = () => {
             </div>
 
             {loading ? (
-              <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-gray-400 mx-auto" /></div>
+              <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-stone-400 mx-auto" /></div>
             ) : filteredOrders.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+              <div className="text-center py-12 bg-white rounded-xl border border-stone-100">
                 <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-500">{t.orders.noOrders}</p>
+                <p className="text-stone-500">{t.orders.noOrders}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1038,34 +1038,34 @@ const StaffPortal = () => {
         {/* ── CUSTOMERS TAB ── */}
         {activeTab === 'customers' && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">{t.customers.title}</h2>
+            <h2 className="text-xl font-bold text-stone-900 mb-4">{t.customers.title}</h2>
             {customers.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+              <div className="text-center py-12 bg-white rounded-xl border border-stone-100">
                 <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-500">{t.customers.noCustomers}</p>
+                <p className="text-stone-500">{t.customers.noCustomers}</p>
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="bg-stone-50 border-b border-stone-100">
                     <tr>
                       {[t.customers.name, t.customers.company, t.customers.email, t.customers.phone, t.customers.orders, t.customers.spent, t.customers.joined].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {customers.map(c => (
-                      <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-900">{c.username}</td>
-                        <td className="px-4 py-3 text-gray-600">{c.company_name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{c.email}</td>
-                        <td className="px-4 py-3 text-gray-600">{c.phone || '—'}</td>
+                      <tr key={c.id} className="hover:bg-stone-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-stone-900">{c.username}</td>
+                        <td className="px-4 py-3 text-stone-600">{c.company_name || '—'}</td>
+                        <td className="px-4 py-3 text-stone-600">{c.email}</td>
+                        <td className="px-4 py-3 text-stone-600">{c.phone || '—'}</td>
                         <td className="px-4 py-3">
                           <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">{c.order_count}</span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">{formatPrice(c.total_spent)}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
+                        <td className="px-4 py-3 font-semibold text-stone-900">{formatPrice(c.total_spent)}</td>
+                        <td className="px-4 py-3 text-stone-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1079,17 +1079,17 @@ const StaffPortal = () => {
         {activeTab === 'products' && (
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-              <h2 className="text-xl font-bold text-gray-900">{t.products.title}</h2>
+              <h2 className="text-xl font-bold text-stone-900">{t.products.title}</h2>
               <div className="flex flex-wrap gap-2">
-                <button onClick={handleCsvExport} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                <button onClick={handleCsvExport} className="flex items-center gap-2 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50">
                   <Download className="w-4 h-4" /> {t.products.exportCsv}
                 </button>
-                <label className={`flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer ${csvImporting ? 'opacity-50' : ''}`}>
+                <label className={`flex items-center gap-2 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50 cursor-pointer ${csvImporting ? 'opacity-50' : ''}`}>
                   {csvImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                   {csvImporting ? t.products.importing : t.products.importCsv}
                   <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
                 </label>
-                <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+                <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium">
                   <Plus className="w-4 h-4" /> {t.products.addProduct}
                 </button>
               </div>
@@ -1104,23 +1104,23 @@ const StaffPortal = () => {
 
             <div className="flex flex-wrap gap-3 mb-4">
               <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                 <input
                   type="text" value={productSearch}
                   onChange={e => setProductSearch(e.target.value)}
                   placeholder={t.products.searchPlaceholder}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-stone-400"
                 />
               </div>
               <select
                 value={productCategoryFilter}
                 onChange={e => setProductCategoryFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400"
               >
                 <option value="">{t.products.allCategories}</option>
                 {productCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <button onClick={fetchProducts} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+              <button onClick={fetchProducts} className="flex items-center gap-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50">
                 <RefreshCw className="w-3.5 h-3.5" /> {t.header.refresh}
               </button>
             </div>
@@ -1129,18 +1129,18 @@ const StaffPortal = () => {
               <strong>{t.products.importCsv}:</strong> {lang === 'zh' ? '请先下载 CSV 作为模板，在电子表格中更新价格/货号后重新导入。只有已存在的货号会被更新，新行将被忽略。' : 'Download the CSV first to use as a template. Update prices/SKUs in the spreadsheet and re-import. Only existing SKUs will be updated — new rows are ignored.'}
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+            <div className="bg-white rounded-xl border border-stone-100 overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
                     {[t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, t.products.stock, t.products.actions].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {products.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center py-12 text-gray-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
+                    <tr><td colSpan={10} className="text-center py-12 text-stone-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
                   ) : products.map(p => (
                     <ProductRow
                       key={p.id}
@@ -1155,7 +1155,7 @@ const StaffPortal = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-gray-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击 ✏️ 图标可内联编辑。' : 'products shown. Click the ✏️ edit icon on any row to edit inline.'}</p>
+            <p className="text-xs text-stone-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击 ✏️ 图标可内联编辑。' : 'products shown. Click the ✏️ edit icon on any row to edit inline.'}</p>
 
             {showAddProduct && (
               <AddProductForm
@@ -1171,25 +1171,25 @@ const StaffPortal = () => {
         {/* ── INVENTORY TAB ── */}
         {activeTab === 'inventory' && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">{t.inventory.title}</h2>
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <h2 className="text-xl font-bold text-stone-900 mb-4">{t.inventory.title}</h2>
+            <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
                     {[t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.status, t.inventory.action].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {inventory.map(p => (
-                    <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${!p.in_stock ? 'opacity-60' : ''}`}>
-                      <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
-                      <td className="px-4 py-3 text-gray-500 font-mono text-xs">{p.sku}</td>
-                      <td className="px-4 py-3 text-gray-600">{p.brand}</td>
-                      <td className="px-4 py-3 text-gray-900">{formatPrice(p.unit_price)}</td>
+                    <tr key={p.id} className={`hover:bg-stone-50 transition-colors ${!p.in_stock ? 'opacity-60' : ''}`}>
+                      <td className="px-4 py-3 font-medium text-stone-900">{p.name}</td>
+                      <td className="px-4 py-3 text-stone-500 font-mono text-xs">{p.sku}</td>
+                      <td className="px-4 py-3 text-stone-600">{p.brand}</td>
+                      <td className="px-4 py-3 text-stone-900">{formatPrice(p.unit_price)}</td>
                       <td className="px-4 py-3 text-green-700">{p.bulk_price ? formatPrice(p.bulk_price) : '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{p.bulk_quantity ? `${p.bulk_quantity}+` : '—'}</td>
+                      <td className="px-4 py-3 text-stone-500">{p.bulk_quantity ? `${p.bulk_quantity}+` : '—'}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                           {p.in_stock ? t.inventory.inStock : t.inventory.outOfStock}
@@ -1227,7 +1227,7 @@ const StaffPortal = () => {
         {activeTab === 'staffMgmt' && !isAdmin && (
           <div className="text-center py-20">
             <Shield className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Admin access required</p>
+            <p className="text-stone-400 text-sm">Admin access required</p>
           </div>
         )}
 
@@ -1238,14 +1238,14 @@ const StaffPortal = () => {
         {activeTab === 'apiKeys' && !isAdmin && (
           <div className="text-center py-20">
             <Shield className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400">Admin access required.</p>
+            <p className="text-stone-400">Admin access required.</p>
           </div>
         )}
 
         {/* ── STATS / DASHBOARD TAB ── */}
         {activeTab === 'stats' && stats && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-5">{t.stats.title}</h2>
+            <h2 className="text-xl font-bold text-stone-900 mb-5">{t.stats.title}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               {[
                 { label: t.stats.totalOrders, value: stats.total_orders, icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -1253,17 +1253,17 @@ const StaffPortal = () => {
                 { label: t.stats.inTransit, value: stats.shipped, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
                 { label: t.stats.totalRevenue, value: formatPrice(stats.total_revenue), icon: BarChart2, color: 'text-green-600', bg: 'bg-green-50' },
               ].map(kpi => (
-                <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-4">
+                <div key={kpi.label} className="bg-white rounded-xl border border-stone-100 p-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.bg} mb-3`}>
                     <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{kpi.label}</p>
+                  <p className="text-2xl font-bold text-stone-900">{kpi.value}</p>
+                  <p className="text-xs text-stone-500 mt-0.5">{kpi.label}</p>
                 </div>
               ))}
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="bg-white rounded-xl border border-stone-100 p-5">
               <h3 className="font-semibold text-gray-800 mb-4">{t.stats.statusBreakdown}</h3>
               <div className="space-y-3">
                 {['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].map(s => {
@@ -1277,10 +1277,10 @@ const StaffPortal = () => {
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium text-gray-700">{t.status[s]}</span>
-                          <span className="text-gray-500">{count} {t.stats.orders}</span>
+                          <span className="font-medium text-stone-700">{t.status[s]}</span>
+                          <span className="text-stone-500">{count} {t.stats.orders}</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
                               s === 'pending' ? 'bg-yellow-400' :
