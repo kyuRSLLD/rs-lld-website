@@ -26,9 +26,10 @@ from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
-# Cookie settings — allow cross-origin cookies for local proxy testing
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE'] = True
+# Cookie settings — Lax in production (Railway), None only for local cross-origin proxy testing
+_on_railway = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' if _on_railway else 'None'
+app.config['SESSION_COOKIE_SECURE'] = _on_railway
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Allow all origins when running locally for testing; production Railway deploy
 # restricts this via the ALLOWED_ORIGINS env var.
