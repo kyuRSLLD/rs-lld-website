@@ -294,11 +294,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
             <Tag className="w-3 h-3" />
             {t.payment[order.payment_method] || paymentLabels[order.payment_method] || order.payment_method}
           </span>
-          {order.preferred_delivery_date && (
-            <span className="flex items-center gap-1 text-blue-600">
-              📅 {order.preferred_delivery_date}
-            </span>
-          )}
+
           {order.assigned_to && (
             <span className="flex items-center gap-1 text-purple-600">
               👤 {order.assigned_to}

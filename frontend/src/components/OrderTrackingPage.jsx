@@ -263,9 +263,7 @@ const OrderTrackingPage = ({ user }) => {
                 {order.delivery_company && <p className="text-sm text-gray-600">{order.delivery_company}</p>}
                 <p className="text-sm text-gray-600">{order.delivery_address}</p>
                 <p className="text-sm text-gray-600">{order.delivery_city}, {order.delivery_state} {order.delivery_zip}</p>
-                {order.preferred_delivery_date && (
-                  <p className="text-sm text-blue-600 mt-1">📅 {t.estimatedDelivery}: {order.preferred_delivery_date}</p>
-                )}
+
                 {order.special_notes && (
                   <p className="text-xs text-gray-500 mt-1 italic">"{order.special_notes}"</p>
                 )}
