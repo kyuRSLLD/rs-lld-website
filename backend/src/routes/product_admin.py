@@ -1,10 +1,66 @@
 import csv
 import io
-from flask import Blueprint, jsonify, request, session, Response
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from flask import Blueprint, jsonify, request, session, Response, send_from_directory
 from src.models.product import Product, Category, db
 from src.routes.order import staff_required
 
+PRODUCT_IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'products')
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
 product_admin_bp = Blueprint('product_admin', __name__)
+
+# ─── UPLOAD product image ────────────────────────────────────────────────────
+@product_admin_bp.route('/staff/products/<int:product_id>/image', methods=['POST'])
+@staff_required
+def upload_product_image(product_id):
+    """Upload or replace the display image for a product."""
+    product = Product.query.get_or_404(product_id)
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({'error': 'Invalid file type. Use JPG, PNG, GIF, or WebP.'}), 400
+    os.makedirs(PRODUCT_IMAGE_FOLDER, exist_ok=True)
+    # Delete old image file if it was a local upload
+    if product.image_url and product.image_url.startswith('/api/staff/products/images/'):
+        old_filename = product.image_url.split('/')[-1]
+        old_path = os.path.join(PRODUCT_IMAGE_FOLDER, old_filename)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = os.path.join(PRODUCT_IMAGE_FOLDER, filename)
+    file.save(filepath)
+    product.image_url = f"/api/staff/products/images/{filename}"
+    db.session.commit()
+    return jsonify({'success': True, 'image_url': product.image_url, 'product': product.to_dict()})
+
+
+@product_admin_bp.route('/staff/products/images/<path:filename>', methods=['GET'])
+def serve_product_image(filename):
+    """Serve uploaded product images."""
+    return send_from_directory(PRODUCT_IMAGE_FOLDER, filename)
+
+
+@product_admin_bp.route('/staff/products/<int:product_id>/image', methods=['DELETE'])
+@staff_required
+def delete_product_image(product_id):
+    """Remove the image from a product."""
+    product = Product.query.get_or_404(product_id)
+    if product.image_url and product.image_url.startswith('/api/staff/products/images/'):
+        old_filename = product.image_url.split('/')[-1]
+        old_path = os.path.join(PRODUCT_IMAGE_FOLDER, old_filename)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    product.image_url = None
+    db.session.commit()
+    return jsonify({'success': True, 'product': product.to_dict()})
+
 
 # ─── GET all products for admin (includes inactive) ──────────────────────────
 @product_admin_bp.route('/staff/products', methods=['GET'])
