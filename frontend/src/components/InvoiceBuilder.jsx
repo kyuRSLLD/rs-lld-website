@@ -10,8 +10,8 @@ const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency:
 const EMPTY_ITEM = { description: '', sku: '', quantity: 1, unit_price: 0, line_total: 0 }
 
 const invoiceStatusConfig = {
-  draft:     { color: 'text-gray-600',  bg: 'bg-gray-100',  border: 'border-gray-200' },
-  sent:      { color: 'text-blue-700',  bg: 'bg-blue-50',   border: 'border-blue-200' },
+  draft:     { color: 'text-stone-600',  bg: 'bg-stone-100',  border: 'border-stone-200' },
+  sent:      { color: 'text-stone-900',  bg: 'bg-blue-50',   border: 'border-blue-200' },
   paid:      { color: 'text-green-700', bg: 'bg-green-50',  border: 'border-green-200' },
   cancelled: { color: 'text-red-700',   bg: 'bg-red-50',    border: 'border-red-200' },
 }
@@ -50,25 +50,25 @@ const ProductSearchDropdown = ({ t, onSelect, onClose }) => {
   }, [onClose])
 
   return (
-    <div ref={ref} className="absolute z-50 top-full left-0 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 mt-1 overflow-hidden">
-      <div className="p-3 border-b border-gray-100">
+    <div ref={ref} className="absolute z-50 top-full left-0 w-80 bg-white rounded-xl shadow-2xl border border-stone-200 mt-1 overflow-hidden">
+      <div className="p-3 border-b border-stone-100">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
           <input
             autoFocus
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder={t.invoices.productSearch}
-            className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-8 pr-3 py-1.5 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-stone-400"
           />
         </div>
       </div>
       <div className="max-h-64 overflow-y-auto">
         {loading ? (
-          <div className="p-4 text-center"><RefreshCw className="w-4 h-4 animate-spin text-gray-400 mx-auto" /></div>
+          <div className="p-4 text-center"><RefreshCw className="w-4 h-4 animate-spin text-stone-400 mx-auto" /></div>
         ) : results.length === 0 ? (
-          <p className="p-4 text-sm text-gray-400 text-center">{t.common.loading}</p>
+          <p className="p-4 text-sm text-stone-400 text-center">{t.common.loading}</p>
         ) : results.map(p => (
           <button
             key={p.id}
@@ -77,21 +77,21 @@ const ProductSearchDropdown = ({ t, onSelect, onClose }) => {
           >
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-400 font-mono">{p.sku}</p>
+                <p className="text-sm font-medium text-stone-900">{p.name}</p>
+                <p className="text-xs text-stone-400 font-mono">{p.sku}</p>
               </div>
               <div className="text-right ml-3 flex-shrink-0">
-                <p className="text-sm font-semibold text-gray-900">{fmt(p.unit_price)}</p>
+                <p className="text-sm font-semibold text-stone-900">{fmt(p.unit_price)}</p>
                 {p.bulk_price && <p className="text-xs text-green-600">{fmt(p.bulk_price)} bulk</p>}
               </div>
             </div>
           </button>
         ))}
       </div>
-      <div className="p-2 border-t border-gray-100">
+      <div className="p-2 border-t border-stone-100">
         <button
           onClick={() => onSelect(null)}
-          className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+          className="w-full text-left px-3 py-2 text-sm text-stone-900 hover:bg-blue-50 rounded-lg transition-colors font-medium"
         >
           + {t.invoices.customItem}
         </button>
@@ -106,18 +106,18 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:fixed print:inset-0">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:rounded-none print:max-h-none print:overflow-visible">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:rounded-none print:max-h-none print:overflow-visible">
         {/* Print controls — hidden when printing */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 print:hidden">
-          <h2 className="font-bold text-gray-900">{t.invoices.printInvoice}</h2>
+        <div className="flex items-center justify-between p-4 border-b border-stone-200 print:hidden">
+          <h2 className="font-bold text-stone-900">{t.invoices.printInvoice}</h2>
           <div className="flex gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium"
             >
               <Printer className="w-4 h-4" /> {t.invoices.printInvoice}
             </button>
-            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+            <button onClick={onClose} className="p-2 text-stone-400 hover:text-stone-600 rounded-lg hover:bg-stone-100">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -131,16 +131,16 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
               <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-2">
                 <span className="text-white font-bold text-lg">RS</span>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">RS LLD Restaurant Supply</h1>
-              <p className="text-gray-500 text-sm">kyu@lldrestaurantsupply.com</p>
-              <p className="text-gray-500 text-sm">lldrestaurantsupply.com</p>
+              <h1 className="text-2xl font-bold text-stone-900">RS LLD Restaurant Supply</h1>
+              <p className="text-stone-500 text-sm">kyu@lldrestaurantsupply.com</p>
+              <p className="text-stone-500 text-sm">lldrestaurantsupply.com</p>
             </div>
             <div className="text-right">
-              <h2 className="text-3xl font-bold text-blue-600 uppercase tracking-wide">
+              <h2 className="text-3xl font-bold text-stone-900 uppercase tracking-wide">
                 {lang === 'zh' ? '发票' : 'INVOICE'}
               </h2>
-              <p className="text-gray-700 font-semibold mt-1">{invoice.invoice_number}</p>
-              <div className="mt-2 text-sm text-gray-500">
+              <p className="text-stone-700 font-semibold mt-1">{invoice.invoice_number}</p>
+              <div className="mt-2 text-sm text-stone-500">
                 <p>{lang === 'zh' ? '创建日期' : 'Date'}: {new Date(invoice.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</p>
                 {invoice.due_date && <p>{lang === 'zh' ? '到期日' : 'Due'}: {invoice.due_date}</p>}
               </div>
@@ -153,15 +153,15 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
           {/* Bill To */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">
                 {lang === 'zh' ? '账单寄送至' : 'Bill To'}
               </h3>
-              <p className="font-semibold text-gray-900">{invoice.customer_name}</p>
-              {invoice.customer_company && <p className="text-gray-700">{invoice.customer_company}</p>}
-              {invoice.customer_email && <p className="text-gray-500 text-sm">{invoice.customer_email}</p>}
-              {invoice.customer_phone && <p className="text-gray-500 text-sm">{invoice.customer_phone}</p>}
+              <p className="font-semibold text-stone-900">{invoice.customer_name}</p>
+              {invoice.customer_company && <p className="text-stone-700">{invoice.customer_company}</p>}
+              {invoice.customer_email && <p className="text-stone-500 text-sm">{invoice.customer_email}</p>}
+              {invoice.customer_phone && <p className="text-stone-500 text-sm">{invoice.customer_phone}</p>}
               {invoice.customer_address && (
-                <div className="text-gray-500 text-sm mt-1">
+                <div className="text-stone-500 text-sm mt-1">
                   <p>{invoice.customer_address}</p>
                   {(invoice.customer_city || invoice.customer_state) && (
                     <p>{[invoice.customer_city, invoice.customer_state, invoice.customer_zip].filter(Boolean).join(', ')}</p>
@@ -170,18 +170,18 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
               )}
             </div>
             <div>
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">
                 {lang === 'zh' ? '付款信息' : 'Payment Info'}
               </h3>
-              {invoice.payment_terms && <p className="text-gray-700">{invoice.payment_terms}</p>}
-              {invoice.payment_method && <p className="text-gray-500 text-sm capitalize">{invoice.payment_method.replace('_', ' ')}</p>}
+              {invoice.payment_terms && <p className="text-stone-700">{invoice.payment_terms}</p>}
+              {invoice.payment_method && <p className="text-stone-500 text-sm capitalize">{invoice.payment_method.replace('_', ' ')}</p>}
             </div>
           </div>
 
           {/* Line Items Table */}
           <table className="w-full mb-6 text-sm">
             <thead>
-              <tr className="bg-gray-900 text-white">
+              <tr className="bg-stone-950 text-white">
                 <th className="text-left px-4 py-3 rounded-tl-lg font-medium">{t.invoices.itemDescription}</th>
                 <th className="text-left px-4 py-3 font-medium w-24">{t.invoices.itemSku}</th>
                 <th className="text-center px-4 py-3 font-medium w-16">{t.invoices.itemQty}</th>
@@ -191,12 +191,12 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
             </thead>
             <tbody>
               {invoice.items?.map((item, i) => (
-                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-4 py-3 text-gray-900 font-medium">{item.description}</td>
-                  <td className="px-4 py-3 text-gray-400 font-mono text-xs">{item.sku || '—'}</td>
-                  <td className="px-4 py-3 text-center text-gray-700">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{fmt(item.unit_price)}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">{fmt(item.line_total)}</td>
+                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-stone-50'}>
+                  <td className="px-4 py-3 text-stone-900 font-medium">{item.description}</td>
+                  <td className="px-4 py-3 text-stone-400 font-mono text-xs">{item.sku || '—'}</td>
+                  <td className="px-4 py-3 text-center text-stone-700">{item.quantity}</td>
+                  <td className="px-4 py-3 text-right text-stone-700">{fmt(item.unit_price)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-stone-900">{fmt(item.line_total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -205,7 +205,7 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
           {/* Totals */}
           <div className="flex justify-end mb-8">
             <div className="w-64 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-stone-600">
                 <span>{t.invoices.subtotal}</span>
                 <span>{fmt(invoice.subtotal)}</span>
               </div>
@@ -216,12 +216,12 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
                 </div>
               )}
               {invoice.tax_rate > 0 && (
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-stone-600">
                   <span>{t.invoices.taxAmount} ({invoice.tax_rate}%)</span>
                   <span>{fmt(invoice.tax_amount)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-gray-900 text-base border-t pt-2">
+              <div className="flex justify-between font-bold text-stone-900 text-base border-t pt-2">
                 <span>{t.invoices.total}</span>
                 <span>{fmt(invoice.total_amount)}</span>
               </div>
@@ -230,16 +230,16 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
 
           {/* Notes */}
           {invoice.notes && (
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+            <div className="border-t border-stone-200 pt-6">
+              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">
                 {t.invoices.notes}
               </h3>
-              <p className="text-gray-600 text-sm whitespace-pre-line">{invoice.notes}</p>
+              <p className="text-stone-600 text-sm whitespace-pre-line">{invoice.notes}</p>
             </div>
           )}
 
           {/* Footer */}
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
+          <div className="mt-8 pt-6 border-t border-stone-100 text-center text-xs text-stone-400">
             <p>RS LLD Restaurant Supply · lldrestaurantsupply.com · kyu@lldrestaurantsupply.com</p>
           </div>
         </div>
@@ -282,7 +282,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
       : [{ ...EMPTY_ITEM }]
   )
 
-  const inp = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 w-full'
+  const inp = 'border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 w-full'
 
   const recalcItem = (item) => ({
     ...item,
@@ -376,10 +376,10 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <button onClick={onCancel} className="text-sm text-blue-600 hover:underline mb-1 block">
+          <button onClick={onCancel} className="text-sm text-stone-900 hover:underline mb-1 block">
             {t.invoices.backToList}
           </button>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-stone-900">
             {isEdit ? `${t.invoices.editInvoice} — ${existingInvoice.invoice_number}` : t.invoices.newInvoice}
           </h2>
         </div>
@@ -387,7 +387,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
           {savedInvoice && (
             <button
               onClick={() => setShowPrint(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+              className="flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
             >
               <Printer className="w-4 h-4" /> {t.invoices.printInvoice}
             </button>
@@ -395,7 +395,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
           <button
             onClick={() => handleSave('draft')}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {t.invoices.saveAsDraft}
@@ -403,7 +403,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
           <button
             onClick={() => handleSave('sent')}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {t.invoices.markAsSent}
@@ -419,43 +419,43 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
         {/* Left: Customer + Items */}
         <div className="lg:col-span-2 space-y-6">
           {/* Customer Info */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" />
+          <div className="bg-white rounded-xl border border-stone-100 p-5">
+            <h3 className="font-semibold text-stone-800 mb-4 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-stone-700" />
               {t.invoices.customerInfo}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 sm:col-span-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerName} *</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerName} *</label>
                 <input className={inp} value={form.customer_name} onChange={e => setForm(p => ({ ...p, customer_name: e.target.value }))} />
               </div>
               <div className="col-span-2 sm:col-span-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerCompany}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerCompany}</label>
                 <input className={inp} value={form.customer_company} onChange={e => setForm(p => ({ ...p, customer_company: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerEmail}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerEmail}</label>
                 <input className={inp} type="email" value={form.customer_email} onChange={e => setForm(p => ({ ...p, customer_email: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerPhone}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerPhone}</label>
                 <input className={inp} value={form.customer_phone} onChange={e => setForm(p => ({ ...p, customer_phone: e.target.value }))} />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerAddress}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerAddress}</label>
                 <input className={inp} value={form.customer_address} onChange={e => setForm(p => ({ ...p, customer_address: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerCity}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerCity}</label>
                 <input className={inp} value={form.customer_city} onChange={e => setForm(p => ({ ...p, customer_city: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerState}</label>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerState}</label>
                   <input className={inp} value={form.customer_state} onChange={e => setForm(p => ({ ...p, customer_state: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.customerZip}</label>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.customerZip}</label>
                   <input className={inp} value={form.customer_zip} onChange={e => setForm(p => ({ ...p, customer_zip: e.target.value }))} />
                 </div>
               </div>
@@ -463,24 +463,24 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
           </div>
 
           {/* Line Items */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <div className="bg-white rounded-xl border border-stone-100 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-500" />
+              <h3 className="font-semibold text-stone-800 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-stone-700" />
                 {t.invoices.lineItems}
               </h3>
               <div className="flex gap-2 relative">
                 <button
                   type="button"
                   onClick={() => setShowProductSearch(p => !p)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg text-xs hover:bg-blue-50 font-medium"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-blue-300 text-stone-900 rounded-lg text-xs hover:bg-blue-50 font-medium"
                 >
                   <Search className="w-3.5 h-3.5" /> {t.invoices.addFromInventory}
                 </button>
                 <button
                   type="button"
                   onClick={addItem}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-xs font-medium"
                 >
                   <Plus className="w-3.5 h-3.5" /> {t.invoices.addItem}
                 </button>
@@ -495,11 +495,11 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
             </div>
 
             {items.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">{t.invoices.noItemsYet}</p>
+              <p className="text-sm text-stone-400 text-center py-6">{t.invoices.noItemsYet}</p>
             ) : (
               <div className="space-y-2">
                 {/* Column Headers */}
-                <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
+                <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-stone-400 uppercase tracking-wide px-1">
                   <div className="col-span-5">{t.invoices.itemDescription}</div>
                   <div className="col-span-2">{t.invoices.itemSku}</div>
                   <div className="col-span-1 text-center">{t.invoices.itemQty}</div>
@@ -509,10 +509,10 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                 </div>
 
                 {items.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-gray-50 rounded-lg p-2">
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-stone-50 rounded-lg p-2">
                     <div className="col-span-5">
                       <input
-                        className="border border-gray-300 rounded px-2 py-1.5 text-sm w-full focus:ring-1 focus:ring-blue-500"
+                        className="border border-stone-200 rounded px-2 py-1.5 text-sm w-full focus:ring-1 focus:ring-stone-400"
                         value={item.description}
                         onChange={e => updateItem(idx, 'description', e.target.value)}
                         placeholder={t.invoices.itemDescription}
@@ -520,7 +520,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                     </div>
                     <div className="col-span-2">
                       <input
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs font-mono w-full focus:ring-1 focus:ring-blue-500 uppercase"
+                        className="border border-stone-200 rounded px-2 py-1.5 text-xs font-mono w-full focus:ring-1 focus:ring-stone-400 uppercase"
                         value={item.sku}
                         onChange={e => updateItem(idx, 'sku', e.target.value.toUpperCase())}
                         placeholder="SKU"
@@ -528,7 +528,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                     </div>
                     <div className="col-span-1">
                       <input
-                        className="border border-gray-300 rounded px-2 py-1.5 text-sm w-full text-center focus:ring-1 focus:ring-blue-500"
+                        className="border border-stone-200 rounded px-2 py-1.5 text-sm w-full text-center focus:ring-1 focus:ring-stone-400"
                         type="number"
                         min="1"
                         value={item.quantity}
@@ -537,9 +537,9 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                     </div>
                     <div className="col-span-2">
                       <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
                         <input
-                          className="border border-gray-300 rounded pl-5 pr-2 py-1.5 text-sm w-full text-right focus:ring-1 focus:ring-blue-500"
+                          className="border border-stone-200 rounded pl-5 pr-2 py-1.5 text-sm w-full text-right focus:ring-1 focus:ring-stone-400"
                           type="number"
                           min="0"
                           step="0.01"
@@ -548,7 +548,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                         />
                       </div>
                     </div>
-                    <div className="col-span-1 text-right text-sm font-semibold text-gray-900">
+                    <div className="col-span-1 text-right text-sm font-semibold text-stone-900">
                       {fmt(item.line_total)}
                     </div>
                     <div className="col-span-1 flex justify-end">
@@ -567,8 +567,8 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
           </div>
 
           {/* Notes */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-gray-800 mb-4">{t.invoices.notes}</h3>
+          <div className="bg-white rounded-xl border border-stone-100 p-5">
+            <h3 className="font-semibold text-stone-800 mb-4">{t.invoices.notes}</h3>
             <textarea
               className={inp + ' resize-none'}
               rows={3}
@@ -576,7 +576,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
               placeholder={t.invoices.notes}
             />
-            <h3 className="font-semibold text-gray-800 mt-4 mb-2">{t.invoices.internalNotes}</h3>
+            <h3 className="font-semibold text-stone-800 mt-4 mb-2">{t.invoices.internalNotes}</h3>
             <textarea
               className={inp + ' resize-none'}
               rows={2}
@@ -590,21 +590,21 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
         {/* Right: Totals + Payment */}
         <div className="space-y-4">
           {/* Totals Card */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5 sticky top-4">
-            <h3 className="font-semibold text-gray-800 mb-4">{t.invoices.subtotal}</h3>
+          <div className="bg-white rounded-xl border border-stone-100 p-5 sticky top-4">
+            <h3 className="font-semibold text-stone-800 mb-4">{t.invoices.subtotal}</h3>
 
             <div className="space-y-3">
-              <div className="flex justify-between text-sm text-gray-600">
+              <div className="flex justify-between text-sm text-stone-600">
                 <span>{t.invoices.subtotal}</span>
                 <span className="font-medium">{fmt(subtotal)}</span>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t.invoices.discount}</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1">{t.invoices.discount}</label>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
                   <input
-                    className="border border-gray-300 rounded-lg pl-5 pr-3 py-1.5 text-sm w-full focus:ring-1 focus:ring-blue-500"
+                    className="border border-stone-200 rounded-lg pl-5 pr-3 py-1.5 text-sm w-full focus:ring-1 focus:ring-stone-400"
                     type="number" min="0" step="0.01"
                     value={form.discount_amount}
                     onChange={e => setForm(p => ({ ...p, discount_amount: e.target.value }))}
@@ -613,26 +613,26 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t.invoices.taxRate}</label>
+                <label className="block text-xs font-medium text-stone-500 mb-1">{t.invoices.taxRate}</label>
                 <div className="relative">
                   <input
-                    className="border border-gray-300 rounded-lg px-3 pr-7 py-1.5 text-sm w-full focus:ring-1 focus:ring-blue-500"
+                    className="border border-stone-200 rounded-lg px-3 pr-7 py-1.5 text-sm w-full focus:ring-1 focus:ring-stone-400"
                     type="number" min="0" step="0.1" max="100"
                     value={form.tax_rate}
                     onChange={e => setForm(p => ({ ...p, tax_rate: e.target.value }))}
                   />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 text-sm">%</span>
                 </div>
               </div>
 
               {taxAmount > 0 && (
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-stone-600">
                   <span>{t.invoices.taxAmount} ({taxRate}%)</span>
                   <span>{fmt(taxAmount)}</span>
                 </div>
               )}
 
-              <div className="flex justify-between font-bold text-gray-900 text-lg border-t pt-3">
+              <div className="flex justify-between font-bold text-stone-900 text-lg border-t pt-3">
                 <span>{t.invoices.total}</span>
                 <span>{fmt(total)}</span>
               </div>
@@ -641,9 +641,9 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
             {/* Payment */}
             <div className="mt-5 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.paymentMethod}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.paymentMethod}</label>
                 <select
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500"
+                  className="border border-stone-200 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-stone-400"
                   value={form.payment_method}
                   onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))}
                 >
@@ -651,9 +651,9 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.paymentTerms}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.paymentTerms}</label>
                 <select
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500"
+                  className="border border-stone-200 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-stone-400"
                   value={form.payment_terms}
                   onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))}
                 >
@@ -661,9 +661,9 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t.invoices.dueDate}</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{t.invoices.dueDate}</label>
                 <input
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500"
+                  className="border border-stone-200 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-stone-400"
                   type="date"
                   value={form.due_date}
                   onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))}
@@ -673,8 +673,8 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
 
             {/* Status */}
             {isEdit && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <label className="block text-xs font-medium text-gray-600 mb-2">{t.invoices.status}</label>
+              <div className="mt-4 pt-4 border-t border-stone-100">
+                <label className="block text-xs font-medium text-stone-600 mb-2">{t.invoices.status}</label>
                 <div className="flex flex-wrap gap-2">
                   {['draft', 'sent', 'paid', 'cancelled'].map(s => {
                     const cfg = invoiceStatusConfig[s]
@@ -687,7 +687,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
                           form.status === s
                             ? `${cfg.bg} ${cfg.color} ${cfg.border} ring-2 ring-offset-1 ring-blue-300`
-                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                            : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
                         }`}
                       >
                         {label}
@@ -704,7 +704,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                 type="button"
                 onClick={() => handleSave('sent')}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium"
               >
                 {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 {t.invoices.markAsSent}
@@ -714,7 +714,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                   type="button"
                   onClick={() => handleSave('paid')}
                   disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium"
                 >
                   {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   {t.invoices.markAsPaid}
@@ -724,7 +724,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                 type="button"
                 onClick={() => handleSave()}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
               >
                 {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {t.invoices.saveAsDraft}
@@ -793,10 +793,10 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
     <div>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <h2 className="text-xl font-bold text-gray-900">{t.invoices.title}</h2>
+        <h2 className="text-xl font-bold text-stone-900">{t.invoices.title}</h2>
         <button
           onClick={onNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium"
         >
           <Plus className="w-4 h-4" /> {t.invoices.newInvoice}
         </button>
@@ -805,13 +805,13 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-5">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t.invoices.searchPlaceholder}
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-stone-400"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -824,7 +824,7 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                   statusFilter === s
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : cfg ? `${cfg.bg} ${cfg.color} ${cfg.border}` : 'bg-gray-100 text-gray-600 border-gray-200'
+                    : cfg ? `${cfg.bg} ${cfg.color} ${cfg.border}` : 'bg-stone-100 text-stone-600 border-stone-200'
                 }`}
               >
                 {s ? statusLabel(s) : t.invoices.allStatuses}
@@ -832,33 +832,33 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
             )
           })}
         </div>
-        <button onClick={fetchInvoices} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+        <button onClick={fetchInvoices} className="flex items-center gap-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> {t.header.refresh}
         </button>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-gray-400 mx-auto" /></div>
+        <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-stone-400 mx-auto" /></div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-xl border border-stone-100">
           <FileText className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500">{t.invoices.noInvoices}</p>
+          <p className="text-stone-500">{t.invoices.noInvoices}</p>
           <button
             onClick={onNew}
-            className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium mx-auto"
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium mx-auto"
           >
             <Plus className="w-4 h-4" /> {t.invoices.newInvoice}
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-stone-50 border-b border-stone-100">
               <tr>
                 {[t.invoices.invoiceNumber, t.invoices.customerName, t.invoices.status,
                   t.invoices.total, t.invoices.dueDate, t.invoices.createdAt, ''].map((h, i) => (
-                  <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -866,34 +866,34 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
               {filtered.map(inv => {
                 const cfg = invoiceStatusConfig[inv.status] || invoiceStatusConfig.draft
                 return (
-                  <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-semibold text-blue-600">{inv.invoice_number}</td>
+                  <tr key={inv.id} className="hover:bg-stone-50 transition-colors">
+                    <td className="px-4 py-3 font-mono font-semibold text-stone-900">{inv.invoice_number}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{inv.customer_name}</p>
-                      {inv.customer_company && <p className="text-xs text-gray-400">{inv.customer_company}</p>}
+                      <p className="font-medium text-stone-900">{inv.customer_name}</p>
+                      {inv.customer_company && <p className="text-xs text-stone-400">{inv.customer_company}</p>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                         {statusLabel(inv.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">{fmt(inv.total_amount)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{inv.due_date || '—'}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
+                    <td className="px-4 py-3 font-semibold text-stone-900">{fmt(inv.total_amount)}</td>
+                    <td className="px-4 py-3 text-stone-500 text-xs">{inv.due_date || '—'}</td>
+                    <td className="px-4 py-3 text-stone-400 text-xs">
                       {new Date(inv.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <button
                           onClick={() => setShowPrint(inv)}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                          className="p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded"
                           title={t.invoices.printInvoice}
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => onEdit(inv)}
-                          className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                          className="p-1.5 text-stone-700 hover:text-stone-900 hover:bg-blue-50 rounded"
                           title={t.invoices.editInvoice}
                         >
                           <FileText className="w-3.5 h-3.5" />
