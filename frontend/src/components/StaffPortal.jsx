@@ -911,6 +911,35 @@ const StaffPortal = () => {
     } catch {}
   }
 
+  const [inventoryImageUploading, setInventoryImageUploading] = useState({})
+
+  const handleInventoryImageUpload = async (productId, file) => {
+    if (!file) return
+    setInventoryImageUploading(s => ({ ...s, [productId]: true }))
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const res = await fetch(`${API_BASE}/api/staff/products/${productId}/image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success) fetchInventory()
+    } catch {}
+    setInventoryImageUploading(s => ({ ...s, [productId]: false }))
+  }
+
+  const handleInventoryImageRemove = async (productId) => {
+    try {
+      await fetch(`${API_BASE}/api/staff/products/${productId}/image`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      fetchInventory()
+    } catch {}
+  }
+
   const handleProductSave = async (productId, form) => {
     try {
       const res = await fetch(`${API_BASE}/api/staff/products/${productId}`, {
@@ -1263,11 +1292,11 @@ const StaffPortal = () => {
         {activeTab === 'inventory' && (
           <div>
             <h2 className="text-xl font-bold text-stone-900 mb-4">{t.inventory.title}</h2>
-            <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+            <div className="bg-white rounded-xl border border-stone-100 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    {[t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.status, t.inventory.action].map(h => (
+                    {[t.inventory.image, t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.status, t.inventory.action].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -1275,6 +1304,46 @@ const StaffPortal = () => {
                 <tbody className="divide-y divide-gray-50">
                   {inventory.map(p => (
                     <tr key={p.id} className={`hover:bg-stone-50 transition-colors ${!p.in_stock ? 'opacity-60' : ''}`}>
+                      {/* Image cell */}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-center gap-1.5" style={{minWidth: 72}}>
+                          {p.image_url ? (
+                            <img
+                              src={p.image_url.startsWith('/api') ? `${API_BASE}${p.image_url}` : p.image_url}
+                              alt={p.name}
+                              className="w-14 h-14 object-cover rounded-lg border border-stone-200 bg-stone-50"
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg border border-dashed border-stone-300 bg-stone-50 flex items-center justify-center">
+                              <Package className="w-5 h-5 text-stone-300" />
+                            </div>
+                          )}
+                          <label className={`cursor-pointer text-xs px-2 py-0.5 rounded border transition-all ${
+                            inventoryImageUploading[p.id]
+                              ? 'border-stone-200 text-stone-400 cursor-not-allowed'
+                              : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                          }`}>
+                            {inventoryImageUploading[p.id]
+                              ? t.inventory.uploading
+                              : p.image_url ? t.inventory.changeImage : t.inventory.uploadImage}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={inventoryImageUploading[p.id]}
+                              onChange={e => handleInventoryImageUpload(p.id, e.target.files[0])}
+                            />
+                          </label>
+                          {p.image_url && (
+                            <button
+                              onClick={() => handleInventoryImageRemove(p.id)}
+                              className="text-xs text-red-400 hover:text-red-600 underline"
+                            >
+                              {t.inventory.removeImage}
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 font-medium text-stone-900">{p.name}</td>
                       <td className="px-4 py-3 text-stone-500 font-mono text-xs">{p.sku}</td>
                       <td className="px-4 py-3 text-stone-600">{p.brand}</td>

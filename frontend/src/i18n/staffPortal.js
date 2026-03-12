@@ -137,10 +137,16 @@ export const staffPortalTranslations = {
       bulkQty: 'Bulk Qty',
       status: 'Status',
       action: 'Action',
+      image: 'Image',
       inStock: 'In Stock',
       outOfStock: 'Out of Stock',
       markOut: 'Mark Out',
       markIn: 'Mark In',
+      uploadImage: 'Upload Image',
+      changeImage: 'Change Image',
+      removeImage: 'Remove Image',
+      uploading: 'Uploading...',
+      noImage: 'No image',
     },
     // Customers tab
     customers: {
@@ -587,10 +593,16 @@ export const staffPortalTranslations = {
       bulkQty: '批量数量',
       status: '状态',
       action: '操作',
+      image: '图片',
       inStock: '有库存',
       outOfStock: '缺货',
       markOut: '标记缺货',
       markIn: '标记有货',
+      uploadImage: '上传图片',
+      changeImage: '更换图片',
+      removeImage: '删除图片',
+      uploading: '上传中...',
+      noImage: '暂无图片',
     },
     // 客户标签页
     customers: {
