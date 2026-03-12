@@ -73,14 +73,20 @@ const StaffLogin = ({ onLogin }) => {
     finally { setLoading(false) }
   }
 
+  const inputClass = "w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+  const labelClass = "block text-sm font-medium text-stone-700 mb-1"
+  const backBtn = () => (
+    <button type="button" onClick={() => { setView('login'); setError(''); setMessage('') }}
+      className="text-sm text-stone-500 hover:text-stone-800 flex items-center gap-1 mt-3">
+      ← {lang === 'zh' ? '返回登录' : 'Back to login'}
+    </button>
+  )
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-sm p-8">
         <div className="flex justify-end mb-2">
-          <button
-            onClick={toggleLang}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-medium transition-all"
-          >
+          <button onClick={toggleLang}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-medium transition-all">
             <Globe className="w-3.5 h-3.5" />
             {lang === 'en' ? '中文' : 'EN'}
           </button>
@@ -90,38 +96,125 @@ const StaffLogin = ({ onLogin }) => {
             <span className="text-white font-bold text-xl">RS</span>
           </div>
           <h1 className="text-2xl font-bold text-stone-900">RS LLD {t.login.title}</h1>
-          <p className="text-stone-500 text-sm mt-1">{t.login.subtitle}</p>
+          {view === 'login' && <p className="text-stone-500 text-sm mt-1">{t.login.subtitle}</p>}
+          {view === 'forgotPassword' && <p className="text-stone-500 text-sm mt-1">{lang === 'zh' ? '重置密码' : 'Reset Password'}</p>}
+          {view === 'forgotUsername' && <p className="text-stone-500 text-sm mt-1">{lang === 'zh' ? '找回用户名' : 'Recover Username'}</p>}
+          {view === 'resetPassword' && <p className="text-stone-500 text-sm mt-1">{lang === 'zh' ? '设置新密码' : 'Set New Password'}</p>}
+          {view === 'success' && <p className="text-stone-500 text-sm mt-1">{lang === 'zh' ? '请查收邮件' : 'Check your email'}</p>}
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">{t.login.username}</label>
-            <input
-              type="text" value={form.username}
-              onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-              placeholder={t.login.usernamePlaceholder}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">{t.login.password}</label>
-            <input
-              type="password" value={form.password}
-              onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-              placeholder={t.login.passwordPlaceholder}
-            />
-          </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <Button type="submit" disabled={loading} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
-            {loading ? t.login.loggingIn : t.login.loginButton}
-          </Button>
-        </form>
-        <div className="mt-4 p-3 bg-stone-50 rounded-lg text-xs text-stone-500">
-          <p className="font-medium mb-1">Demo Credentials:</p>
-          <p>Admin: <code>admin</code> / <code>REDACTED_ADMIN_PW</code></p>
-          <p>Staff: <code>staff</code> / <code>REDACTED_STAFF_PW</code></p>
-        </div>
+
+        {view === 'login' && (
+          <>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className={labelClass}>{t.login.username}</label>
+                <input type="text" value={form.username}
+                  onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
+                  className={inputClass} placeholder={t.login.usernamePlaceholder} />
+              </div>
+              <div>
+                <label className={labelClass}>{t.login.password}</label>
+                <input type="password" value={form.password}
+                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                  className={inputClass} placeholder={t.login.passwordPlaceholder} />
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <Button type="submit" disabled={loading} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                {loading ? t.login.loggingIn : t.login.loginButton}
+              </Button>
+            </form>
+            <div className="mt-4 flex flex-col items-center gap-1.5 text-sm">
+              <button type="button" onClick={() => { setView('forgotPassword'); setError('') }}
+                className="text-stone-500 hover:text-stone-800 transition-colors">
+                {lang === 'zh' ? '忘记密码？' : 'Forgot password?'}
+              </button>
+              <button type="button" onClick={() => { setView('forgotUsername'); setError('') }}
+                className="text-stone-500 hover:text-stone-800 transition-colors">
+                {lang === 'zh' ? '忘记用户名？' : 'Forgot username?'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {view === 'forgotPassword' && (
+          <>
+            <p className="text-stone-500 text-sm mb-4">
+              {lang === 'zh' ? '请输入您的用户名或邮箱，我们将发送重置链接。' : "Enter your username or email and we'll send you a reset link."}
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className={labelClass}>{lang === 'zh' ? '用户名或邮箱' : 'Username or Email'}</label>
+                <input type="text" value={forgotIdentifier} onChange={e => setForgotIdentifier(e.target.value)}
+                  className={inputClass} placeholder={lang === 'zh' ? '请输入用户名或邮箱' : 'Enter username or email'} />
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <Button type="submit" disabled={loading || !forgotIdentifier.trim()} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                {lang === 'zh' ? '发送重置链接' : 'Send Reset Link'}
+              </Button>
+            </form>
+            {backBtn()}
+          </>
+        )}
+
+        {view === 'forgotUsername' && (
+          <>
+            <p className="text-stone-500 text-sm mb-4">
+              {lang === 'zh' ? '请输入您的注册邮箱，我们将发送您的用户名。' : "Enter your registered email and we'll send you your username."}
+            </p>
+            <form onSubmit={handleForgotUsername} className="space-y-4">
+              <div>
+                <label className={labelClass}>{lang === 'zh' ? '邮箱地址' : 'Email Address'}</label>
+                <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                  className={inputClass} placeholder={lang === 'zh' ? '请输入邮箱' : 'Enter your email'} />
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <Button type="submit" disabled={loading || !forgotEmail.trim()} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                {lang === 'zh' ? '发送用户名' : 'Send My Username'}
+              </Button>
+            </form>
+            {backBtn()}
+          </>
+        )}
+
+        {view === 'resetPassword' && (
+          <>
+            <p className="text-stone-500 text-sm mb-4">
+              {lang === 'zh' ? '请输入您的新密码（至少6位）。' : 'Enter your new password (minimum 6 characters).'}
+            </p>
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className={labelClass}>{lang === 'zh' ? '新密码' : 'New Password'}</label>
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                  className={inputClass} placeholder={lang === 'zh' ? '请输入新密码' : 'New password'} />
+              </div>
+              <div>
+                <label className={labelClass}>{lang === 'zh' ? '确认密码' : 'Confirm Password'}</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                  className={inputClass} placeholder={lang === 'zh' ? '再次输入新密码' : 'Confirm new password'} />
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <Button type="submit" disabled={loading || !newPassword || !confirmPassword} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                {lang === 'zh' ? '更新密码' : 'Update Password'}
+              </Button>
+            </form>
+          </>
+        )}
+
+        {view === 'success' && (
+          <>
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="text-stone-700 text-sm text-center">{message}</p>
+            </div>
+            {backBtn()}
+          </>
+        )}
       </div>
     </div>
   )
