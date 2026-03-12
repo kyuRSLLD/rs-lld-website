@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { InvoicesTab } from './InvoiceBuilder'
+import { StaffManagementTab } from './StaffManagement'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe, FileText
+  PenLine, Check, Globe, FileText, Shield
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
@@ -904,6 +905,8 @@ const StaffPortal = () => {
       (o.delivery_city || '').toLowerCase().includes(q)
   })
 
+  const isAdmin = staff?.role === 'admin'
+
   const tabs = [
     { id: 'orders', label: t.tabs.orders, icon: ClipboardList },
     { id: 'customers', label: t.tabs.customers, icon: Users },
@@ -911,6 +914,7 @@ const StaffPortal = () => {
     { id: 'inventory', label: t.tabs.inventory, icon: ShoppingBag },
     { id: 'invoices', label: t.tabs.invoices, icon: FileText },
     { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
+    ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }] : []),
   ]
 
   return (
@@ -947,12 +951,15 @@ const StaffPortal = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? tab.adminOnly ? 'border-purple-600 text-purple-600' : 'border-blue-600 text-blue-600'
+                  : tab.adminOnly ? 'border-transparent text-purple-400 hover:text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
+              {tab.adminOnly && (
+                <span className="text-xs bg-purple-100 text-purple-600 px-1 py-0.5 rounded font-semibold ml-0.5">A</span>
+              )}
             </button>
           ))}
         </div>
@@ -1204,6 +1211,17 @@ const StaffPortal = () => {
         {/* ── INVOICES TAB ── */}
         {activeTab === 'invoices' && (
           <InvoicesTab t={t} lang={lang} />
+        )}
+
+        {/* ── STAFF MANAGEMENT TAB (admin only) ── */}
+        {activeTab === 'staffMgmt' && isAdmin && (
+          <StaffManagementTab t={t} lang={lang} currentStaff={staff} />
+        )}
+        {activeTab === 'staffMgmt' && !isAdmin && (
+          <div className="text-center py-20">
+            <Shield className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Admin access required</p>
+          </div>
         )}
 
         {/* ── STATS / DASHBOARD TAB ── */}
