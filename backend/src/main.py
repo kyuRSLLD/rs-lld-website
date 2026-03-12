@@ -19,7 +19,9 @@ from src.routes.inventory_api import inventory_api_bp
 from src.routes.invoice import invoice_bp
 from src.routes.staff_admin import staff_admin_bp
 from src.routes.api_keys import api_keys_bp
+from src.routes.bill_analyzer import bill_bp
 from src.models.api_key import APIKey
+from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'REDACTED_SECRET_KEY')
@@ -45,6 +47,7 @@ app.register_blueprint(inventory_api_bp, url_prefix='/api')
 app.register_blueprint(invoice_bp, url_prefix='/api')
 app.register_blueprint(staff_admin_bp, url_prefix='/api')
 app.register_blueprint(api_keys_bp, url_prefix='/api')
+app.register_blueprint(bill_bp, url_prefix='/api')
 
 # Ensure database directory exists
 _db_dir = os.path.join(os.path.dirname(__file__), 'database')
@@ -52,7 +55,7 @@ os.makedirs(_db_dir, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(_db_dir, 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Max upload size: 10MB
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # 25MB for bill uploads
 db.init_app(app)
 
 with app.app_context():
