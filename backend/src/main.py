@@ -171,3 +171,13 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV', 'production') != 'production'
     app.run(host='0.0.0.0', port=port, debug=debug)
+
+@app.route('/api/debug/static')
+def debug_static():
+    import os
+    static_path = app.static_folder
+    try:
+        files = os.listdir(static_path) if static_path and os.path.exists(static_path) else []
+    except Exception as e:
+        files = [str(e)]
+    return {'static_folder': static_path, 'exists': static_path and os.path.exists(static_path), 'files': files}
