@@ -193,3 +193,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+
+/* ─── Invoice Print Styles ─────────────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the invoice print area */
+  body > * { display: none !important; }
+  #invoice-print-area,
+  #invoice-print-area * { display: revert !important; }
+
+  /* Reset page margins */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  body {
+    background: white !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 12pt;
+    color: #111 !important;
+  }
+
+  /* Ensure the print area fills the page */
+  #invoice-print-area {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 !important;
+  }
+
+  /* Hide print/close buttons */
+  .print\:hidden { display: none !important; }
+
+  /* Table borders for print */
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 8px 12px; }
+  thead tr { background-color: #1e293b !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

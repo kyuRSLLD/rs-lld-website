@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { InvoicesTab } from './InvoiceBuilder'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe
+  PenLine, Check, Globe, FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
@@ -772,6 +773,7 @@ const StaffPortal = () => {
     if (activeTab === 'customers') fetchCustomers()
     if (activeTab === 'inventory') fetchInventory()
     if (activeTab === 'products') { fetchProducts(); fetchProductCategories() }
+    // invoices tab fetches its own data internally via InvoicesTab component
   }, [staff, activeTab, fetchOrders, fetchStats, fetchCustomers, fetchInventory, fetchProducts, fetchProductCategories])
 
   useEffect(() => {
@@ -907,6 +909,7 @@ const StaffPortal = () => {
     { id: 'customers', label: t.tabs.customers, icon: Users },
     { id: 'products', label: t.tabs.products, icon: Tag },
     { id: 'inventory', label: t.tabs.inventory, icon: ShoppingBag },
+    { id: 'invoices', label: t.tabs.invoices, icon: FileText },
     { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
   ]
 
@@ -1196,6 +1199,11 @@ const StaffPortal = () => {
               </table>
             </div>
           </div>
+        )}
+
+        {/* ── INVOICES TAB ── */}
+        {activeTab === 'invoices' && (
+          <InvoicesTab t={t} lang={lang} />
         )}
 
         {/* ── STATS / DASHBOARD TAB ── */}
