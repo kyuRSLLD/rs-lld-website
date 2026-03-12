@@ -22,6 +22,14 @@ function App() {
 
   useEffect(() => {
     checkAuthStatus()
+    // Handle redirect back from social OAuth providers
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('social_login') === 'success') {
+      checkAuthStatus()
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else if (params.get('social_login') === 'error') {
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
   }, [])
 
   const checkAuthStatus = async () => {
