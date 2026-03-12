@@ -141,6 +141,8 @@ class StaffUser(db.Model):
     role = db.Column(db.String(50), default='staff')  # staff, manager, admin
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    reset_token = db.Column(db.String(100), nullable=True, unique=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password):
         from werkzeug.security import generate_password_hash

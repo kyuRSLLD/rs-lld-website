@@ -13,6 +13,9 @@ class User(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    # Password reset
+    reset_token = db.Column(db.String(100), nullable=True, unique=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
 
     # Social OAuth fields
     oauth_provider = db.Column(db.String(20), nullable=True)   # 'google' | 'facebook' | 'twitter'
