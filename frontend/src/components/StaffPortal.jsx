@@ -1,13 +1,15 @@
-import API_BASE from '../config/api'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check
+  PenLine, Check, Globe
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { staffPortalTranslations } from '@/i18n/staffPortal'
+
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 const STATUS_FLOW = ['pending', 'confirmed', 'packed', 'shipped', 'delivered']
 
@@ -22,11 +24,31 @@ const statusConfig = {
 
 const paymentLabels = { net30: 'Net 30', net15: 'Net 15', cod: 'COD', credit_card: 'Credit Card', check: 'Check' }
 
+// ─── Language Toggle Button ───────────────────────────────────────────────────
+const LangToggle = ({ lang, onToggle }) => (
+  <button
+    onClick={onToggle}
+    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium transition-all border border-slate-600"
+    title="Switch language / 切换语言"
+  >
+    <Globe className="w-3.5 h-3.5" />
+    {lang === 'en' ? '中文' : 'EN'}
+  </button>
+)
+
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 const StaffLogin = ({ onLogin }) => {
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [lang, setLang] = useState(() => localStorage.getItem('staffLang') || 'en')
+  const t = staffPortalTranslations[lang]
+
+  const toggleLang = () => {
+    const next = lang === 'en' ? 'zh' : 'en'
+    setLang(next)
+    localStorage.setItem('staffLang', next)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -41,44 +63,53 @@ const StaffLogin = ({ onLogin }) => {
       })
       const data = await res.json()
       if (data.success) onLogin(data.staff)
-      else setError(data.error || 'Invalid credentials')
-    } catch { setError('Network error. Please try again.') }
+      else setError(t.login.error)
+    } catch { setError(t.common.error) }
     finally { setLoading(false) }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8">
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={toggleLang}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium transition-all"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            {lang === 'en' ? '中文' : 'EN'}
+          </button>
+        </div>
         <div className="text-center mb-6">
           <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
             <span className="text-white font-bold text-xl">RS</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">RS LLD Staff Portal</h1>
-          <p className="text-gray-500 text-sm mt-1">Internal Order Management System</p>
+          <h1 className="text-2xl font-bold text-gray-900">RS LLD {t.login.title}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t.login.subtitle}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.login.username}</label>
             <input
               type="text" value={form.username}
               onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="admin"
+              placeholder={t.login.usernamePlaceholder}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.login.password}</label>
             <input
               type="password" value={form.password}
               onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="••••••••"
+              placeholder={t.login.passwordPlaceholder}
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
             {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
-            Sign In
+            {loading ? t.login.loggingIn : t.login.loginButton}
           </Button>
         </form>
         <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500">
@@ -92,20 +123,24 @@ const StaffLogin = ({ onLogin }) => {
 }
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
-const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
+const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(order.staff_notes || '')
   const [assignedTo, setAssignedTo] = useState(order.assigned_to || '')
   const [updating, setUpdating] = useState(false)
+
   const cfg = statusConfig[order.status] || statusConfig.pending
   const StatusIcon = cfg.icon
 
   const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
   const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
   const nextCfg = nextStatus ? statusConfig[nextStatus] : null
+
+  // Use translated status labels
+  const statusLabel = (s) => t.status[s] || s
 
   const handleAdvanceStatus = async () => {
     if (!nextStatus) return
@@ -115,7 +150,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
   }
 
   const handleCancel = async () => {
-    if (!window.confirm('Cancel this order?')) return
+    if (!window.confirm(t.orders.cancelConfirm)) return
     setUpdating(true)
     await onStatusUpdate(order.id, 'cancelled')
     setUpdating(false)
@@ -138,7 +173,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-gray-900">{order.order_number}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.color}`}>{statusLabel(order.status)}</span>
               </div>
               <p className="text-sm text-gray-600">{order.customer_company || order.customer_name}</p>
               {order.customer_email && <p className="text-xs text-gray-400">{order.customer_email}</p>}
@@ -159,7 +194,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
           </span>
           <span className="flex items-center gap-1">
             <Tag className="w-3 h-3" />
-            {paymentLabels[order.payment_method] || order.payment_method}
+            {t.payment[order.payment_method] || paymentLabels[order.payment_method] || order.payment_method}
           </span>
           {order.preferred_delivery_date && (
             <span className="flex items-center gap-1 text-blue-600">
@@ -190,23 +225,23 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
             >
               {updating ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <nextCfg.icon className="w-3 h-3 mr-1" />}
-              Mark as {nextCfg?.label}
+              {t.orders.markAs} {statusLabel(nextStatus)}
             </Button>
           )}
           {order.status !== 'cancelled' && order.status !== 'delivered' && (
             <Button size="sm" variant="outline" onClick={handleCancel} disabled={updating}
               className="text-red-600 border-red-200 hover:bg-red-50 text-xs">
-              <XCircle className="w-3 h-3 mr-1" /> Cancel
+              <XCircle className="w-3 h-3 mr-1" /> {t.orders.cancel}
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={() => setEditingNotes(!editingNotes)}
             className="text-xs">
-            <Edit3 className="w-3 h-3 mr-1" /> Notes
+            <Edit3 className="w-3 h-3 mr-1" /> {t.orders.notes}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setExpanded(!expanded)}
             className="text-xs ml-auto">
             <Eye className="w-3 h-3 mr-1" />
-            {expanded ? 'Hide' : 'Details'}
+            {expanded ? t.orders.hideDetails : t.orders.details}
             {expanded ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
           </Button>
         </div>
@@ -217,18 +252,18 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
             <input
               type="text" value={assignedTo}
               onChange={e => setAssignedTo(e.target.value)}
-              placeholder="Assign to (staff name)"
+              placeholder={t.orders.assignTo}
               className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500"
             />
             <textarea
               value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Internal notes..."
+              placeholder={t.orders.internalNotes}
               rows={2}
               className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveNotes} className="bg-green-600 hover:bg-green-700 text-white text-xs">Save</Button>
-              <Button size="sm" variant="outline" onClick={() => setEditingNotes(false)} className="text-xs">Cancel</Button>
+              <Button size="sm" onClick={handleSaveNotes} className="bg-green-600 hover:bg-green-700 text-white text-xs">{t.orders.save}</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingNotes(false)} className="text-xs">{t.orders.cancelEdit}</Button>
             </div>
           </div>
         )}
@@ -239,14 +274,14 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
         <div className="border-t border-gray-100 p-4 bg-gray-50 space-y-4">
           {/* Line Items */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Order Items</h4>
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.orderItems}</h4>
             <div className="space-y-1.5">
               {order.items?.map(item => (
                 <div key={item.id} className="flex justify-between items-center text-sm bg-white rounded-lg px-3 py-2 border border-gray-100">
                   <div>
                     <span className="font-medium text-gray-800">{item.product_name}</span>
-                    <span className="text-gray-400 text-xs ml-2">SKU: {item.product_sku}</span>
-                    {item.is_bulk_price && <span className="text-green-600 text-xs ml-2">● Bulk</span>}
+                    <span className="text-gray-400 text-xs ml-2">{t.orders.sku}: {item.product_sku}</span>
+                    {item.is_bulk_price && <span className="text-green-600 text-xs ml-2">● {t.orders.bulk}</span>}
                   </div>
                   <div className="text-right text-xs">
                     <span className="text-gray-600">×{item.quantity} @ {formatPrice(item.unit_price)}</span>
@@ -260,7 +295,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
           {/* Delivery + Totals */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Delivery Address</h4>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.deliveryAddress}</h4>
               <div className="bg-white rounded-lg p-3 border border-gray-100 text-sm text-gray-700 space-y-0.5">
                 <p className="font-medium">{order.delivery_name}</p>
                 {order.delivery_company && <p>{order.delivery_company}</p>}
@@ -270,15 +305,15 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
               </div>
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Order Summary</h4>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.orderSummary}</h4>
               <div className="bg-white rounded-lg p-3 border border-gray-100 text-sm space-y-1">
-                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
+                <div className="flex justify-between text-gray-600"><span>{t.orders.subtotal}</span><span>{formatPrice(order.subtotal)}</span></div>
                 {order.discount_amount > 0 && (
-                  <div className="flex justify-between text-green-600"><span>Bulk Savings</span><span>-{formatPrice(order.discount_amount)}</span></div>
+                  <div className="flex justify-between text-green-600"><span>{t.orders.bulkSavings}</span><span>-{formatPrice(order.discount_amount)}</span></div>
                 )}
-                <div className="flex justify-between text-gray-600"><span>Delivery</span><span>{order.delivery_fee === 0 ? 'FREE' : formatPrice(order.delivery_fee)}</span></div>
-                <div className="flex justify-between font-bold text-gray-900 border-t pt-1"><span>Total</span><span>{formatPrice(order.total_amount)}</span></div>
-                <p className="text-xs text-gray-500 pt-1">Payment: {paymentLabels[order.payment_method]}</p>
+                <div className="flex justify-between text-gray-600"><span>{t.orders.delivery}</span><span>{order.delivery_fee === 0 ? t.orders.free : formatPrice(order.delivery_fee)}</span></div>
+                <div className="flex justify-between font-bold text-gray-900 border-t pt-1"><span>{t.orders.total}</span><span>{formatPrice(order.total_amount)}</span></div>
+                <p className="text-xs text-gray-500 pt-1">{t.orders.payment}: {t.payment[order.payment_method] || paymentLabels[order.payment_method]}</p>
               </div>
             </div>
           </div>
@@ -286,7 +321,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
           {/* Check Image Review */}
           {order.has_check_image && (
             <div>
-              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Check Payment Review</h4>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.checkReview}</h4>
               <div className="bg-white rounded-lg p-3 border border-amber-200 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
@@ -294,9 +329,9 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                     order.payment_status === 'rejected' ? 'bg-red-100 text-red-700' :
                     'bg-amber-100 text-amber-700'
                   }`}>
-                    {order.payment_status === 'paid' ? '✓ Check Approved' :
-                     order.payment_status === 'rejected' ? '✗ Check Rejected' :
-                     '⏳ Pending Review'}
+                    {order.payment_status === 'paid' ? t.orders.checkApproved :
+                     order.payment_status === 'rejected' ? t.orders.checkRejected :
+                     t.orders.pendingReview}
                   </span>
                 </div>
                 <img
@@ -310,7 +345,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                     <Button
                       size="sm"
                       onClick={async () => {
-                        if (!window.confirm('Approve this check and confirm the order?')) return
+                        if (!window.confirm(t.orders.approveConfirm)) return
                         const res = await fetch(`${API_BASE}/api/staff/checks/${order.order_number}/approve`, {
                           method: 'POST', credentials: 'include'
                         })
@@ -320,13 +355,13 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                       }}
                       className="bg-green-600 hover:bg-green-700 text-white text-xs"
                     >
-                      ✓ Approve Check
+                      ✓ {t.orders.approveCheck}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={async () => {
-                        if (!window.confirm('Reject this check and cancel the order?')) return
+                        if (!window.confirm(t.orders.rejectConfirm)) return
                         const res = await fetch(`${API_BASE}/api/staff/checks/${order.order_number}/reject`, {
                           method: 'POST', credentials: 'include'
                         })
@@ -336,7 +371,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
                       }}
                       className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
                     >
-                      ✗ Reject Check
+                      ✗ {t.orders.rejectCheck}
                     </Button>
                   </div>
                 )}
@@ -346,12 +381,12 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
 
           {/* Timeline */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Timeline</h4>
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">{t.orders.timeline}</h4>
             <div className="space-y-1 text-xs text-gray-500">
-              <p>📥 Placed: {formatDate(order.created_at)}</p>
-              {order.confirmed_at && <p>✅ Confirmed: {formatDate(order.confirmed_at)}</p>}
-              {order.shipped_at && <p>🚚 Shipped: {formatDate(order.shipped_at)}</p>}
-              {order.delivered_at && <p>🏠 Delivered: {formatDate(order.delivered_at)}</p>}
+              <p>📥 {formatDate(order.created_at)}</p>
+              {order.confirmed_at && <p>✅ {t.status.confirmed}: {formatDate(order.confirmed_at)}</p>}
+              {order.shipped_at && <p>🚚 {t.status.shipped}: {formatDate(order.shipped_at)}</p>}
+              {order.delivered_at && <p>🏠 {t.status.delivered}: {formatDate(order.delivered_at)}</p>}
             </div>
           </div>
         </div>
@@ -361,7 +396,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate }) => {
 }
 
 // ─── Product Row (inline editable) ──────────────────────────────────────────
-const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock }) => {
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t }) => {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -404,26 +439,27 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock }) =>
     return (
       <>
         <tr className="bg-blue-50 border-l-4 border-blue-500">
-          <td className="px-3 py-2"><input className={inp} value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder="Product name" /></td>
-          <td className="px-3 py-2"><input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e => setForm(p=>({...p,sku:e.target.value}))} placeholder="SKU" /></td>
-          <td className="px-3 py-2"><input className={inp} value={form.brand} onChange={e => setForm(p=>({...p,brand:e.target.value}))} placeholder="Brand" /></td>
-          <td className="px-3 py-2"><input className={inp} value={form.unit_size} onChange={e => setForm(p=>({...p,unit_size:e.target.value}))} placeholder="e.g. 100ct" /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder={t.products.productName} /></td>
+          <td className="px-3 py-2"><input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e => setForm(p=>({...p,sku:e.target.value}))} placeholder={t.products.enterSku} /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.brand} onChange={e => setForm(p=>({...p,brand:e.target.value}))} placeholder={t.products.enterBrand} /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.unit_size} onChange={e => setForm(p=>({...p,unit_size:e.target.value}))} placeholder={t.products.enterSize} /></td>
           <td className="px-3 py-2">
-            <select className={inp} value={form.category_id} onChange={e => setForm(p=>({...p,category_id:parseInt(e.target.value)}))}>              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <select className={inp} value={form.category_id} onChange={e => setForm(p=>({...p,category_id:parseInt(e.target.value)}))}>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </td>
-          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => setForm(p=>({...p,unit_price:e.target.value}))} placeholder="0.00" /></td>
-          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => setForm(p=>({...p,bulk_price:e.target.value}))} placeholder="0.00" /></td>
-          <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder="Min qty" /></td>
+          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => setForm(p=>({...p,unit_price:e.target.value}))} placeholder={t.products.enterPrice} /></td>
+          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} /></td>
+          <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} /></td>
           <td className="px-3 py-2">
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${product.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-              {product.in_stock ? 'In Stock' : 'Out'}
+              {product.in_stock ? t.products.inStock : t.products.outOfStock}
             </span>
           </td>
           <td className="px-3 py-2">
             <div className="flex gap-1">
               <button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                {saving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
+                {saving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} {t.products.saving.replace('...', '') || 'Save'}
               </button>
               <button onClick={handleCancel} className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-2 py-1 rounded">
                 <X className="w-3 h-3" />
@@ -452,15 +488,15 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock }) =>
         <button onClick={() => onToggleStock(product.id)} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
           product.in_stock ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-700 hover:bg-red-100'
         }`}>
-          {product.in_stock ? '✓ In Stock' : '✗ Out'}
+          {product.in_stock ? `✓ ${t.products.inStock}` : `✗ ${t.products.outOfStock}`}
         </button>
       </td>
       <td className="px-3 py-2.5">
         <div className="flex gap-1">
-          <button onClick={() => setEditing(true)} className="text-blue-600 hover:bg-blue-50 p-1 rounded" title="Edit">
+          <button onClick={() => setEditing(true)} className="text-blue-600 hover:bg-blue-50 p-1 rounded" title={t.products.edit}>
             <PenLine className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => onDelete(product.id, product.name)} className="text-red-500 hover:bg-red-50 p-1 rounded" title="Delete">
+          <button onClick={() => onDelete(product.id, product.name)} className="text-red-500 hover:bg-red-50 p-1 rounded" title={t.products.delete}>
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -470,7 +506,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock }) =>
 }
 
 // ─── Add Product Form ─────────────────────────────────────────────────────────
-const AddProductForm = ({ categories, onAdd, onClose }) => {
+const AddProductForm = ({ categories, onAdd, onClose, t }) => {
   const [form, setForm] = useState({
     name: '', sku: '', brand: '', unit_size: '', description: '',
     category_id: categories[0]?.id || '',
@@ -483,7 +519,6 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
   const [uploadingImage, setUploadingImage] = useState(false)
   const inp = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 w-full'
 
-  // Update category_id when categories load
   useEffect(() => {
     if (categories.length > 0 && !form.category_id) {
       setForm(p => ({ ...p, category_id: categories[0].id }))
@@ -494,7 +529,7 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
     const file = e.target.files[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB')
+      setError(t.lang === 'zh' ? '图片必须小于 5MB' : 'Image must be under 5MB')
       return
     }
     setImageFile(file)
@@ -512,7 +547,6 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
     setSaving(true)
     setError('')
     let imageUrl = null
-    // Upload image first if one was selected
     if (imageFile) {
       setUploadingImage(true)
       const imgData = new FormData()
@@ -527,13 +561,13 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
         if (imgJson.success) {
           imageUrl = imgJson.image_url
         } else {
-          setError(imgJson.error || 'Image upload failed')
+          setError(imgJson.error || t.products.uploading)
           setSaving(false)
           setUploadingImage(false)
           return
         }
       } catch {
-        setError('Image upload failed — network error')
+        setError(t.common.error)
         setSaving(false)
         setUploadingImage(false)
         return
@@ -550,53 +584,53 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b">
-          <h2 className="text-lg font-bold text-gray-900">Add New Product</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t.products.addProductTitle}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-              <input className={inp} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} required placeholder="e.g. Vinyl Gloves - Medium (100ct)" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.name} *</label>
+              <input className={inp} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} required placeholder={t.products.productName} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
-              <input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e=>setForm(p=>({...p,sku:e.target.value.toUpperCase()}))} required placeholder="e.g. VG-M-100" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.sku} *</label>
+              <input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e=>setForm(p=>({...p,sku:e.target.value.toUpperCase()}))} required placeholder={t.products.enterSku} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.category} *</label>
               <select className={inp} value={form.category_id} onChange={e=>setForm(p=>({...p,category_id:parseInt(e.target.value)}))} required>
-                {categories.length === 0 && <option value="">Loading categories...</option>}
+                {categories.length === 0 && <option value="">{t.common.loading}</option>}
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-              <input className={inp} value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} placeholder="e.g. SafeGuard" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.brand}</label>
+              <input className={inp} value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} placeholder={t.products.enterBrand} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Size</label>
-              <input className={inp} value={form.unit_size} onChange={e=>setForm(p=>({...p,unit_size:e.target.value}))} placeholder="e.g. 100 count, 5 lb" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.size}</label>
+              <input className={inp} value={form.unit_size} onChange={e=>setForm(p=>({...p,unit_size:e.target.value}))} placeholder={t.products.enterSize} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price ($) *</label>
-              <input className={inp} type="number" step="0.01" min="0" value={form.unit_price} onChange={e=>setForm(p=>({...p,unit_price:e.target.value}))} required placeholder="0.00" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.unitPrice} ($) *</label>
+              <input className={inp} type="number" step="0.01" min="0" value={form.unit_price} onChange={e=>setForm(p=>({...p,unit_price:e.target.value}))} required placeholder={t.products.enterPrice} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bulk Price ($)</label>
-              <input className={inp} type="number" step="0.01" min="0" value={form.bulk_price} onChange={e=>setForm(p=>({...p,bulk_price:e.target.value}))} placeholder="0.00" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.bulkPrice} ($)</label>
+              <input className={inp} type="number" step="0.01" min="0" value={form.bulk_price} onChange={e=>setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bulk Min Qty</label>
-              <input className={inp} type="number" min="1" value={form.bulk_quantity} onChange={e=>setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder="e.g. 6" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.bulkQty}</label>
+              <input className={inp} type="number" min="1" value={form.bulk_quantity} onChange={e=>setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea className={inp} rows={2} value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Optional product description" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.products.description}</label>
+              <textarea className={inp} rows={2} value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder={t.products.description} />
             </div>
             {/* ── Product Image Upload ── */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Product Photo</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.products.uploadImage}</label>
               {imagePreview ? (
                 <div className="relative inline-block">
                   <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-xl border-2 border-blue-200 shadow" />
@@ -613,7 +647,7 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
                   <div className="flex flex-col items-center gap-1 text-gray-400">
                     <Upload className="w-8 h-8" />
-                    <span className="text-sm font-medium">Click to upload photo</span>
+                    <span className="text-sm font-medium">{t.products.uploadImage}</span>
                     <span className="text-xs">JPG, PNG, WEBP — max 5MB</span>
                   </div>
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -625,10 +659,10 @@ const AddProductForm = ({ categories, onAdd, onClose }) => {
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={saving || uploadingImage} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2">
               {saving || uploadingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              {uploadingImage ? 'Uploading image...' : saving ? 'Adding...' : 'Add Product'}
+              {uploadingImage ? t.products.uploading : saving ? t.products.adding : t.products.addProduct}
             </button>
             <button type="button" onClick={onClose} className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-              Cancel
+              {t.products.cancelAdd}
             </button>
           </div>
         </form>
@@ -655,6 +689,15 @@ const StaffPortal = () => {
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [lang, setLang] = useState(() => localStorage.getItem('staffLang') || 'en')
+
+  const t = staffPortalTranslations[lang]
+
+  const toggleLang = () => {
+    const next = lang === 'en' ? 'zh' : 'en'
+    setLang(next)
+    localStorage.setItem('staffLang', next)
+  }
 
   const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
 
@@ -669,7 +712,7 @@ const StaffPortal = () => {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const url = statusFilter ? `/api/staff/orders?status=${statusFilter}` : '/api/staff/orders'
+      const url = statusFilter ? `${API_BASE}/api/staff/orders?status=${statusFilter}` : `${API_BASE}/api/staff/orders`
       const res = await fetch(url, { credentials: 'include' })
       const data = await res.json()
       setOrders(Array.isArray(data) ? data : [])
@@ -703,7 +746,7 @@ const StaffPortal = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      let url = '/api/staff/products'
+      let url = `${API_BASE}/api/staff/products`
       const params = []
       if (productSearch) params.push(`search=${encodeURIComponent(productSearch)}`)
       if (productCategoryFilter) params.push(`category_id=${productCategoryFilter}`)
@@ -782,8 +825,8 @@ const StaffPortal = () => {
       })
       const data = await res.json()
       if (data.success) { fetchProducts(); return null }
-      return { error: data.error || 'Failed to save' }
-    } catch { return { error: 'Network error' } }
+      return { error: data.error || t.common.error }
+    } catch { return { error: t.common.error } }
   }
 
   const handleProductAdd = async (form) => {
@@ -796,12 +839,12 @@ const StaffPortal = () => {
       })
       const data = await res.json()
       if (data.success) { fetchProducts(); return null }
-      return { error: data.error || 'Failed to add product' }
-    } catch { return { error: 'Network error' } }
+      return { error: data.error || t.common.error }
+    } catch { return { error: t.common.error } }
   }
 
   const handleProductDelete = async (productId, name) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
+    if (!window.confirm(`${t.products.deleteConfirm} "${name}"?`)) return
     try {
       await fetch(`${API_BASE}/api/staff/products/${productId}`, { method: 'DELETE', credentials: 'include' })
       fetchProducts()
@@ -834,12 +877,12 @@ const StaffPortal = () => {
       })
       const data = await res.json()
       if (data.success) {
-        setCsvMessage({ type: 'success', text: `✅ Updated ${data.updated} products. Skipped: ${data.skipped}.${data.errors?.length ? ' Errors: ' + data.errors.join('; ') : ''}` })
+        setCsvMessage({ type: 'success', text: `✅ ${lang === 'zh' ? `已更新 ${data.updated} 个产品。跳过：${data.skipped}。` : `Updated ${data.updated} products. Skipped: ${data.skipped}.`}${data.errors?.length ? (lang === 'zh' ? ' 错误: ' : ' Errors: ') + data.errors.join('; ') : ''}` })
         fetchProducts()
       } else {
         setCsvMessage({ type: 'error', text: `❌ ${data.error}` })
       }
-    } catch { setCsvMessage({ type: 'error', text: '❌ Network error during import' }) }
+    } catch { setCsvMessage({ type: 'error', text: `❌ ${t.common.error}` }) }
     finally { setCsvImporting(false); e.target.value = '' }
   }
 
@@ -860,11 +903,11 @@ const StaffPortal = () => {
   })
 
   const tabs = [
-    { id: 'orders', label: 'Orders', icon: ClipboardList },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'products', label: 'Products', icon: Tag },
-    { id: 'inventory', label: 'Stock', icon: ShoppingBag },
-    { id: 'stats', label: 'Dashboard', icon: BarChart2 },
+    { id: 'orders', label: t.tabs.orders, icon: ClipboardList },
+    { id: 'customers', label: t.tabs.customers, icon: Users },
+    { id: 'products', label: t.tabs.products, icon: Tag },
+    { id: 'inventory', label: t.tabs.inventory, icon: ShoppingBag },
+    { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
   ]
 
   return (
@@ -874,19 +917,20 @@ const StaffPortal = () => {
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-sm">RS</div>
           <div>
-            <span className="font-semibold">RS LLD Staff Portal</span>
+            <span className="font-semibold">RS LLD {t.header.title}</span>
             <span className="text-slate-400 text-xs ml-2">Internal</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           {stats?.needs_attention > 0 && (
             <div className="flex items-center gap-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-              <AlertCircle className="w-3 h-3" /> {stats.needs_attention} need attention
+              <AlertCircle className="w-3 h-3" /> {stats.needs_attention} {lang === 'zh' ? '需处理' : 'need attention'}
             </div>
           )}
+          <LangToggle lang={lang} onToggle={toggleLang} />
           <span className="text-slate-300 text-sm">👤 {staff.full_name || staff.username}</span>
           <Button size="sm" variant="ghost" onClick={handleLogout} className="text-slate-300 hover:text-white text-xs">
-            <LogOut className="w-3 h-3 mr-1" /> Logout
+            <LogOut className="w-3 h-3 mr-1" /> {t.header.logout}
           </Button>
         </div>
       </div>
@@ -916,14 +960,13 @@ const StaffPortal = () => {
         {/* ── ORDERS TAB ── */}
         {activeTab === 'orders' && (
           <div>
-            {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-5">
               <div className="relative flex-1 min-w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text" value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search orders, customers, cities..."
+                  placeholder={t.orders.searchPlaceholder}
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -940,14 +983,14 @@ const StaffPortal = () => {
                           : cfg ? `${cfg.bg} ${cfg.color} ${cfg.border}` : 'bg-gray-100 text-gray-600 border-gray-200'
                       }`}
                     >
-                      {s ? statusConfig[s].label : 'All Orders'}
+                      {s ? t.status[s] : t.status.all}
                       {s && stats && ` (${stats[s] || 0})`}
                     </button>
                   )
                 })}
               </div>
               <Button size="sm" variant="outline" onClick={fetchOrders} className="text-xs">
-                <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Refresh
+                <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> {t.header.refresh}
               </Button>
             </div>
 
@@ -956,7 +999,7 @@ const StaffPortal = () => {
             ) : filteredOrders.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                 <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-500">No orders found</p>
+                <p className="text-gray-500">{t.orders.noOrders}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -966,6 +1009,8 @@ const StaffPortal = () => {
                     order={order}
                     onStatusUpdate={handleStatusUpdate}
                     onNotesUpdate={handleNotesUpdate}
+                    t={t}
+                    lang={lang}
                   />
                 ))}
               </div>
@@ -976,18 +1021,18 @@ const StaffPortal = () => {
         {/* ── CUSTOMERS TAB ── */}
         {activeTab === 'customers' && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Customer Accounts</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">{t.customers.title}</h2>
             {customers.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                 <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-500">No customers registered yet</p>
+                <p className="text-gray-500">{t.customers.noCustomers}</p>
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      {['Customer', 'Company', 'Email', 'Phone', 'Orders', 'Total Spent', 'Joined'].map(h => (
+                      {[t.customers.name, t.customers.company, t.customers.email, t.customers.phone, t.customers.orders, t.customers.spent, t.customers.joined].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
@@ -1003,7 +1048,7 @@ const StaffPortal = () => {
                           <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">{c.order_count}</span>
                         </td>
                         <td className="px-4 py-3 font-semibold text-gray-900">{formatPrice(c.total_spent)}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1016,25 +1061,23 @@ const StaffPortal = () => {
         {/* ── PRODUCTS TAB ── */}
         {activeTab === 'products' && (
           <div>
-            {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-              <h2 className="text-xl font-bold text-gray-900">Product Management</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t.products.title}</h2>
               <div className="flex flex-wrap gap-2">
                 <button onClick={handleCsvExport} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
-                  <Download className="w-4 h-4" /> Export CSV
+                  <Download className="w-4 h-4" /> {t.products.exportCsv}
                 </button>
                 <label className={`flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer ${csvImporting ? 'opacity-50' : ''}`}>
                   {csvImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  Import CSV
+                  {csvImporting ? t.products.importing : t.products.importCsv}
                   <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
                 </label>
                 <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
-                  <Plus className="w-4 h-4" /> Add Product
+                  <Plus className="w-4 h-4" /> {t.products.addProduct}
                 </button>
               </div>
             </div>
 
-            {/* CSV Message */}
             {csvMessage && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${csvMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
                 {csvMessage.text}
@@ -1042,14 +1085,13 @@ const StaffPortal = () => {
               </div>
             )}
 
-            {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-4">
               <div className="relative flex-1 min-w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text" value={productSearch}
                   onChange={e => setProductSearch(e.target.value)}
-                  placeholder="Search by name, SKU, brand..."
+                  placeholder={t.products.searchPlaceholder}
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -1058,32 +1100,30 @@ const StaffPortal = () => {
                 onChange={e => setProductCategoryFilter(e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">All Categories</option>
+                <option value="">{t.products.allCategories}</option>
                 {productCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <button onClick={fetchProducts} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                <RefreshCw className="w-3.5 h-3.5" /> {t.header.refresh}
               </button>
             </div>
 
-            {/* CSV Template Note */}
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              <strong>CSV Import:</strong> Download the CSV first to use as a template. Update prices/SKUs in the spreadsheet and re-import. Only existing SKUs will be updated — new rows are ignored.
+              <strong>{t.products.importCsv}:</strong> {lang === 'zh' ? '请先下载 CSV 作为模板，在电子表格中更新价格/货号后重新导入。只有已存在的货号会被更新，新行将被忽略。' : 'Download the CSV first to use as a template. Update prices/SKUs in the spreadsheet and re-import. Only existing SKUs will be updated — new rows are ignored.'}
             </div>
 
-            {/* Products Table */}
             <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Product Name', 'SKU', 'Brand', 'Size', 'Category', 'Unit Price', 'Bulk Price', 'Bulk Min', 'Stock', 'Actions'].map(h => (
+                    {[t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, t.products.stock, t.products.actions].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {products.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center py-12 text-gray-400">No products found</td></tr>
+                    <tr><td colSpan={10} className="text-center py-12 text-gray-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
                   ) : products.map(p => (
                     <ProductRow
                       key={p.id}
@@ -1092,19 +1132,20 @@ const StaffPortal = () => {
                       onSave={handleProductSave}
                       onDelete={handleProductDelete}
                       onToggleStock={handleProductToggleStock}
+                      t={t}
                     />
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-gray-400 mt-2">{products.length} products shown. Click the ✏️ edit icon on any row to edit inline.</p>
+            <p className="text-xs text-gray-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击 ✏️ 图标可内联编辑。' : 'products shown. Click the ✏️ edit icon on any row to edit inline.'}</p>
 
-            {/* Add Product Modal */}
             {showAddProduct && (
               <AddProductForm
                 categories={productCategories}
                 onAdd={handleProductAdd}
                 onClose={() => setShowAddProduct(false)}
+                t={t}
               />
             )}
           </div>
@@ -1113,12 +1154,12 @@ const StaffPortal = () => {
         {/* ── INVENTORY TAB ── */}
         {activeTab === 'inventory' && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Inventory Management</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">{t.inventory.title}</h2>
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Product', 'SKU', 'Brand', 'Unit Price', 'Bulk Price', 'Bulk Min', 'Status', 'Toggle'].map(h => (
+                    {[t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.status, t.inventory.action].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -1134,7 +1175,7 @@ const StaffPortal = () => {
                       <td className="px-4 py-3 text-gray-500">{p.bulk_quantity ? `${p.bulk_quantity}+` : '—'}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                          {p.in_stock ? 'In Stock' : 'Out of Stock'}
+                          {p.in_stock ? t.inventory.inStock : t.inventory.outOfStock}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -1146,7 +1187,7 @@ const StaffPortal = () => {
                               : 'border-green-200 text-green-600 hover:bg-green-50'
                           }`}
                         >
-                          {p.in_stock ? 'Mark Out' : 'Mark In'}
+                          {p.in_stock ? t.inventory.markOut : t.inventory.markIn}
                         </button>
                       </td>
                     </tr>
@@ -1160,14 +1201,13 @@ const StaffPortal = () => {
         {/* ── STATS / DASHBOARD TAB ── */}
         {activeTab === 'stats' && stats && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-5">Operations Dashboard</h2>
-            {/* KPI Cards */}
+            <h2 className="text-xl font-bold text-gray-900 mb-5">{t.stats.title}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Orders', value: stats.total_orders, icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { label: 'Needs Attention', value: stats.needs_attention, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
-                { label: 'In Transit', value: stats.shipped, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
-                { label: 'Total Revenue', value: formatPrice(stats.total_revenue), icon: BarChart2, color: 'text-green-600', bg: 'bg-green-50' },
+                { label: t.stats.totalOrders, value: stats.total_orders, icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50' },
+                { label: t.stats.needsAttention, value: stats.needs_attention, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+                { label: t.stats.inTransit, value: stats.shipped, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
+                { label: t.stats.totalRevenue, value: formatPrice(stats.total_revenue), icon: BarChart2, color: 'text-green-600', bg: 'bg-green-50' },
               ].map(kpi => (
                 <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 p-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.bg} mb-3`}>
@@ -1179,9 +1219,8 @@ const StaffPortal = () => {
               ))}
             </div>
 
-            {/* Status Breakdown */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h3 className="font-semibold text-gray-800 mb-4">Order Status Breakdown</h3>
+              <h3 className="font-semibold text-gray-800 mb-4">{t.stats.statusBreakdown}</h3>
               <div className="space-y-3">
                 {['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].map(s => {
                   const cfg = statusConfig[s]
@@ -1194,8 +1233,8 @@ const StaffPortal = () => {
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium text-gray-700">{cfg.label}</span>
-                          <span className="text-gray-500">{count} orders</span>
+                          <span className="font-medium text-gray-700">{t.status[s]}</span>
+                          <span className="text-gray-500">{count} {t.stats.orders}</span>
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
