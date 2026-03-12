@@ -1,26 +1,4 @@
-# ── Stage 1: Build the React frontend ─────────────────────────────────────────
-FROM node:20-slim AS frontend-builder
-
-WORKDIR /frontend
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Install frontend dependencies
-COPY frontend/package.json frontend/pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
-
-# Copy frontend source
-COPY frontend/ ./
-
-# Build with production Railway API URL baked in
-ARG VITE_API_URL=https://rs-lld-website-production.up.railway.app
-ARG VITE_STRIPE_PUBLISHABLE_KEY
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
-RUN pnpm build
-
-# ── Stage 2: Python backend ────────────────────────────────────────────────────
+# ── Single stage: Python backend with pre-built frontend ──────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -37,8 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend source
 COPY backend/ .
 
-# Copy built frontend into Flask static folder
-COPY --from=frontend-builder /frontend/dist ./src/static/
+# Copy pre-built frontend static files into Flask static folder
+# (frontend is built locally and committed to backend/src/static/)
+# The static files are already in place from the COPY backend/ above.
 
 # Create database directory
 RUN mkdir -p src/database
