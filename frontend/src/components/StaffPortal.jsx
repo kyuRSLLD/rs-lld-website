@@ -3,6 +3,7 @@ import { InvoicesTab } from './InvoiceBuilder'
 import { StaffManagementTab } from './StaffManagement'
 import CreateOrderModal from './CreateOrderModal'
 import { ApiKeyManagerTab } from './ApiKeyManager'
+import { BillAnalyzerTab } from './BillAnalyzer'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
@@ -917,7 +918,8 @@ const StaffPortal = () => {
     { id: 'inventory', label: t.tabs.inventory, icon: ShoppingBag },
     { id: 'invoices', label: t.tabs.invoices, icon: FileText },
     { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
-    ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
+    ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true },
+    { id: 'billAnalyzer', label: t.tabs.billAnalyzer, icon: TrendingDown }] : []),
   ]
 
   return (
@@ -1232,6 +1234,9 @@ const StaffPortal = () => {
         )}
 
         {/* ── API KEYS TAB (admin only) ── */}
+        {activeTab === 'billAnalyzer' && (
+          <BillAnalyzerTab t={t.billAnalyzer} />
+        )}
         {activeTab === 'apiKeys' && isAdmin && (
           <ApiKeyManagerTab t={t} lang={lang} />
         )}
