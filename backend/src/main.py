@@ -8,6 +8,7 @@ from flask_cors import CORS
 from src.models.user import db
 from src.models.product import Product, Category
 from src.models.order import Order, OrderItem, StaffUser
+from src.models.invoice import CustomInvoice
 from src.routes.user import user_bp
 from src.routes.product import product_bp
 from src.routes.chat import chat_bp
@@ -15,6 +16,7 @@ from src.routes.order import order_bp
 from src.routes.payment import payment_bp
 from src.routes.product_admin import product_admin_bp
 from src.routes.inventory_api import inventory_api_bp
+from src.routes.invoice import invoice_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
@@ -35,6 +37,7 @@ app.register_blueprint(order_bp, url_prefix='/api')
 app.register_blueprint(payment_bp, url_prefix='/api')
 app.register_blueprint(product_admin_bp, url_prefix='/api')
 app.register_blueprint(inventory_api_bp, url_prefix='/api')
+app.register_blueprint(invoice_bp, url_prefix='/api')
 
 # Ensure database directory exists
 _db_dir = os.path.join(os.path.dirname(__file__), 'database')
