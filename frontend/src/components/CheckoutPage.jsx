@@ -283,7 +283,6 @@ const CheckoutPage = ({ user }) => {
     delivery_state: '',
     delivery_zip: '',
     delivery_phone: user?.phone || '',
-    preferred_delivery_date: '',
     special_notes: '',
     payment_method: 'credit_card',
   })
@@ -292,12 +291,12 @@ const CheckoutPage = ({ user }) => {
     en: {
       title: 'Checkout', cart: 'Cart', delivery: 'Delivery', review: 'Review', payment: 'Payment', confirmed: 'Confirmed',
       emptyCart: 'Your cart is empty', browseProducts: 'Browse Products',
-      subtotal: 'Subtotal', deliveryFee: 'Delivery Fee', freeDelivery: 'FREE (orders $200+)',
+      subtotal: 'Subtotal', deliveryFee: 'Delivery Fee', freeDelivery: 'FREE (orders $100+)',
       total: 'Total', proceedDelivery: 'Proceed to Delivery', placeOrder: 'Review Order',
       backToCart: 'Back to Cart', backToDelivery: 'Back to Delivery', backToReview: 'Back to Review',
       deliveryInfo: 'Delivery Information', contactName: 'Contact Name', company: 'Restaurant / Company',
       address: 'Street Address', city: 'City', state: 'State', zip: 'ZIP Code', phone: 'Phone',
-      preferredDate: 'Preferred Delivery Date (optional)', notes: 'Special Notes / Instructions',
+      notes: 'Special Notes / Instructions',
       notesPlaceholder: 'e.g. Deliver to back entrance, call before arrival...',
       paymentMethod: 'Payment Method',
       creditCard: 'Credit Card', creditCardDesc: 'Pay securely with Visa, Mastercard, Amex, or Discover',
@@ -316,12 +315,12 @@ const CheckoutPage = ({ user }) => {
     zh: {
       title: '结账', cart: '购物车', delivery: '配送', review: '确认', payment: '付款', confirmed: '已确认',
       emptyCart: '购物车为空', browseProducts: '浏览产品',
-      subtotal: '小计', deliveryFee: '配送费', freeDelivery: '免费 (订单满$200)',
+      subtotal: '小计', deliveryFee: '配送费', freeDelivery: '免费 (订单满$100)',
       total: '总计', proceedDelivery: '继续填写配送信息', placeOrder: '确认订单',
       backToCart: '返回购物车', backToDelivery: '返回配送信息', backToReview: '返回确认',
       deliveryInfo: '配送信息', contactName: '联系人姓名', company: '餐厅/公司名称',
       address: '街道地址', city: '城市', state: '州', zip: '邮政编码', phone: '电话',
-      preferredDate: '期望配送日期（可选）', notes: '特殊说明/备注',
+      notes: '特殊说明/备注',
       notesPlaceholder: '例如：请送到后门，到达前请致电...',
       paymentMethod: '付款方式',
       creditCard: '信用卡', creditCardDesc: '使用Visa、Mastercard、Amex或Discover安全支付',
@@ -340,12 +339,12 @@ const CheckoutPage = ({ user }) => {
     ko: {
       title: '결제', cart: '장바구니', delivery: '배송', review: '확인', payment: '결제', confirmed: '완료',
       emptyCart: '장바구니가 비어 있습니다', browseProducts: '제품 둘러보기',
-      subtotal: '소계', deliveryFee: '배송비', freeDelivery: '무료 ($200 이상 주문)',
+      subtotal: '소계', deliveryFee: '배송비', freeDelivery: '무료 ($100 이상 주문)',
       total: '합계', proceedDelivery: '배송 정보 입력', placeOrder: '주문 확인',
       backToCart: '장바구니로 돌아가기', backToDelivery: '배송 정보로 돌아가기', backToReview: '확인으로 돌아가기',
       deliveryInfo: '배송 정보', contactName: '담당자 이름', company: '레스토랑/회사명',
       address: '도로명 주소', city: '도시', state: '주', zip: '우편번호', phone: '전화번호',
-      preferredDate: '희망 배송일 (선택사항)', notes: '특별 요청사항',
+      notes: '특별 요청사항',
       notesPlaceholder: '예: 뒷문으로 배송, 도착 전 전화 부탁드립니다...',
       paymentMethod: '결제 방법',
       creditCard: '신용카드', creditCardDesc: 'Visa, Mastercard, Amex, Discover로 안전하게 결제',
@@ -529,7 +528,7 @@ const CheckoutPage = ({ user }) => {
                 </div>
                 {deliveryFee > 0 && (
                   <p className="text-xs text-blue-600 bg-blue-50 rounded-lg p-2 mb-4">
-                    💡 Add {formatPrice(200 - cartTotal)} more for free delivery!
+                    💡 Add {formatPrice(100 - cartTotal)} more for free delivery!
                   </p>
                 )}
                 <Button onClick={() => setStep(2)} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
@@ -556,7 +555,6 @@ const CheckoutPage = ({ user }) => {
                   { name: 'delivery_state', label: t.state, required: true },
                   { name: 'delivery_zip', label: t.zip, required: true },
                   { name: 'delivery_phone', label: t.phone, required: false },
-                  { name: 'preferred_delivery_date', label: t.preferredDate, required: false, type: 'date' },
                 ].map(field => (
                   <div key={field.name} className={field.full ? 'sm:col-span-2' : ''}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -642,7 +640,7 @@ const CheckoutPage = ({ user }) => {
                 <p className="text-sm text-gray-600">{form.delivery_address}</p>
                 <p className="text-sm text-gray-600">{form.delivery_city}, {form.delivery_state} {form.delivery_zip}</p>
                 {form.delivery_phone && <p className="text-sm text-gray-600">{form.delivery_phone}</p>}
-                {form.preferred_delivery_date && <p className="text-sm text-blue-600 mt-1">📅 {form.preferred_delivery_date}</p>}
+
                 {form.special_notes && <p className="text-sm text-gray-500 mt-1 italic">"{form.special_notes}"</p>}
               </div>
               <div className="flex gap-3">

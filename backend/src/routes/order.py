@@ -36,8 +36,8 @@ def calculate_order_totals(items_data):
             unit_price = product.unit_price
         subtotal += unit_price * qty
 
-    # Free delivery over $200, otherwise $25
-    delivery_fee = 0.0 if subtotal >= 200 else 25.0
+    # Free delivery over $100, otherwise $25
+    delivery_fee = 0.0 if subtotal >= 100 else 25.0
     total = subtotal + delivery_fee
 
     return subtotal, discount, delivery_fee, total
@@ -79,7 +79,6 @@ def create_order():
             delivery_state=data['delivery_state'],
             delivery_zip=data['delivery_zip'],
             delivery_phone=data.get('delivery_phone', ''),
-            preferred_delivery_date=data.get('preferred_delivery_date', ''),
             special_notes=data.get('special_notes', ''),
             subtotal=subtotal,
             discount_amount=discount,
@@ -352,7 +351,7 @@ def staff_create_order():
             subtotal += qty * price
 
         discount_amount = float(data.get('discount_amount', 0.0))
-        delivery_fee = float(data.get('delivery_fee', 0.0 if subtotal >= 200 else 25.0))
+        delivery_fee = float(data.get('delivery_fee', 0.0 if subtotal >= 100 else 25.0))
         total_amount = subtotal - discount_amount + delivery_fee
 
         # Generate unique order number
@@ -385,7 +384,6 @@ def staff_create_order():
             delivery_state=data['delivery_state'],
             delivery_zip=data['delivery_zip'],
             delivery_phone=data.get('delivery_phone', ''),
-            preferred_delivery_date=data.get('preferred_delivery_date', ''),
             special_notes=data.get('special_notes', ''),
             subtotal=round(subtotal, 2),
             discount_amount=round(discount_amount, 2),

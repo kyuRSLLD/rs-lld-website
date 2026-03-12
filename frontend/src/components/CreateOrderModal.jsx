@@ -25,7 +25,6 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
     delivery_state: 'IL',
     delivery_zip: '',
     delivery_phone: '',
-    preferred_delivery_date: '',
     special_notes: '',
     payment_method: 'net30',
     payment_status: 'paid',
@@ -46,7 +45,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   // ── Totals ──────────────────────────────────────────────────────────────────
   const subtotal = items.reduce((s, it) => s + (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 0), 0)
   const discount = parseFloat(form.discount_amount) || 0
-  const deliveryFee = form.delivery_fee !== '' ? parseFloat(form.delivery_fee) : (subtotal >= 200 ? 0 : 25)
+  const deliveryFee = form.delivery_fee !== '' ? parseFloat(form.delivery_fee) : (subtotal >= 100 ? 0 : 25)
   const total = subtotal - discount + deliveryFee
 
   // ── Product search ───────────────────────────────────────────────────────────
@@ -187,12 +186,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                   value={form.delivery_phone}
                   onChange={e => setForm(f => ({ ...f, delivery_phone: e.target.value }))} />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-600 mb-1">{tO.deliveryDate || 'Delivery Date'}</label>
-                <input type="date" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                  value={form.preferred_delivery_date}
-                  onChange={e => setForm(f => ({ ...f, preferred_delivery_date: e.target.value }))} />
-              </div>
+
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.address || 'Street Address'} *</label>
                 <input required className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
@@ -329,7 +323,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.deliveryFee || 'Delivery Fee ($)'}</label>
               <input type="number" min="0" step="0.01" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                placeholder={subtotal >= 200 ? '0.00 (free)' : '25.00'}
+                placeholder={subtotal >= 100 ? '0.00 (free shipping)' : '25.00'}
                 value={form.delivery_fee}
                 onChange={e => setForm(f => ({ ...f, delivery_fee: e.target.value }))} />
             </div>

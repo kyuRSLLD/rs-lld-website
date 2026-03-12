@@ -70,7 +70,7 @@ export const CartProvider = ({ children }) => {
 
   const cartTotal = cart.reduce((sum, item) => sum + getEffectivePrice(item) * item.quantity, 0)
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
-  const deliveryFee = cartTotal >= 200 ? 0 : (cart.length > 0 ? 25 : 0)
+  const deliveryFee = cartTotal >= 100 ? 0 : (cart.length > 0 ? 25 : 0)
   const orderTotal = cartTotal + deliveryFee
 
   return (
