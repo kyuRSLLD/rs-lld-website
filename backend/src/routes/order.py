@@ -326,3 +326,121 @@ def update_inventory(product_id):
         product.bulk_price = data['bulk_price']
     db.session.commit()
     return jsonify({'success': True, 'product': product.to_dict()})
+
+
+@order_bp.route('/staff/orders', methods=['POST'])
+@staff_required
+def staff_create_order():
+    """Manually create an order from the staff portal (for order history population)."""
+    try:
+        data = request.json
+        items_data = data.get('items', [])
+
+        if not items_data:
+            return jsonify({'error': 'Order must contain at least one item'}), 400
+
+        required = ['delivery_name', 'delivery_address', 'delivery_city', 'delivery_state', 'delivery_zip']
+        for field in required:
+            if not data.get(field):
+                return jsonify({'error': f'{field} is required'}), 400
+
+        # Calculate totals from provided items (staff can override prices)
+        subtotal = 0.0
+        for item in items_data:
+            qty = float(item.get('quantity', 1))
+            price = float(item.get('unit_price', 0))
+            subtotal += qty * price
+
+        discount_amount = float(data.get('discount_amount', 0.0))
+        delivery_fee = float(data.get('delivery_fee', 0.0 if subtotal >= 200 else 25.0))
+        total_amount = subtotal - discount_amount + delivery_fee
+
+        # Generate unique order number
+        order_number = data.get('order_number', '').strip()
+        if order_number:
+            # Validate it's not already taken
+            if Order.query.filter_by(order_number=order_number).first():
+                return jsonify({'error': f'Order number {order_number} already exists'}), 400
+        else:
+            order_number = generate_order_number()
+            while Order.query.filter_by(order_number=order_number).first():
+                order_number = generate_order_number()
+
+        # Parse optional back-dated created_at
+        created_at = datetime.utcnow()
+        if data.get('created_at'):
+            try:
+                created_at = datetime.fromisoformat(data['created_at'].replace('Z', '+00:00').replace('+00:00', ''))
+            except Exception:
+                pass
+
+        order = Order(
+            order_number=order_number,
+            user_id=None,
+            status=data.get('status', 'delivered'),
+            delivery_name=data['delivery_name'],
+            delivery_company=data.get('delivery_company', ''),
+            delivery_address=data['delivery_address'],
+            delivery_city=data['delivery_city'],
+            delivery_state=data['delivery_state'],
+            delivery_zip=data['delivery_zip'],
+            delivery_phone=data.get('delivery_phone', ''),
+            preferred_delivery_date=data.get('preferred_delivery_date', ''),
+            special_notes=data.get('special_notes', ''),
+            subtotal=round(subtotal, 2),
+            discount_amount=round(discount_amount, 2),
+            delivery_fee=round(delivery_fee, 2),
+            total_amount=round(total_amount, 2),
+            payment_method=data.get('payment_method', 'net30'),
+            payment_status=data.get('payment_status', 'paid'),
+            staff_notes=data.get('staff_notes', 'Manually entered by staff'),
+            assigned_to=data.get('assigned_to', ''),
+            created_at=created_at,
+        )
+
+        # Set status timestamps
+        if order.status in ('confirmed', 'packed', 'shipped', 'delivered'):
+            order.confirmed_at = created_at
+        if order.status in ('shipped', 'delivered'):
+            order.shipped_at = created_at
+        if order.status == 'delivered':
+            order.delivered_at = created_at
+
+        db.session.add(order)
+        db.session.flush()  # get order.id before adding items
+
+        for item in items_data:
+            product_id = item.get('product_id')
+            product = Product.query.get(product_id) if product_id else None
+            qty = int(item.get('quantity', 1))
+            unit_price = float(item.get('unit_price', 0))
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=product_id,
+                product_name=item.get('product_name', product.name if product else 'Custom Item'),
+                product_sku=item.get('product_sku', product.sku if product else 'CUSTOM'),
+                product_brand=item.get('product_brand', product.brand if product else ''),
+                product_unit_size=item.get('product_unit_size', product.unit_size if product else ''),
+                quantity=qty,
+                unit_price=unit_price,
+                is_bulk_price=item.get('is_bulk_price', False),
+                line_total=round(qty * unit_price, 2),
+            )
+            db.session.add(order_item)
+
+        db.session.commit()
+        return jsonify({'success': True, 'order': order.to_dict(include_items=True)}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@order_bp.route('/staff/orders/<int:order_id>', methods=['DELETE'])
+@staff_required
+def staff_delete_order(order_id):
+    """Delete an order (admin use — for removing test/duplicate entries)."""
+    order = Order.query.get_or_404(order_id)
+    db.session.delete(order)
+    db.session.commit()
+    return jsonify({'success': True})

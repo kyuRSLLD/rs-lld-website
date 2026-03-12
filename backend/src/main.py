@@ -21,15 +21,17 @@ from src.routes.staff_admin import staff_admin_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
-CORS(app, supports_credentials=True, origins=[
-    'http://lldrestaurantsupply.com',
-    'https://lldrestaurantsupply.com',
-    'http://www.lldrestaurantsupply.com',
-    'https://www.lldrestaurantsupply.com',
-    'http://localhost:5173',
-    'http://localhost:5000',
-    'http://localhost:3000'
-])
+# Cookie settings — allow cross-origin cookies for local proxy testing
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+# Allow all origins when running locally for testing; production Railway deploy
+# restricts this via the ALLOWED_ORIGINS env var.
+_allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
+if _allowed_origins == '*':
+    CORS(app, supports_credentials=True, origins='*')
+else:
+    CORS(app, supports_credentials=True, origins=_allowed_origins.split(','))
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(product_bp, url_prefix='/api')

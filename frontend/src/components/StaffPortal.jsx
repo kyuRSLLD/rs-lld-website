@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { InvoicesTab } from './InvoiceBuilder'
 import { StaffManagementTab } from './StaffManagement'
+import CreateOrderModal from './CreateOrderModal'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
@@ -691,6 +692,7 @@ const StaffPortal = () => {
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [lang, setLang] = useState(() => localStorage.getItem('staffLang') || 'en')
 
   const t = staffPortalTranslations[lang]
@@ -999,6 +1001,10 @@ const StaffPortal = () => {
                   )
                 })}
               </div>
+              <button onClick={() => setShowCreateOrder(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> {t.createOrder?.buttonLabel || 'Create Order'}
+              </button>
               <Button size="sm" variant="outline" onClick={fetchOrders} className="text-xs">
                 <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> {t.header.refresh}
               </Button>
@@ -1283,6 +1289,20 @@ const StaffPortal = () => {
           </div>
         )}
       </div>
+
+      {/* ── CREATE ORDER MODAL ── */}
+      {showCreateOrder && (
+        <CreateOrderModal
+          t={t}
+          lang={lang}
+          onClose={() => setShowCreateOrder(false)}
+          onCreated={(newOrder) => {
+            setShowCreateOrder(false)
+            fetchOrders()
+            fetchStats()
+          }}
+        />
+      )}
     </div>
   )
 }
