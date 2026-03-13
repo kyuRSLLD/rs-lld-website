@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { ArrowRight, CheckCircle, Clock, DollarSign, Truck, Users, Shield } from 'lucide-react'
+import { ArrowRight, CheckCircle, Clock, DollarSign, Truck, Users, Shield, TrendingDown, Globe } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 
@@ -45,6 +45,33 @@ const HomePage = () => {
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Save Me Money Banner */}
+      <section className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 py-8">
+            <div className="flex items-start gap-4">
+              <div className="bg-white/20 rounded-full p-3 flex-shrink-0">
+                <TrendingDown className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold mb-1">
+                  {t('saveMeMoney.bannerTitle')}
+                </h2>
+                <p className="text-orange-100 text-base max-w-xl">
+                  {t('saveMeMoney.bannerDesc')}
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/save-me-money"
+              className="flex-shrink-0 bg-white text-orange-600 hover:bg-orange-50 font-bold px-8 py-3 rounded-lg text-base transition-colors shadow-md whitespace-nowrap"
+            >
+              {t('saveMeMoney.bannerCta')}
+            </Link>
           </div>
         </div>
       </section>

@@ -22,6 +22,7 @@ from src.routes.api_keys import api_keys_bp
 from src.routes.bill_analyzer import bill_bp
 from src.routes.social_auth import social_bp
 from src.routes.password_reset import password_reset_bp
+from src.routes.save_me_money import save_me_money_bp
 from src.models.api_key import APIKey
 from src.models.supplier_bill import SupplierBill
 
@@ -53,6 +54,7 @@ app.register_blueprint(api_keys_bp, url_prefix='/api')
 app.register_blueprint(bill_bp, url_prefix='/api')
 app.register_blueprint(social_bp, url_prefix='/api')
 app.register_blueprint(password_reset_bp, url_prefix='/api')
+app.register_blueprint(save_me_money_bp, url_prefix='/api')
 
 # Ensure database directory exists
 _db_dir = os.path.join(os.path.dirname(__file__), 'database')
