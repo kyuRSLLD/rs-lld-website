@@ -125,6 +125,13 @@ export const translations = {
           description: "We're not just a supplier – we're your partner in building a successful restaurant."
         }
       }
+    },
+
+    // Save Me Money
+    saveMeMoney: {
+      bannerTitle: 'Save Money on Your Restaurant Supplies',
+      bannerDesc: 'Our consultants in China work directly with manufacturers to find you better pricing. Upload your invoice — we\'ll show you how much you can save.',
+      bannerCta: 'See How Much I Can Save →',
     }
   },
   
@@ -254,6 +261,13 @@ export const translations = {
           description: "我们不仅仅是供应商——我们是您建设成功餐厅的合作伙伴。"
         }
       }
+    },
+
+    // Save Me Money
+    saveMeMoney: {
+      bannerTitle: '节省餐厅供应品费用',
+      bannerDesc: '我们驻中国的顾问直接与制造商合作，为您寻找更优惠的价格。上传您的发票——我们将告诉您能节省多少。',
+      bannerCta: '查看我能节省多少 →',
     }
   },
   
@@ -383,6 +397,13 @@ export const translations = {
           description: "우리는 단순한 공급업체가 아닙니다 – 성공적인 레스토랑 구축의 파트너입니다."
         }
       }
+    },
+
+    // Save Me Money
+    saveMeMoney: {
+      bannerTitle: '레스토랑 용품 비용 절약',
+      bannerDesc: '중국에 주재한 저희 컨설턴트들이 제조업체와 직접 협력하여 더 나은 가격을 찾아드립니다. 청구서를 업로드하면 얼마나 절약할 수 있는지 알려드립니다.',
+      bannerCta: '얼마나 절약할 수 있는지 보기 →',
     }
   }
 };
