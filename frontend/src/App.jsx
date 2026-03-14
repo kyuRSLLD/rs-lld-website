@@ -64,10 +64,12 @@ function App() {
       <CartProvider>
         <Router>
           <div className="min-h-screen bg-background">
-            {/* Staff portal has its own full-screen layout, no shared header */}
             <Routes>
+              {/* Staff portal — full-screen, no shared header */}
               <Route path="/staff/*" element={<StaffPortal />} />
-              <Route path="*" element={
+
+              {/* Customer-facing pages */}
+              <Route path="/*" element={
                 <>
                   <Header
                     user={user}
@@ -85,14 +87,12 @@ function App() {
                     <Route path="/track/:orderNumber" element={<OrderTrackingPage user={user} />} />
                     <Route path="/save-me-money" element={<SaveMeMoneyPage />} />
                   </Routes>
-
                   {showLoginModal && (
                     <LoginModal
                       onClose={() => setShowLoginModal(false)}
                       onLogin={handleLogin}
                     />
                   )}
-
                   <ChatBot />
                 </>
               } />
