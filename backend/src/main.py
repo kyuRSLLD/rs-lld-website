@@ -28,16 +28,22 @@ from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'REDACTED_SECRET_KEY')
-# Cookie settings — Lax in production (Railway), None only for local cross-origin proxy testing
+# Cookie settings — SameSite=None + Secure=True required for cross-origin requests
+# (Bluehost frontend calling Railway backend)
 _on_railway = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' if _on_railway else 'None'
-app.config['SESSION_COOKIE_SECURE'] = _on_railway
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-# Allow all origins when running locally for testing; production Railway deploy
-# restricts this via the ALLOWED_ORIGINS env var.
+# CORS: allow lldrestaurantsupply.com and Railway URL, plus wildcard for local dev
 _allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
 if _allowed_origins == '*':
-    CORS(app, supports_credentials=True, origins='*')
+    CORS(app, supports_credentials=True, origins=[
+        'https://lldrestaurantsupply.com',
+        'https://www.lldrestaurantsupply.com',
+        'https://rs-lld-website-production.up.railway.app',
+        'http://localhost:5173',
+        'http://localhost:7777',
+    ])
 else:
     CORS(app, supports_credentials=True, origins=_allowed_origins.split(','))
 
