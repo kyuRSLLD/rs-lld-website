@@ -8,7 +8,7 @@ backend/env/
 # Build outputs
 frontend/dist/
 frontend/build/
-backend/src/static/
+# backend/src/static/ is intentionally tracked so Railway can serve the built frontend
 *.pyc
 __pycache__/
 */__pycache__/
