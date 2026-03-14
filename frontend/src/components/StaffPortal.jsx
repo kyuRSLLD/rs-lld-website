@@ -1065,7 +1065,7 @@ const StaffPortal = () => {
         body: formData,
       })
       const data = await res.json()
-      if (data.success) fetchInventory()
+      if (data.success) { fetchInventory(); fetchProducts() }
     } catch {}
     setInventoryImageUploading(s => ({ ...s, [productId]: false }))
   }
@@ -1077,6 +1077,7 @@ const StaffPortal = () => {
         credentials: 'include',
       })
       fetchInventory()
+      fetchProducts()
     } catch {}
   }
 
@@ -1406,7 +1407,7 @@ const StaffPortal = () => {
                       onSave={handleProductSave}
                       onDelete={handleProductDelete}
                       onToggleStock={handleProductToggleStock}
-                      onImageUpdate={(id, url) => setProducts(prev => prev.map(pr => pr.id === id ? {...pr, image_url: url} : pr))}
+                      onImageUpdate={(id, url) => { setProducts(prev => prev.map(pr => pr.id === id ? {...pr, image_url: url} : pr)); fetchInventory() }}
                       lang={lang}
                       t={t}
                     />
