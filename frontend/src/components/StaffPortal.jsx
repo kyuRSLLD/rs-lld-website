@@ -1183,51 +1183,48 @@ const StaffPortal = () => {
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Top Nav */}
-      <div className="bg-white border-b border-stone-200 text-stone-900 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center font-bold text-sm text-white">RS</div>
-          <div>
-            <span className="font-semibold text-stone-900">RS LLD {t.header.title}</span>
-            <span className="text-stone-400 text-xs ml-2">Internal</span>
+      <div className="bg-white border-b border-stone-200 text-stone-900 px-3 sm:px-6 py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center font-bold text-sm text-white flex-shrink-0">RS</div>
+          <div className="min-w-0">
+            <span className="font-semibold text-stone-900 text-sm sm:text-base truncate block">RS LLD <span className="hidden sm:inline">{t.header.title}</span></span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
           {stats?.needs_attention > 0 && (
-            <div className="flex items-center gap-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+            <div className="hidden sm:flex items-center gap-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
               <AlertCircle className="w-3 h-3" /> {stats.needs_attention} {lang === 'zh' ? '需处理' : 'need attention'}
             </div>
           )}
           <LangToggle lang={lang} onToggle={toggleLang} />
-          <span className="text-stone-500 text-sm">👤 {staff.full_name || staff.username}</span>
-          <Button size="sm" variant="ghost" onClick={handleLogout} className="text-stone-500 hover:text-stone-900 text-xs">
-            <LogOut className="w-3 h-3 mr-1" /> {t.header.logout}
+          <span className="hidden sm:inline text-stone-500 text-sm truncate max-w-[120px]">👤 {staff.full_name || staff.username}</span>
+          <Button size="sm" variant="ghost" onClick={handleLogout} className="text-stone-500 hover:text-stone-900 text-xs px-2">
+            <LogOut className="w-3 h-3 sm:mr-1" /> <span className="hidden sm:inline">{t.header.logout}</span>
           </Button>
         </div>
       </div>
-
-      {/* Tab Bar */}
-      <div className="bg-white border-b border-stone-200 px-6">
-        <div className="flex gap-0">
+      {/* Tab Bar - scrollable on mobile */}
+      <div className="bg-white border-b border-stone-200 px-2 sm:px-6">
+        <div className="flex gap-0 overflow-x-auto" style={{WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.id
-                  ? tab.adminOnly ? 'border-stone-900 text-stone-900' : 'border-stone-900 text-stone-900'
-                  : tab.adminOnly ? 'border-transparent text-stone-400 hover:text-stone-700' : 'border-transparent text-stone-400 hover:text-stone-700'
+                  ? 'border-stone-900 text-stone-900'
+                  : 'border-transparent text-stone-400 hover:text-stone-700'
               }`}
             >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
+              <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>{tab.label}</span>
               {tab.adminOnly && (
-                <span className="text-xs bg-stone-900 text-white px-1.5 py-0.5 rounded-full font-semibold ml-0.5">A</span>
+                <span className="text-xs bg-stone-900 text-white px-1 py-0.5 rounded-full font-semibold">A</span>
               )}
             </button>
           ))}
         </div>
       </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         {/* ── ORDERS TAB ── */}
@@ -1305,12 +1302,12 @@ const StaffPortal = () => {
                 <p className="text-stone-500">{t.customers.noCustomers}</p>
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="bg-white rounded-xl border border-stone-100 overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
                   <thead className="bg-stone-50 border-b border-stone-100">
                     <tr>
                       {[t.customers.name, t.customers.company, t.customers.email, t.customers.phone, t.customers.orders, t.customers.spent, t.customers.joined].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1390,7 +1387,7 @@ const StaffPortal = () => {
             </div>
 
             <div className="bg-white rounded-xl border border-stone-100 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
                     {[lang === 'zh' ? '图片' : 'Image', t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, t.products.stock, t.products.actions].map(h => (
@@ -1435,7 +1432,7 @@ const StaffPortal = () => {
           <div>
             <h2 className="text-xl font-bold text-stone-900 mb-4">{t.inventory.title}</h2>
             <div className="bg-white rounded-xl border border-stone-100 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[700px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
                     {[t.inventory.image, t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.status, t.inventory.action].map(h => (
