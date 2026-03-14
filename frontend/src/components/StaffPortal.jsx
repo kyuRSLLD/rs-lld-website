@@ -9,7 +9,7 @@ import {
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe, FileText, Shield, Key
+  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
