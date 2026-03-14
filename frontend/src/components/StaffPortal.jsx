@@ -47,6 +47,13 @@ const StaffLogin = ({ onLogin }) => {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [lang, setLang] = useState(() => localStorage.getItem('staffLang') || 'en')
+  const [view, setView] = useState('login')
+  const [forgotIdentifier, setForgotIdentifier] = useState('')
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [message, setMessage] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [resetToken, setResetToken] = useState('')
   const t = staffPortalTranslations[lang]
 
   const toggleLang = () => {
@@ -70,6 +77,77 @@ const StaffLogin = ({ onLogin }) => {
       if (data.success) onLogin(data.staff)
       else setError(t.login.error)
     } catch { setError(t.common.error) }
+    finally { setLoading(false) }
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: forgotIdentifier }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMessage(lang === 'zh' ? '重置链接已发送到您的邮箱。' : 'A reset link has been sent to your email.')
+        setView('success')
+      } else {
+        setError(data.error || (lang === 'zh' ? '未找到该用户。' : 'User not found.'))
+      }
+    } catch { setError(lang === 'zh' ? '发送失败，请重试。' : 'Failed to send. Please try again.') }
+    finally { setLoading(false) }
+  }
+
+  const handleForgotUsername = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/forgot-username`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMessage(lang === 'zh' ? '您的用户名已发送到您的邮箱。' : 'Your username has been sent to your email.')
+        setView('success')
+      } else {
+        setError(data.error || (lang === 'zh' ? '未找到该邮箱。' : 'Email not found.'))
+      }
+    } catch { setError(lang === 'zh' ? '发送失败，请重试。' : 'Failed to send. Please try again.') }
+    finally { setLoading(false) }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      setError(lang === 'zh' ? '两次密码不一致。' : 'Passwords do not match.')
+      return
+    }
+    if (newPassword.length < 6) {
+      setError(lang === 'zh' ? '密码至少需要6位。' : 'Password must be at least 6 characters.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, new_password: newPassword }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMessage(lang === 'zh' ? '密码已成功更新，请重新登录。' : 'Password updated successfully. Please log in.')
+        setView('success')
+      } else {
+        setError(data.error || (lang === 'zh' ? '重置失败，链接可能已过期。' : 'Reset failed. Link may have expired.'))
+      }
+    } catch { setError(lang === 'zh' ? '更新失败，请重试。' : 'Failed to update. Please try again.') }
     finally { setLoading(false) }
   }
 
