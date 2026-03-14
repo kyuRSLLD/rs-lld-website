@@ -15,7 +15,7 @@ export const translations = {
     hero: {
       title: "We Know Running a Restaurant is Hard.",
       subtitle: "Let Us Make Supplies Easy.",
-      description: "RS LLD understands the daily struggles of restaurant owners. Get the best prices on non-perishable goods with reliable service you can count on.",
+      description: "RS LLD — Restaurant Supply Leading Logistics & Distribution — understands the daily struggles of restaurant owners. Get the best prices on non-perishable goods with reliable service you can count on.",
       browseProducts: "Browse Products",
       getQuote: "Get Quote"
     },
@@ -42,7 +42,7 @@ export const translations = {
     // Partner Section
     partner: {
       title: "Your Partner in Success",
-      description: "At RS LLD, we've built our business around one simple promise: to make your supply chain one less thing to worry about.",
+      description: "At RS LLD (Restaurant Supply Leading Logistics & Distribution), we've built our business around one simple promise: to make your supply chain one less thing to worry about.",
       pricing: {
         title: "Competitive Bulk Pricing",
         description: "Save significantly with our volume discounts on non-perishable goods. The more you order, the more you save."
@@ -76,7 +76,7 @@ export const translations = {
     // CTA Section
     cta: {
       title: "Ready to Simplify Your Supply Chain?",
-      description: "Join hundreds of restaurant owners who trust RS LLD for their non-perishable supply needs.",
+      description: "Join hundreds of restaurant owners who trust RS LLD — Restaurant Supply Leading Logistics & Distribution — for their non-perishable supply needs.",
       viewProducts: "View Products",
       contactSales: "Contact Sales"
     },

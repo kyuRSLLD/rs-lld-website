@@ -131,8 +131,9 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
               <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-2">
                 <span className="text-white font-bold text-lg">RS</span>
               </div>
-              <h1 className="text-2xl font-bold text-stone-900">RS LLD Restaurant Supply</h1>
-              <p className="text-stone-500 text-sm">kyu@lldrestaurantsupply.com</p>
+              <h1 className="text-2xl font-bold text-stone-900">RS LLD</h1>
+              <p className="text-stone-500 text-xs font-medium">Restaurant Supply Leading Logistics &amp; Distribution</p>
+              <p className="text-stone-500 text-sm">info@lldrestaurantsupply.com</p>
               <p className="text-stone-500 text-sm">lldrestaurantsupply.com</p>
             </div>
             <div className="text-right">
@@ -240,7 +241,7 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
 
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-stone-100 text-center text-xs text-stone-400">
-            <p>RS LLD Restaurant Supply · lldrestaurantsupply.com · kyu@lldrestaurantsupply.com</p>
+            <p>RS LLD — Restaurant Supply Leading Logistics &amp; Distribution · lldrestaurantsupply.com · info@lldrestaurantsupply.com</p>
           </div>
         </div>
       </div>

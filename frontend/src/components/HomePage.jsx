@@ -92,7 +92,7 @@ const HomePage = () => {
             <div>
               <img 
                 src={stressedOwnerImg} 
-                alt="Restaurant owner managing operations - LLD Restaurant Supply serves restaurant owners nationwide" 
+                alt="Restaurant owner managing operations - RS LLD (Restaurant Supply Leading Logistics & Distribution) serves restaurant owners nationwide" 
                 className="rounded-lg shadow-lg w-full h-64 object-cover"
               />
             </div>
@@ -168,7 +168,7 @@ const HomePage = () => {
             <div>
               <img 
                 src={partnershipImg} 
-                alt="LLD Restaurant Supply partnership with restaurant owners across the United States" 
+                alt="RS LLD — Restaurant Supply Leading Logistics & Distribution — partnership with restaurant owners across the United States" 
                 className="rounded-lg shadow-lg w-full h-64 object-cover"
               />
             </div>
@@ -205,7 +205,7 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-3">Serving Restaurant Owners Nationwide</h2>
           <p className="text-gray-600 max-w-3xl mx-auto mb-6">
-            LLD Restaurant Supply ships wholesale restaurant supplies to restaurants, Chinese restaurants, Asian restaurants, 
+            RS LLD (Restaurant Supply Leading Logistics & Distribution) ships wholesale restaurant supplies to restaurants, Chinese restaurants, Asian restaurants, 
             and food service businesses across the United States. Call us at (224) 424-7271 or email 
             sales@lldrestaurantsupply.com for wholesale pricing and shipping options.
           </p>
