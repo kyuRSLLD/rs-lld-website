@@ -568,9 +568,11 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 }
 
 // ─── Product Row (inline editable) ──────────────────────────────────────────
-const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t }) => {
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, lang, t }) => {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [currentImageUrl, setCurrentImageUrl] = useState(product.image_url || null)
   const [form, setForm] = useState({
     name: product.name,
     sku: product.sku,
@@ -583,6 +585,39 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t })
     description: product.description || '',
   })
   const [error, setError] = useState('')
+
+  const handleImageUpload = async (file) => {
+    if (!file) return
+    setImageUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const res = await fetch(`${API_BASE}/api/staff/products/${product.id}/image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.image_url) {
+        setCurrentImageUrl(data.image_url)
+        if (onImageUpdate) onImageUpdate(product.id, data.image_url)
+      }
+    } catch {}
+    finally { setImageUploading(false) }
+  }
+
+  const handleImageRemove = async () => {
+    setImageUploading(true)
+    try {
+      await fetch(`${API_BASE}/api/staff/products/${product.id}/image`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      setCurrentImageUrl(null)
+      if (onImageUpdate) onImageUpdate(product.id, null)
+    } catch {}
+    finally { setImageUploading(false) }
+  }
   const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
 
   const handleSave = async () => {
@@ -646,6 +681,33 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, t })
 
   return (
     <tr className={`hover:bg-stone-50 transition-colors ${!product.in_stock ? 'opacity-60' : ''}`}>
+      {/* Image cell */}
+      <td className="px-3 py-2.5">
+        <div className="flex flex-col items-center gap-1" style={{minWidth: 64}}>
+          {currentImageUrl ? (
+            <img
+              src={currentImageUrl.startsWith('/api') ? `${API_BASE}${currentImageUrl}` : currentImageUrl}
+              alt={product.name}
+              className="w-12 h-12 object-cover rounded-lg border border-stone-200 bg-stone-50"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-lg border border-dashed border-stone-300 bg-stone-50 flex items-center justify-center">
+              <Package className="w-4 h-4 text-stone-300" />
+            </div>
+          )}
+          <label className={`cursor-pointer text-xs px-1.5 py-0.5 rounded border transition-all whitespace-nowrap ${
+            imageUploading ? 'border-stone-200 text-stone-400 cursor-not-allowed' : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+          }`}>
+            {imageUploading ? '...' : currentImageUrl ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '上传' : 'Upload')}
+            <input type="file" accept="image/*" className="hidden" disabled={imageUploading} onChange={e => handleImageUpload(e.target.files[0])} />
+          </label>
+          {currentImageUrl && !imageUploading && (
+            <button onClick={handleImageRemove} className="text-xs text-red-400 hover:text-red-600 underline">
+              {lang === 'zh' ? '删除' : 'Remove'}
+            </button>
+          )}
+        </div>
+      </td>
       <td className="px-3 py-2.5 font-medium text-stone-900 text-sm">{product.name}</td>
       <td className="px-3 py-2.5 text-stone-500 font-mono text-xs">{product.sku}</td>
       <td className="px-3 py-2.5 text-stone-600 text-sm">{product.brand || '—'}</td>
@@ -1331,14 +1393,14 @@ const StaffPortal = () => {
               <table className="w-full text-sm">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    {[t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, t.products.stock, t.products.actions].map(h => (
+                    {[lang === 'zh' ? '图片' : 'Image', t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, t.products.stock, t.products.actions].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {products.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center py-12 text-stone-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
+                    <tr><td colSpan={11} className="text-center py-12 text-stone-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
                   ) : products.map(p => (
                     <ProductRow
                       key={p.id}
@@ -1347,6 +1409,8 @@ const StaffPortal = () => {
                       onSave={handleProductSave}
                       onDelete={handleProductDelete}
                       onToggleStock={handleProductToggleStock}
+                      onImageUpdate={(id, url) => setProducts(prev => prev.map(pr => pr.id === id ? {...pr, image_url: url} : pr))}
+                      lang={lang}
                       t={t}
                     />
                   ))}
