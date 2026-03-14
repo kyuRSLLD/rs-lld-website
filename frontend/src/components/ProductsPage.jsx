@@ -307,13 +307,13 @@ const ProductsPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {products.map((product) => (
-              <div
+              <Link
                 key={product.id}
-                className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 flex flex-col"
+                to={`/products/${product.sku}`}
+                className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 flex flex-col cursor-pointer group"
               >
-                {/* Product Image — click to go to detail page */}
-                <Link to={`/products/${product.sku}`} className="block">
-                  <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100 hover:opacity-90 transition-opacity cursor-pointer">
+                {/* Product Image */}
+                <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100 group-hover:opacity-90 transition-opacity">
                     {product.image_url ? (
                       <img
                         src={`${API_BASE}${product.image_url}`}
@@ -327,14 +327,13 @@ const ProductsPage = () => {
                     ) : (
                       <span className="text-4xl">{categoryIcons[product.category_name] || '📦'}</span>
                     )}
-                  </div>
-                </Link>
+                </div>
 
                 {/* Product Info */}
                 <div className="p-4 flex flex-col flex-1">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2 flex-1">
-                      <Link to={`/products/${product.sku}`} className="hover:text-blue-600 transition-colors">{product.name}</Link>
+                    <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2 flex-1 group-hover:text-blue-600 transition-colors">
+                      {product.name}
                     </h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
                       product.in_stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -365,7 +364,7 @@ const ProductsPage = () => {
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                       disabled={!product.in_stock}
-                      onClick={() => handleAddToCart(product)}
+                      onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
                     >
                       {addedProductId === product.id ? (
                         <><CheckCircle className="w-4 h-4 mr-2" /> Added!</>
@@ -375,7 +374,7 @@ const ProductsPage = () => {
                     </Button>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
