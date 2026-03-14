@@ -6,6 +6,7 @@ import { CartProvider } from './contexts/CartContext'
 import Header from './components/Header'
 import HomePage from './components/HomePage'
 import ProductsPage from './components/ProductsPage'
+import ProductDetailPage from './components/ProductDetailPage'
 import AboutPage from './components/AboutPage'
 import ContactPage from './components/ContactPage'
 import LoginModal from './components/LoginModal'
@@ -91,6 +92,7 @@ function App() {
               <Route element={<CustomerLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/products" element={<ProductsPage />} />
+                <Route path="/products/:sku" element={<ProductDetailPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <HomePage />} />

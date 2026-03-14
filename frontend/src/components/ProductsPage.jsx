@@ -1,6 +1,6 @@
 import API_BASE from '../config/api'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Search, ShoppingCart, Sparkles, X, Tag, CheckCircle, Package } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -311,28 +311,30 @@ const ProductsPage = () => {
                 key={product.id}
                 className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 flex flex-col"
               >
-                {/* Product Image */}
-                <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100">
-                  {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.name}
-                      className="w-full h-full object-contain p-2"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                        e.target.parentElement.innerHTML = `<span class="text-4xl">${categoryIcons[product.category_name] || '📦'}</span>`
-                      }}
-                    />
-                  ) : (
-                    <span className="text-4xl">{categoryIcons[product.category_name] || '📦'}</span>
-                  )}
-                </div>
+                {/* Product Image — click to go to detail page */}
+                <Link to={`/products/${product.sku}`} className="block">
+                  <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100 hover:opacity-90 transition-opacity cursor-pointer">
+                    {product.image_url ? (
+                      <img
+                        src={`${API_BASE}${product.image_url}`}
+                        alt={product.name}
+                        className="w-full h-full object-contain p-2"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.parentElement.innerHTML = `<span class="text-4xl">${categoryIcons[product.category_name] || '📦'}</span>`
+                        }}
+                      />
+                    ) : (
+                      <span className="text-4xl">{categoryIcons[product.category_name] || '📦'}</span>
+                    )}
+                  </div>
+                </Link>
 
                 {/* Product Info */}
                 <div className="p-4 flex flex-col flex-1">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2 flex-1">
-                      {product.name}
+                      <Link to={`/products/${product.sku}`} className="hover:text-blue-600 transition-colors">{product.name}</Link>
                     </h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
                       product.in_stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'

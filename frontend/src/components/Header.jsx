@@ -32,10 +32,13 @@ const Header = ({ user, onLoginClick, onLogout }) => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-sm">RS</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">RS LLD</span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-xl font-bold text-gray-900">RS LLD</span>
+              <span className="hidden sm:block text-xs text-gray-500 font-normal">Restaurant Supply Leading Logistics &amp; Distribution</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}

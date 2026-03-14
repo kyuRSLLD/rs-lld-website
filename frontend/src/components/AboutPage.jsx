@@ -8,7 +8,7 @@ const AboutPage = () => {
 
   const content = {
     en: {
-      heroTitle: "About RS LLD",
+      heroTitle: "About RS LLD — Restaurant Supply Leading Logistics & Distribution",
       heroSubtitle: "Two brothers. Thirty years in the kitchen. One mission: to make your operation run smoother.",
       meetTitle: "Meet the Brothers Behind RS LLD",
       meetIntro: "RS LLD was founded by Simon and Robert — two brothers who have spent their entire lives in the restaurant industry. Together, they bring over 60 combined years of hands-on experience running Chinese restaurants, and they built RS LLD because they know firsthand what restaurant operators truly need.",
@@ -41,7 +41,7 @@ const AboutPage = () => {
       ]
     },
     zh: {
-      heroTitle: "关于 RS LLD",
+      heroTitle: "关于 RS LLD — 餐饮供应领先物流与配送",
       heroSubtitle: "两兄弟。三十年厨房经验。一个使命：让您的餐厅运营更顺畅。",
       meetTitle: "认识 RS LLD 背后的两兄弟",
       meetIntro: "RS LLD 由 Simon 和 Robert 两兄弟创立。他们一生都在餐饮行业中打拼，合计拥有超过60年的中餐厅经营经验。他们创立 RS LLD，是因为他们深知餐厅经营者真正需要什么。",
@@ -74,7 +74,7 @@ const AboutPage = () => {
       ]
     },
     ko: {
-      heroTitle: "RS LLD 소개",
+      heroTitle: "RS LLD 소개 — 레스토랑 공급 선도 물류 및 유통",
       heroSubtitle: "두 형제. 30년의 주방 경험. 하나의 사명: 당신의 운영을 더 원활하게.",
       meetTitle: "RS LLD 뒤에 있는 형제를 만나보세요",
       meetIntro: "RS LLD는 Simon과 Robert 두 형제가 설립했습니다. 그들은 평생을 레스토랑 업계에서 보냈으며, 합쳐서 60년 이상의 중국 레스토랑 운영 경험을 보유하고 있습니다. 그들은 레스토랑 운영자가 진정으로 필요로 하는 것을 직접 알기 때문에 RS LLD를 설립했습니다.",
