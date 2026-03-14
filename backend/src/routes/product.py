@@ -22,7 +22,14 @@ def get_products():
     
     if category_id:
         query = query.filter(Product.category_id == category_id)
-    
+
+    # Also support filtering by category name
+    category_name = request.args.get('category', '')
+    if category_name:
+        cat = Category.query.filter(Category.name.ilike(f'%{category_name}%')).first()
+        if cat:
+            query = query.filter(Product.category_id == cat.id)
+
     if search:
         query = query.filter(Product.name.contains(search))
     
@@ -44,6 +51,11 @@ def get_products():
 @product_bp.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = Product.query.get_or_404(product_id)
+    return jsonify(product.to_dict())
+
+@product_bp.route('/products/sku/<string:sku>', methods=['GET'])
+def get_product_by_sku(sku):
+    product = Product.query.filter_by(sku=sku).first_or_404()
     return jsonify(product.to_dict())
 
 @product_bp.route('/products/featured', methods=['GET'])

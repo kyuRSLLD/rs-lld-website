@@ -96,22 +96,34 @@ const ProductDetailPage = () => {
   }
   const t = L[currentLanguage] || L.en
 
+  const [related, setRelated] = useState([])
+
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetch(`${API_BASE}/api/products`)
-      .then(r => r.json())
+    setRelated([])
+    fetch(`${API_BASE}/api/products/sku/${sku}`)
+      .then(r => {
+        if (!r.ok) throw new Error('not found')
+        return r.json()
+      })
       .then(data => {
-        const found = (data.products || data || []).find(p => p.sku === sku)
-        if (found) {
-          setProduct(found)
-        } else {
-          setError(t.notFound)
+        setProduct(data)
+        // Fetch related products from same category
+        const catName = data.category_name || ''
+        if (catName) {
+          fetch(`${API_BASE}/api/products?category=${encodeURIComponent(catName)}&per_page=5`)
+            .then(r => r.ok ? r.json() : { products: [] })
+            .then(res => {
+              const others = (res.products || []).filter(p => p.sku !== sku).slice(0, 4)
+              setRelated(others)
+            })
+            .catch(() => {})
         }
         setLoading(false)
       })
       .catch(() => {
-        setError('Failed to load product.')
+        setError(t.notFound)
         setLoading(false)
       })
   }, [sku])
@@ -120,7 +132,7 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (!product) return
-    for (let i = 0; i < qty; i++) addToCart(product)
+    addToCart(product, qty)
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
@@ -290,6 +302,39 @@ const ProductDetailPage = () => {
             </ul>
           </div>
         </div>
+
+        {/* Related Products */}
+        {related.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">{t.relatedTitle}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {related.map(p => (
+                <Link
+                  key={p.sku}
+                  to={`/products/${p.sku}`}
+                  className="bg-white rounded-xl border border-gray-100 hover:border-blue-300 hover:shadow-md transition-all overflow-hidden group"
+                >
+                  <div className="bg-gray-50 h-36 flex items-center justify-center p-3">
+                    {p.image_url ? (
+                      <img
+                        src={`${API_BASE}${p.image_url}`}
+                        alt={p.name}
+                        className="max-h-28 max-w-full object-contain group-hover:scale-105 transition-transform"
+                        onError={e => { e.target.style.display = 'none' }}
+                      />
+                    ) : (
+                      <Package className="w-12 h-12 text-gray-300" />
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{p.name}</p>
+                    <p className="text-sm font-bold text-blue-700">${Number(p.unit_price).toFixed(2)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
