@@ -1,7 +1,6 @@
-// API base URL - set VITE_API_URL environment variable for production
-// In development: empty string (relative URLs work when served by Flask)
-// In production: https://rs-lld-website-production.up.railway.app
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// API base URL — always use relative URLs so the app works on any domain
+// (Railway, lldrestaurantsupply.com, or any future domain)
+const API_BASE = '';
 
 export default API_BASE;
 
