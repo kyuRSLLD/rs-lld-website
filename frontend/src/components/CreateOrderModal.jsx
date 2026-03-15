@@ -1,7 +1,20 @@
-import { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Search, Package } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Plus, Trash2, Search, Package, User } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL || ''
+
+const US_STATES = [
+  ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+  ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
+  ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
+  ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+  ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
+  ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
+  ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
+  ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+  ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
+  ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
+]
 
 const EMPTY_ITEM = {
   product_id: null,
@@ -11,6 +24,8 @@ const EMPTY_ITEM = {
   product_unit_size: '',
   quantity: 1,
   unit_price: 0,
+  bulk_price: null,
+  bulk_quantity: null,
   is_bulk_price: false,
 }
 
@@ -27,8 +42,8 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
     delivery_phone: '',
     special_notes: '',
     payment_method: 'net30',
-    payment_status: 'paid',
-    status: 'delivered',
+    payment_status: 'pending',
+    status: 'pending',
     discount_amount: '',
     delivery_fee: '',
     staff_notes: '',
@@ -42,11 +57,48 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Customer autofill
+  const [customerQuery, setCustomerQuery] = useState('')
+  const [customerResults, setCustomerResults] = useState([])
+  const [customerSearching, setCustomerSearching] = useState(false)
+  const customerSearchTimer = useRef(null)
+
   // ── Totals ──────────────────────────────────────────────────────────────────
   const subtotal = items.reduce((s, it) => s + (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 0), 0)
   const discount = parseFloat(form.discount_amount) || 0
   const deliveryFee = form.delivery_fee !== '' ? parseFloat(form.delivery_fee) : (subtotal >= 100 ? 0 : 25)
   const total = subtotal - discount + deliveryFee
+
+  // ── Customer search ──────────────────────────────────────────────────────────
+  function handleCustomerQueryChange(q) {
+    setCustomerQuery(q)
+    clearTimeout(customerSearchTimer.current)
+    if (!q || q.length < 2) { setCustomerResults([]); return }
+    setCustomerSearching(true)
+    customerSearchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API}/api/staff/customers/search?q=${encodeURIComponent(q)}`, { credentials: 'include' })
+        const data = await res.json()
+        setCustomerResults(Array.isArray(data) ? data : [])
+      } catch { setCustomerResults([]) }
+      setCustomerSearching(false)
+    }, 300)
+  }
+
+  function pickCustomer(c) {
+    setForm(f => ({
+      ...f,
+      delivery_name: c.name || f.delivery_name,
+      delivery_company: c.company || f.delivery_company,
+      delivery_phone: c.phone || f.delivery_phone,
+      delivery_address: c.address || f.delivery_address,
+      delivery_city: c.city || f.delivery_city,
+      delivery_state: c.state || f.delivery_state,
+      delivery_zip: c.zip || f.delivery_zip,
+    }))
+    setCustomerQuery('')
+    setCustomerResults([])
+  }
 
   // ── Product search ───────────────────────────────────────────────────────────
   async function searchProducts(idx, query) {
@@ -67,17 +119,31 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
       product_brand: product.brand || '',
       product_unit_size: product.unit_size || '',
       unit_price: product.unit_price || 0,
+      bulk_price: product.bulk_price || null,
+      bulk_quantity: product.bulk_quantity || null,
+      is_bulk_price: false,
     }))
     setProductSearch(s => ({ ...s, [idx]: '' }))
     setSearchResults(r => ({ ...r, [idx]: [] }))
   }
 
   function updateItem(idx, field, value) {
-    setItems(prev => prev.map((it, i) => i !== idx ? it : { ...it, [field]: value }))
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it
+      const updated = { ...it, [field]: value }
+      // Auto-apply bulk pricing when quantity changes
+      if (field === 'quantity' && it.bulk_price && it.bulk_quantity) {
+        const qty = parseInt(value) || 0
+        const isBulk = qty >= parseInt(it.bulk_quantity)
+        updated.unit_price = isBulk ? it.bulk_price : (it._base_price || it.unit_price)
+        updated.is_bulk_price = isBulk
+        if (!it._base_price) updated._base_price = it.unit_price
+      }
+      return updated
+    }))
   }
 
   function addItem() { setItems(prev => [...prev, { ...EMPTY_ITEM }]) }
-
   function removeItem(idx) { setItems(prev => prev.filter((_, i) => i !== idx)) }
 
   // ── Submit ───────────────────────────────────────────────────────────────────
@@ -103,9 +169,14 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
         discount_amount: discount,
         delivery_fee: deliveryFee,
         items: validItems.map(it => ({
-          ...it,
+          product_id: it.product_id,
+          product_name: it.product_name,
+          product_sku: it.product_sku,
+          product_brand: it.product_brand,
+          product_unit_size: it.product_unit_size,
           quantity: parseInt(it.quantity) || 1,
           unit_price: parseFloat(it.unit_price) || 0,
+          is_bulk_price: it.is_bulk_price || false,
         })),
       }
 
@@ -124,6 +195,8 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
     }
   }
 
+  const inp = 'w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent'
+
   return (
     <div className="fixed inset-0 bg-stone-900/40 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl">
@@ -138,22 +211,19 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.orderNumber || 'Order # (leave blank to auto-generate)'}</label>
-              <input className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                placeholder="RS-2025-XXXX"
+              <input className={inp} placeholder="RS-2025-XXXX"
                 value={form.order_number}
                 onChange={e => setForm(f => ({ ...f, order_number: e.target.value }))} />
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.orderDate || 'Order Date'}</label>
-              <input type="date" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+              <input type="date" className={inp}
                 value={form.created_at}
                 onChange={e => setForm(f => ({ ...f, created_at: e.target.value }))} />
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.orderStatus || 'Order Status'}</label>
-              <select className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                value={form.status}
-                onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+              <select className={inp} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                 <option value="pending">{tO.statusPending || 'Pending'}</option>
                 <option value="confirmed">{tO.statusConfirmed || 'Confirmed'}</option>
                 <option value="packed">{tO.statusPacked || 'Packed'}</option>
@@ -164,51 +234,88 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
             </div>
           </div>
 
+          {/* ── Customer Autofill Search ── */}
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1">
+              <User className="w-3 h-3 inline mr-1" />
+              {tO.searchCustomer || 'Search existing customers...'}
+            </label>
+            <div className="relative">
+              <input
+                className={inp}
+                placeholder={tO.searchCustomerPlaceholder || 'Type name, company, or phone...'}
+                value={customerQuery}
+                onChange={e => handleCustomerQueryChange(e.target.value)}
+              />
+              {customerResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-20 bg-white border border-stone-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  {customerResults.map((c, i) => (
+                    <button key={i} type="button"
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-start gap-2"
+                      onClick={() => pickCustomer(c)}>
+                      <User className="w-3 h-3 text-stone-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-stone-800">{c.name}</span>
+                        {c.company && <span className="text-stone-500 ml-1">— {c.company}</span>}
+                        {c.phone && <span className="text-stone-400 ml-1">· {c.phone}</span>}
+                        {c.address && <div className="text-stone-400">{c.address}, {c.city}, {c.state}</div>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* ── Customer Info ── */}
           <div>
             <h3 className="text-sm font-semibold text-stone-700 mb-3">{tO.customerInfo || 'Customer Information'}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.customerName || 'Contact Name'} *</label>
-                <input required className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                <input required className={inp}
                   value={form.delivery_name}
                   onChange={e => setForm(f => ({ ...f, delivery_name: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.company || 'Company / Restaurant'}</label>
-                <input className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                <input className={inp}
                   value={form.delivery_company}
                   onChange={e => setForm(f => ({ ...f, delivery_company: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.phone || 'Phone'}</label>
-                <input className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                <input className={inp}
                   value={form.delivery_phone}
                   onChange={e => setForm(f => ({ ...f, delivery_phone: e.target.value }))} />
               </div>
 
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.address || 'Street Address'} *</label>
-                <input required className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                <input required className={inp}
                   value={form.delivery_address}
                   onChange={e => setForm(f => ({ ...f, delivery_address: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.city || 'City'} *</label>
-                <input required className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                <input required className={inp}
                   value={form.delivery_city}
                   onChange={e => setForm(f => ({ ...f, delivery_city: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-stone-600 mb-1">{tO.state || 'State'}</label>
-                  <input className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                  <select className={inp}
                     value={form.delivery_state}
-                    onChange={e => setForm(f => ({ ...f, delivery_state: e.target.value }))} />
+                    onChange={e => setForm(f => ({ ...f, delivery_state: e.target.value }))}>
+                    {US_STATES.map(([code, name]) => (
+                      <option key={code} value={code}>{code} — {name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-stone-600 mb-1">{tO.zip || 'ZIP'}</label>
-                  <input className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                  <input className={inp}
                     value={form.delivery_zip}
                     onChange={e => setForm(f => ({ ...f, delivery_zip: e.target.value }))} />
                 </div>
@@ -228,14 +335,14 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
 
             <div className="space-y-3">
               {items.map((item, idx) => (
-                <div key={idx} className="border border-stone-200 rounded-lg p-3 bg-stone-50">
+                <div key={idx} className={`border rounded-lg p-3 ${item.is_bulk_price ? 'border-green-300 bg-green-50' : 'border-stone-200 bg-stone-50'}`}>
                   {/* Product search row */}
                   <div className="flex gap-2 mb-2">
                     <div className="flex-1 relative">
-                      <div className="flex items-center gap-1 border border-stone-200 rounded-lg px-2 bg-white">
+                      <div className="flex items-center gap-2 border border-stone-200 rounded-lg px-3 py-1.5 bg-white">
                         <Search className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                         <input
-                          className="flex-1 py-1.5 text-xs focus:outline-none bg-transparent"
+                          className="flex-1 py-0.5 text-xs focus:outline-none bg-transparent"
                           placeholder={tO.searchInventory || 'Search inventory to auto-fill...'}
                           value={productSearch[idx] || ''}
                           onChange={e => {
@@ -253,6 +360,9 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                               onClick={() => pickProduct(idx, p)}>
                               <Package className="w-3 h-3 text-stone-400 flex-shrink-0" />
                               <span className="font-medium">{p.name}</span>
+                              {p.bulk_price && p.bulk_quantity && (
+                                <span className="text-green-600 text-xs ml-1">Bulk: ${p.bulk_price} @ {p.bulk_quantity}+</span>
+                              )}
                               <span className="text-stone-400 ml-auto">${p.unit_price}</span>
                             </button>
                           ))}
@@ -266,6 +376,18 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                       </button>
                     )}
                   </div>
+
+                  {/* Bulk pricing badge */}
+                  {item.is_bulk_price && (
+                    <div className="mb-2 text-xs text-green-700 font-medium flex items-center gap-1">
+                      ✓ {lang === 'zh' ? '批量价格已应用' : 'Bulk price applied'}
+                    </div>
+                  )}
+                  {item.bulk_price && item.bulk_quantity && !item.is_bulk_price && (parseInt(item.quantity) || 0) > 0 && (
+                    <div className="mb-2 text-xs text-stone-500">
+                      {lang === 'zh' ? `订购 ${item.bulk_quantity}+ 件可享批量价 $${item.bulk_price}` : `Order ${item.bulk_quantity}+ for bulk price $${item.bulk_price}`}
+                    </div>
+                  )}
 
                   {/* Item detail fields */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -315,14 +437,14 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.discount || 'Discount ($)'}</label>
-              <input type="number" min="0" step="0.01" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+              <input type="number" min="0" step="0.01" className={inp}
                 placeholder="0.00"
                 value={form.discount_amount}
                 onChange={e => setForm(f => ({ ...f, discount_amount: e.target.value }))} />
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.deliveryFee || 'Delivery Fee ($)'}</label>
-              <input type="number" min="0" step="0.01" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+              <input type="number" min="0" step="0.01" className={inp}
                 placeholder={subtotal >= 100 ? '0.00 (free shipping)' : '25.00'}
                 value={form.delivery_fee}
                 onChange={e => setForm(f => ({ ...f, delivery_fee: e.target.value }))} />
@@ -341,9 +463,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.paymentMethod || 'Payment Method'}</label>
-              <select className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                value={form.payment_method}
-                onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
+              <select className={inp} value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
                 <option value="net30">Net 30</option>
                 <option value="net15">Net 15</option>
                 <option value="credit_card">Credit Card</option>
@@ -354,9 +474,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.paymentStatus || 'Payment Status'}</label>
-              <select className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                value={form.payment_status}
-                onChange={e => setForm(f => ({ ...f, payment_status: e.target.value }))}>
+              <select className={inp} value={form.payment_status} onChange={e => setForm(f => ({ ...f, payment_status: e.target.value }))}>
                 <option value="paid">{tO.paid || 'Paid'}</option>
                 <option value="pending">{tO.paymentPending || 'Pending'}</option>
                 <option value="overdue">{tO.overdue || 'Overdue'}</option>

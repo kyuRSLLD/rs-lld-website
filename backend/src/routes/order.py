@@ -259,18 +259,43 @@ def update_order_notes(order_id):
 @order_bp.route('/staff/stats', methods=['GET'])
 @staff_required
 def staff_stats():
-    """Dashboard stats for the internal portal."""
+    """Dashboard stats for the internal portal. Supports ?range=7d|30d|month|all"""
     from sqlalchemy import func
-    total_orders = Order.query.count()
-    pending = Order.query.filter_by(status='pending').count()
-    confirmed = Order.query.filter_by(status='confirmed').count()
-    packed = Order.query.filter_by(status='packed').count()
-    shipped = Order.query.filter_by(status='shipped').count()
-    delivered = Order.query.filter_by(status='delivered').count()
-    cancelled = Order.query.filter_by(status='cancelled').count()
-    total_revenue = db.session.query(func.sum(Order.total_amount)).filter(
-        Order.status.in_(['confirmed', 'packed', 'shipped', 'delivered'])
-    ).scalar() or 0
+    date_range = request.args.get('range', 'all')
+    now = datetime.utcnow()
+    if date_range == '7d':
+        since = now - timedelta(days=7)
+    elif date_range == '30d':
+        since = now - timedelta(days=30)
+    elif date_range == 'month':
+        since = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        since = None
+
+    def count_q(status=None):
+        base = Order.query
+        if since:
+            base = base.filter(Order.created_at >= since)
+        if status:
+            base = base.filter_by(status=status)
+        return base.count()
+
+    def rev_q():
+        base = db.session.query(func.sum(Order.total_amount)).filter(
+            Order.status.in_(['confirmed', 'packed', 'shipped', 'delivered'])
+        )
+        if since:
+            base = base.filter(Order.created_at >= since)
+        return base.scalar() or 0
+
+    total_orders = count_q()
+    pending = count_q('pending')
+    confirmed = count_q('confirmed')
+    packed = count_q('packed')
+    shipped = count_q('shipped')
+    delivered = count_q('delivered')
+    cancelled = count_q('cancelled')
+    total_revenue = rev_q()
 
     return jsonify({
         'total_orders': total_orders,
@@ -283,6 +308,61 @@ def staff_stats():
         'total_revenue': round(total_revenue, 2),
         'needs_attention': pending + confirmed,
     })
+
+
+@order_bp.route('/staff/customers/search', methods=['GET'])
+@staff_required
+def staff_search_customers():
+    """Search customers by name, company, or phone for autofill in Create Order."""
+    from src.models.user import User
+    q = request.args.get('q', '').strip()
+    # Also search past orders for guest customers
+    results = []
+    seen = set()
+    if q and len(q) >= 2:
+        # Registered users
+        users = User.query.filter(
+            (User.username.ilike(f'%{q}%')) |
+            (User.company_name.ilike(f'%{q}%')) |
+            (User.phone.ilike(f'%{q}%'))
+        ).limit(10).all()
+        for u in users:
+            # Get most recent order for address
+            last_order = Order.query.filter_by(user_id=u.id).order_by(Order.created_at.desc()).first()
+            key = f'user-{u.id}'
+            if key not in seen:
+                seen.add(key)
+                results.append({
+                    'source': 'customer',
+                    'name': u.username,
+                    'company': u.company_name or '',
+                    'phone': u.phone or '',
+                    'address': last_order.delivery_address if last_order else '',
+                    'city': last_order.delivery_city if last_order else '',
+                    'state': last_order.delivery_state if last_order else '',
+                    'zip': last_order.delivery_zip if last_order else '',
+                })
+        # Guest orders
+        orders = Order.query.filter(
+            (Order.delivery_name.ilike(f'%{q}%')) |
+            (Order.delivery_company.ilike(f'%{q}%')) |
+            (Order.delivery_phone.ilike(f'%{q}%'))
+        ).order_by(Order.created_at.desc()).limit(20).all()
+        for o in orders:
+            key = f'{o.delivery_name}|{o.delivery_address}'
+            if key not in seen:
+                seen.add(key)
+                results.append({
+                    'source': 'order',
+                    'name': o.delivery_name,
+                    'company': o.delivery_company or '',
+                    'phone': o.delivery_phone or '',
+                    'address': o.delivery_address,
+                    'city': o.delivery_city,
+                    'state': o.delivery_state,
+                    'zip': o.delivery_zip,
+                })
+    return jsonify(results[:10])
 
 
 @order_bp.route('/staff/customers', methods=['GET'])
@@ -376,7 +456,7 @@ def staff_create_order():
         order = Order(
             order_number=order_number,
             user_id=None,
-            status=data.get('status', 'delivered'),
+            status=data.get('status', 'pending'),
             delivery_name=data['delivery_name'],
             delivery_company=data.get('delivery_company', ''),
             delivery_address=data['delivery_address'],

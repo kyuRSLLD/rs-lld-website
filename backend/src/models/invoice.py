@@ -30,6 +30,7 @@ class CustomInvoice(db.Model):
     # Financials
     subtotal = db.Column(db.Float, nullable=False, default=0.0)
     discount_amount = db.Column(db.Float, nullable=False, default=0.0)
+    shipping_fee = db.Column(db.Float, nullable=False, default=0.0)
     tax_rate = db.Column(db.Float, nullable=False, default=0.0)   # percentage, e.g. 8.5
     tax_amount = db.Column(db.Float, nullable=False, default=0.0)
     total_amount = db.Column(db.Float, nullable=False, default=0.0)
@@ -79,6 +80,7 @@ class CustomInvoice(db.Model):
             'items': self.items,
             'subtotal': self.subtotal,
             'discount_amount': self.discount_amount,
+            'shipping_fee': self.shipping_fee,
             'tax_rate': self.tax_rate,
             'tax_amount': self.tax_amount,
             'total_amount': self.total_amount,

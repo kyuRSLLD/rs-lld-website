@@ -86,9 +86,10 @@ def create_invoice():
 
     subtotal = round(sum(i['line_total'] for i in items), 2)
     discount = round(float(data.get('discount_amount', 0)), 2)
+    shipping_fee = round(float(data.get('shipping_fee', 0)), 2)
     tax_rate = round(float(data.get('tax_rate', 0)), 2)
     tax_amount = round((subtotal - discount) * tax_rate / 100, 2)
-    total = round(subtotal - discount + tax_amount, 2)
+    total = round(subtotal - discount + shipping_fee + tax_amount, 2)
 
     inv = CustomInvoice(
         invoice_number=generate_invoice_number(),
@@ -103,6 +104,7 @@ def create_invoice():
         customer_zip=data.get('customer_zip', '').strip() or None,
         subtotal=subtotal,
         discount_amount=discount,
+        shipping_fee=shipping_fee,
         tax_rate=tax_rate,
         tax_amount=tax_amount,
         total_amount=total,
@@ -156,11 +158,13 @@ def update_invoice(invoice_id):
 
     if 'discount_amount' in data:
         inv.discount_amount = round(float(data['discount_amount']), 2)
+    if 'shipping_fee' in data:
+        inv.shipping_fee = round(float(data['shipping_fee']), 2)
     if 'tax_rate' in data:
         inv.tax_rate = round(float(data['tax_rate']), 2)
 
     inv.tax_amount = round((inv.subtotal - inv.discount_amount) * inv.tax_rate / 100, 2)
-    inv.total_amount = round(inv.subtotal - inv.discount_amount + inv.tax_amount, 2)
+    inv.total_amount = round(inv.subtotal - inv.discount_amount + inv.shipping_fee + inv.tax_amount, 2)
 
     # Status transitions
     if 'status' in data:

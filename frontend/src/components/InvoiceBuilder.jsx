@@ -272,6 +272,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
     due_date: existingInvoice?.due_date || '',
     discount_amount: existingInvoice?.discount_amount || 0,
     tax_rate: existingInvoice?.tax_rate || 0,
+    shipping_fee: existingInvoice?.shipping_fee || 0,
     notes: existingInvoice?.notes || '',
     internal_notes: existingInvoice?.internal_notes || '',
     status: existingInvoice?.status || 'draft',
@@ -318,9 +319,10 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
 
   const subtotal = items.reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0)
   const discount = parseFloat(form.discount_amount) || 0
+  const shippingFee = parseFloat(form.shipping_fee) || 0
   const taxRate = parseFloat(form.tax_rate) || 0
-  const taxAmount = Math.round((subtotal - discount) * taxRate / 100 * 100) / 100
-  const total = Math.round((subtotal - discount + taxAmount) * 100) / 100
+  const taxAmount = Math.round((subtotal - discount + shippingFee) * taxRate / 100 * 100) / 100
+  const total = Math.round((subtotal - discount + shippingFee + taxAmount) * 100) / 100
 
   const handleSave = async (statusOverride) => {
     setError('')
@@ -626,6 +628,26 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-medium text-stone-500 mb-1">{t.invoices.shippingFee || 'Shipping Fee'}</label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                  <input
+                    className="border border-stone-200 rounded-lg pl-5 pr-3 py-1.5 text-sm w-full focus:ring-1 focus:ring-stone-400"
+                    type="number" min="0" step="0.01"
+                    value={form.shipping_fee}
+                    onChange={e => setForm(p => ({ ...p, shipping_fee: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {shippingFee > 0 && (
+                <div className="flex justify-between text-sm text-stone-600">
+                  <span>{t.invoices.shippingFee || 'Shipping'}</span>
+                  <span>{fmt(shippingFee)}</span>
+                </div>
+              )}
+
               {taxAmount > 0 && (
                 <div className="flex justify-between text-sm text-stone-600">
                   <span>{t.invoices.taxAmount} ({taxRate}%)</span>
@@ -778,6 +800,22 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
     } catch {}
   }
 
+  const handleQuickStatus = async (inv, newStatus) => {
+    const confirmMsg = newStatus === 'cancelled'
+      ? (t.invoices.cancelConfirm || 'Cancel this invoice?')
+      : null
+    if (confirmMsg && !window.confirm(confirmMsg)) return
+    try {
+      await fetch(`${API_BASE}/api/invoices/${inv.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ...inv, status: newStatus }),
+      })
+      fetchInvoices()
+    } catch {}
+  }
+
   const filtered = invoices.filter(inv => {
     if (!search) return true
     const q = search.toLowerCase()
@@ -794,7 +832,7 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
     <div>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <h2 className="text-xl font-bold text-stone-900">{t.invoices.title}</h2>
+        <h2 className="text-xl font-bold text-stone-900">{t.invoices.customerInvoicesTitle || t.invoices.title}</h2>
         <button
           onClick={onNew}
           className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium"
@@ -884,7 +922,7 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
                       {new Date(inv.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap">
                         <button
                           onClick={() => setShowPrint(inv)}
                           className="p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded"
@@ -899,6 +937,33 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
                         >
                           <FileText className="w-3.5 h-3.5" />
                         </button>
+                        {inv.status !== 'sent' && inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                          <button
+                            onClick={() => handleQuickStatus(inv, 'sent')}
+                            className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200"
+                            title={t.invoices.markAsSent}
+                          >
+                            {t.invoices.markAsSent || 'Mark Sent'}
+                          </button>
+                        )}
+                        {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                          <button
+                            onClick={() => handleQuickStatus(inv, 'paid')}
+                            className="px-2 py-0.5 text-xs bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200"
+                            title={t.invoices.markAsPaid}
+                          >
+                            {t.invoices.markAsPaid || 'Mark Paid'}
+                          </button>
+                        )}
+                        {inv.status !== 'cancelled' && (
+                          <button
+                            onClick={() => handleQuickStatus(inv, 'cancelled')}
+                            className="px-2 py-0.5 text-xs bg-red-50 text-red-600 hover:bg-red-100 rounded border border-red-200"
+                            title={t.invoices.cancelInvoice || 'Cancel'}
+                          >
+                            {t.invoices.cancelInvoice || 'Cancel'}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(inv)}
                           className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"

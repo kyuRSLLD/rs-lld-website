@@ -314,6 +314,8 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 
   const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
   const nextCfg = nextStatus ? statusConfig[nextStatus] : null
+  const prevStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) - 1]
+  const prevCfg = prevStatus ? statusConfig[prevStatus] : null
 
   // Use translated status labels
   const statusLabel = (s) => t.status[s] || s
@@ -322,6 +324,14 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
     if (!nextStatus) return
     setUpdating(true)
     await onStatusUpdate(order.id, nextStatus)
+    setUpdating(false)
+  }
+
+  const handleMoveBack = async () => {
+    if (!prevStatus) return
+    if (!window.confirm(`${t.orders.moveBackConfirm} "${statusLabel(prevStatus)}"?`)) return
+    setUpdating(true)
+    await onStatusUpdate(order.id, prevStatus)
     setUpdating(false)
   }
 
@@ -398,6 +408,13 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
             >
               {updating ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <nextCfg.icon className="w-3 h-3 mr-1" />}
               {t.orders.markAs} {statusLabel(nextStatus)}
+            </Button>
+          )}
+          {prevStatus && order.status !== 'cancelled' && (
+            <Button size="sm" variant="outline" onClick={handleMoveBack} disabled={updating}
+              className="text-amber-600 border-amber-200 hover:bg-amber-50 text-xs">
+              {prevCfg && <prevCfg.icon className="w-3 h-3 mr-1" />}
+              {t.orders.moveBack}
             </Button>
           )}
           {order.status !== 'cancelled' && order.status !== 'delivered' && (
@@ -568,7 +585,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 }
 
 // ─── Product Row (inline editable) ──────────────────────────────────────────
-const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, lang, t }) => {
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, lang, t, isAdmin }) => {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
@@ -655,8 +672,20 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </td>
-          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => setForm(p=>({...p,unit_price:e.target.value}))} placeholder={t.products.enterPrice} /></td>
-          <td className="px-3 py-2"><input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} /></td>
+          <td className="px-3 py-2">
+            {isAdmin ? (
+              <input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => setForm(p=>({...p,unit_price:e.target.value}))} placeholder={t.products.enterPrice} />
+            ) : (
+              <span className="text-xs text-stone-500 italic" title={t.products.priceLockedAdmin}>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(form.unit_price)} 🔒</span>
+            )}
+          </td>
+          <td className="px-3 py-2">
+            {isAdmin ? (
+              <input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} />
+            ) : (
+              <span className="text-xs text-stone-500 italic" title={t.products.priceLockedAdmin}>{form.bulk_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(form.bulk_price) : '—'} 🔒</span>
+            )}
+          </td>
           <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} /></td>
           <td className="px-3 py-2">
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${product.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -925,6 +954,9 @@ const StaffPortal = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateOrder, setShowCreateOrder] = useState(false)
   const [lang, setLang] = useState(() => localStorage.getItem('staffLang') || 'en')
+  const [statsDateRange, setStatsDateRange] = useState('all')
+  const [customerOrdersView, setCustomerOrdersView] = useState(null) // { name, orders }
+  const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false)
 
   const t = staffPortalTranslations[lang]
 
@@ -955,13 +987,29 @@ const StaffPortal = () => {
     finally { setLoading(false) }
   }, [statusFilter])
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (range) => {
     try {
-      const res = await fetch(`${API_BASE}/api/staff/stats`, { credentials: 'include' })
+      const r = range || statsDateRange
+      const url = r && r !== 'all' ? `${API_BASE}/api/staff/stats?range=${r}` : `${API_BASE}/api/staff/stats`
+      const res = await fetch(url, { credentials: 'include' })
       const data = await res.json()
       setStats(data)
     } catch {}
-  }, [])
+  }, [statsDateRange])
+
+  const fetchCustomerOrders = async (customerName) => {
+    setCustomerOrdersLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/orders`, { credentials: 'include' })
+      const data = await res.json()
+      const filtered = Array.isArray(data) ? data.filter(o =>
+        (o.customer_name || '').toLowerCase() === customerName.toLowerCase() ||
+        (o.customer_company || '').toLowerCase() === customerName.toLowerCase()
+      ) : []
+      setCustomerOrdersView({ name: customerName, orders: filtered })
+    } catch {}
+    setCustomerOrdersLoading(false)
+  }
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -1296,6 +1344,30 @@ const StaffPortal = () => {
         {/* ── CUSTOMERS TAB ── */}
         {activeTab === 'customers' && (
           <div>
+            {customerOrdersView ? (
+              <div>
+                <button onClick={() => setCustomerOrdersView(null)}
+                  className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-900 mb-4">
+                  {t.customers.backToCustomers}
+                </button>
+                <h2 className="text-xl font-bold text-stone-900 mb-4">{t.customers.ordersFor} {customerOrdersView.name}</h2>
+                {customerOrdersLoading ? (
+                  <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-stone-400 mx-auto" /></div>
+                ) : customerOrdersView.orders.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-xl border border-stone-100">
+                    <ClipboardList className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-stone-500">{t.customers.noOrdersForCustomer}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {customerOrdersView.orders.map(order => (
+                      <OrderCard key={order.id} order={order} onStatusUpdate={handleStatusUpdate} onNotesUpdate={handleNotesUpdate} t={t} lang={lang} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+            <div>
             <h2 className="text-xl font-bold text-stone-900 mb-4">{t.customers.title}</h2>
             {customers.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border border-stone-100">
@@ -1307,7 +1379,7 @@ const StaffPortal = () => {
                 <table className="w-full text-sm min-w-[600px]">
                   <thead className="bg-stone-50 border-b border-stone-100">
                     <tr>
-                      {[t.customers.name, t.customers.company, t.customers.email, t.customers.phone, t.customers.orders, t.customers.spent, t.customers.joined].map(h => (
+                      {[t.customers.name, t.customers.company, t.customers.email, t.customers.phone, t.customers.orders, t.customers.spent, t.customers.joined, ''].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -1324,11 +1396,20 @@ const StaffPortal = () => {
                         </td>
                         <td className="px-4 py-3 font-semibold text-stone-900">{formatPrice(c.total_spent)}</td>
                         <td className="px-4 py-3 text-stone-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => fetchCustomerOrders(c.company_name || c.username)}
+                            className="text-xs px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors">
+                            {t.customers.viewOrders}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            )}
+            </div>
             )}
           </div>
         )}
@@ -1410,6 +1491,7 @@ const StaffPortal = () => {
                       onImageUpdate={(id, url) => { setProducts(prev => prev.map(pr => pr.id === id ? {...pr, image_url: url} : pr)); fetchInventory() }}
                       lang={lang}
                       t={t}
+                      isAdmin={isAdmin}
                     />
                   ))}
                 </tbody>
@@ -1548,7 +1630,24 @@ const StaffPortal = () => {
         {/* ── STATS / DASHBOARD TAB ── */}
         {activeTab === 'stats' && stats && (
           <div>
-            <h2 className="text-xl font-bold text-stone-900 mb-5">{t.stats.title}</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <h2 className="text-xl font-bold text-stone-900">{t.stats.title}</h2>
+              <div className="flex gap-2">
+                {['all', '7d', '30d', 'month'].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => { setStatsDateRange(r); fetchStats(r) }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      statsDateRange === r
+                        ? 'bg-stone-900 text-white border-stone-900'
+                        : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                    }`}
+                  >
+                    {t.stats[`range_${r}`]}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               {[
                 { label: t.stats.totalOrders, value: stats.total_orders, icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50' },
