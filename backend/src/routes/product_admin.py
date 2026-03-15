@@ -114,6 +114,7 @@ def admin_add_product():
             unit_size=data.get('unit_size', ''),
             brand=data.get('brand', ''),
             in_stock=data.get('in_stock', True),
+            stock_quantity=int(data['stock_quantity']) if data.get('stock_quantity') else 0,
         )
         db.session.add(product)
         db.session.commit()
@@ -153,11 +154,99 @@ def admin_update_product(product_id):
             product.brand = data['brand']
         if 'in_stock' in data:
             product.in_stock = bool(data['in_stock'])
+        if 'stock_quantity' in data:
+            qty = int(data['stock_quantity']) if data['stock_quantity'] is not None else 0
+            product.stock_quantity = max(0, qty)
+            # Auto-sync in_stock based on quantity if quantity is explicitly provided
+            if qty <= 0 and product.in_stock:
+                product.in_stock = False
+            elif qty > 0 and not product.in_stock:
+                product.in_stock = True
         db.session.commit()
         return jsonify({'success': True, 'product': product.to_dict()})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
+# ─── BULK SAVE products (save all pending edits at once) ─────────────────────
+@product_admin_bp.route('/staff/products/bulk-save', methods=['POST'])
+@staff_required
+def admin_bulk_save_products():
+    """
+    Save multiple product edits in a single request.
+    Body: { "products": [ { "id": 1, ...fields... }, ... ] }
+    Returns a summary of saved and errored products.
+    """
+    data = request.json
+    if not data or 'products' not in data:
+        return jsonify({'error': 'Request body must contain a "products" array'}), 400
+    items = data['products']
+    if not isinstance(items, list):
+        return jsonify({'error': '"products" must be an array'}), 400
+
+    saved = []
+    errors = []
+
+    for item in items:
+        product_id = item.get('id')
+        if not product_id:
+            errors.append({'item': item, 'error': 'Missing product id'})
+            continue
+        product = Product.query.get(int(product_id))
+        if not product:
+            errors.append({'id': product_id, 'error': 'Product not found'})
+            continue
+        try:
+            if 'name' in item and item['name']:
+                product.name = str(item['name']).strip()
+            if 'description' in item:
+                product.description = str(item['description'])
+            if 'category_id' in item and item['category_id']:
+                product.category_id = int(item['category_id'])
+            if 'sku' in item and item['sku']:
+                new_sku = str(item['sku']).upper().strip()
+                existing = Product.query.filter_by(sku=new_sku).first()
+                if existing and existing.id != int(product_id):
+                    errors.append({'id': product_id, 'name': product.name, 'error': f"SKU '{new_sku}' already in use"})
+                    continue
+                product.sku = new_sku
+            if 'unit_price' in item and item['unit_price'] is not None:
+                product.unit_price = round(float(item['unit_price']), 2)
+            if 'bulk_price' in item:
+                product.bulk_price = round(float(item['bulk_price']), 2) if item['bulk_price'] else None
+            if 'bulk_quantity' in item:
+                product.bulk_quantity = int(item['bulk_quantity']) if item['bulk_quantity'] else None
+            if 'unit_size' in item:
+                product.unit_size = str(item['unit_size'])
+            if 'brand' in item:
+                product.brand = str(item['brand'])
+            if 'in_stock' in item:
+                product.in_stock = bool(item['in_stock'])
+            if 'stock_quantity' in item and item['stock_quantity'] is not None:
+                qty = max(0, int(item['stock_quantity']))
+                product.stock_quantity = qty
+                # Auto-sync in_stock based on quantity
+                if qty <= 0:
+                    product.in_stock = False
+                else:
+                    product.in_stock = True
+            saved.append({'id': product_id, 'sku': product.sku, 'name': product.name})
+        except (ValueError, TypeError) as e:
+            errors.append({'id': product_id, 'error': str(e)})
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+
+    return jsonify({
+        'success': True,
+        'saved_count': len(saved),
+        'error_count': len(errors),
+        'saved': saved,
+        'errors': errors,
+    })
 
 # ─── TOGGLE stock status ──────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/products/<int:product_id>/toggle-stock', methods=['POST'])
@@ -173,6 +262,15 @@ def admin_toggle_stock(product_id):
 @staff_required
 def admin_delete_product(product_id):
     product = Product.query.get_or_404(product_id)
+    # Block deletion if there is remaining inventory
+    stock_qty = product.stock_quantity if product.stock_quantity is not None else 0
+    if stock_qty > 0:
+        return jsonify({
+            'error': f"Cannot delete '{product.name}' — there are still {stock_qty} unit(s) in inventory. "
+                     f"Please reduce the stock quantity to 0 before deleting.",
+            'blocked': True,
+            'stock_quantity': stock_qty,
+        }), 409
     try:
         db.session.delete(product)
         db.session.commit()
@@ -191,7 +289,7 @@ def admin_export_csv():
     # Header row
     writer.writerow([
         'id', 'name', 'sku', 'brand', 'unit_size', 'category',
-        'unit_price', 'bulk_price', 'bulk_quantity', 'in_stock', 'description'
+        'unit_price', 'bulk_price', 'bulk_quantity', 'in_stock', 'stock_quantity', 'description'
     ])
     for p in products:
         writer.writerow([
@@ -201,6 +299,7 @@ def admin_export_csv():
             f'{p.bulk_price:.2f}' if p.bulk_price else '',
             p.bulk_quantity or '',
             'Yes' if p.in_stock else 'No',
+            p.stock_quantity or 0,
             p.description or ''
         ])
     output.seek(0)
@@ -250,6 +349,8 @@ def admin_import_csv():
                     product.unit_size = row['unit_size']
                 if row.get('in_stock'):
                     product.in_stock = row['in_stock'].strip().lower() in ('yes', 'true', '1')
+                if row.get('stock_quantity'):
+                    product.stock_quantity = max(0, int(row['stock_quantity']))
                 updated += 1
             except Exception as e:
                 errors.append(f"SKU '{sku}': {str(e)}")

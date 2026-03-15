@@ -585,7 +585,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
 }
 
 // ─── Product Row (inline editable) ──────────────────────────────────────────
-const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, lang, t, isAdmin }) => {
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, onMarkDirty, lang, t, isAdmin }) => {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
@@ -598,10 +598,20 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
     unit_price: product.unit_price,
     bulk_price: product.bulk_price || '',
     bulk_quantity: product.bulk_quantity || '',
+    stock_quantity: product.stock_quantity ?? 0,
     category_id: product.category_id,
     description: product.description || '',
   })
   const [error, setError] = useState('')
+
+  // Mark this row as having pending changes so the parent can show Save All
+  const updateForm = (updates) => {
+    setForm(prev => {
+      const next = { ...prev, ...updates }
+      if (onMarkDirty) onMarkDirty(product.id, next)
+      return next
+    })
+  }
 
   const handleImageUpload = async (file) => {
     if (!file) return
@@ -647,12 +657,16 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
   }
 
   const handleCancel = () => {
-    setForm({
+    const reset = {
       name: product.name, sku: product.sku, brand: product.brand || '',
       unit_size: product.unit_size || '', unit_price: product.unit_price,
       bulk_price: product.bulk_price || '', bulk_quantity: product.bulk_quantity || '',
+      stock_quantity: product.stock_quantity ?? 0,
       category_id: product.category_id, description: product.description || '',
-    })
+    }
+    setForm(reset)
+    // Remove from dirty map since we cancelled
+    if (onMarkDirty) onMarkDirty(product.id, null)
     setEditing(false)
     setError('')
   }
@@ -663,34 +677,40 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
     return (
       <>
         <tr className="bg-blue-50 border-l-4 border-blue-500">
-          <td className="px-3 py-2"><input className={inp} value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} placeholder={t.products.productName} /></td>
-          <td className="px-3 py-2"><input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e => setForm(p=>({...p,sku:e.target.value}))} placeholder={t.products.enterSku} /></td>
-          <td className="px-3 py-2"><input className={inp} value={form.brand} onChange={e => setForm(p=>({...p,brand:e.target.value}))} placeholder={t.products.enterBrand} /></td>
-          <td className="px-3 py-2"><input className={inp} value={form.unit_size} onChange={e => setForm(p=>({...p,unit_size:e.target.value}))} placeholder={t.products.enterSize} /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.name} onChange={e => updateForm({name:e.target.value})} placeholder={t.products.productName} /></td>
+          <td className="px-3 py-2"><input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e => updateForm({sku:e.target.value})} placeholder={t.products.enterSku} /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.brand} onChange={e => updateForm({brand:e.target.value})} placeholder={t.products.enterBrand} /></td>
+          <td className="px-3 py-2"><input className={inp} value={form.unit_size} onChange={e => updateForm({unit_size:e.target.value})} placeholder={t.products.enterSize} /></td>
           <td className="px-3 py-2">
-            <select className={inp} value={form.category_id} onChange={e => setForm(p=>({...p,category_id:parseInt(e.target.value)}))}>
+            <select className={inp} value={form.category_id} onChange={e => updateForm({category_id:parseInt(e.target.value)})}>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </td>
           <td className="px-3 py-2">
             {isAdmin ? (
-              <input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => setForm(p=>({...p,unit_price:e.target.value}))} placeholder={t.products.enterPrice} />
+              <input className={inp} type="number" step="0.01" value={form.unit_price} onChange={e => updateForm({unit_price:e.target.value})} placeholder={t.products.enterPrice} />
             ) : (
               <span className="text-xs text-stone-500 italic" title={t.products.priceLockedAdmin}>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(form.unit_price)} 🔒</span>
             )}
           </td>
           <td className="px-3 py-2">
             {isAdmin ? (
-              <input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} />
+              <input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => updateForm({bulk_price:e.target.value})} placeholder={t.products.enterPrice} />
             ) : (
               <span className="text-xs text-stone-500 italic" title={t.products.priceLockedAdmin}>{form.bulk_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(form.bulk_price) : '—'} 🔒</span>
             )}
           </td>
-          <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} /></td>
+          <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => updateForm({bulk_quantity:e.target.value})} placeholder={t.products.minQty} /></td>
           <td className="px-3 py-2">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${product.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-              {product.in_stock ? t.products.inStock : t.products.outOfStock}
-            </span>
+            <input
+              className={inp}
+              type="number"
+              min="0"
+              value={form.stock_quantity}
+              onChange={e => updateForm({stock_quantity: Math.max(0, parseInt(e.target.value) || 0)})}
+              placeholder="0"
+              title={lang === 'zh' ? '库存数量' : 'Units in stock'}
+            />
           </td>
           <td className="px-3 py-2">
             <div className="flex gap-1">
@@ -748,11 +768,13 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
       <td className="px-3 py-2.5 text-green-700 text-sm">{product.bulk_price ? formatPrice(product.bulk_price) : '—'}</td>
       <td className="px-3 py-2.5 text-stone-500 text-sm">{product.bulk_quantity ? `${product.bulk_quantity}+` : '—'}</td>
       <td className="px-3 py-2.5">
-        <button onClick={() => onToggleStock(product.id)} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
-          product.in_stock ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-700 hover:bg-red-100'
-        }`}>
-          {product.in_stock ? `✓ ${t.products.inStock}` : `✗ ${t.products.outOfStock}`}
-        </button>
+        <div className="flex flex-col items-start gap-0.5">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            product.stock_quantity > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}>
+            {product.stock_quantity > 0 ? `${product.stock_quantity} ${lang === 'zh' ? '件' : 'units'}` : (lang === 'zh' ? '无库存' : 'Out of stock')}
+          </span>
+        </div>
       </td>
       <td className="px-3 py-2.5">
         <div className="flex gap-1">
@@ -949,6 +971,9 @@ const StaffPortal = () => {
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
   const [csvMessage, setCsvMessage] = useState(null)
+  const [pendingProductEdits, setPendingProductEdits] = useState({}) // { productId: formData }
+  const [savingAllProducts, setSavingAllProducts] = useState(false)
+  const [saveAllResult, setSaveAllResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -1160,9 +1185,61 @@ const StaffPortal = () => {
   const handleProductDelete = async (productId, name) => {
     if (!window.confirm(`${t.products.deleteConfirm} "${name}"?`)) return
     try {
-      await fetch(`${API_BASE}/api/staff/products/${productId}`, { method: 'DELETE', credentials: 'include' })
-      fetchProducts()
+      const res = await fetch(`${API_BASE}/api/staff/products/${productId}`, { method: 'DELETE', credentials: 'include' })
+      const data = await res.json()
+      if (data.blocked) {
+        // Inventory remaining — show a clear warning
+        const msg = lang === 'zh'
+          ? `无法删除「${name}」——库存中还有 ${data.stock_quantity} 件商品。请先将库存数量调整为 0。`
+          : `Cannot delete "${name}" — there are still ${data.stock_quantity} unit(s) in inventory. Please set the stock quantity to 0 first.`
+        alert(msg)
+        return
+      }
+      if (data.success) fetchProducts()
     } catch {}
+  }
+
+  // Called by ProductRow whenever a field changes
+  const handleMarkProductDirty = (productId, formData) => {
+    setPendingProductEdits(prev => {
+      if (formData === null) {
+        // null means the row was cancelled — remove from pending
+        const next = { ...prev }
+        delete next[productId]
+        return next
+      }
+      return { ...prev, [productId]: { id: productId, ...formData } }
+    })
+  }
+
+  const handleSaveAllProducts = async () => {
+    const items = Object.values(pendingProductEdits)
+    if (items.length === 0) return
+    setSavingAllProducts(true)
+    setSaveAllResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/products/bulk-save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ products: items }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPendingProductEdits({})
+        setSaveAllResult({ type: 'success', text: lang === 'zh'
+          ? `✅ 已保存 ${data.saved_count} 个产品。${data.error_count > 0 ? `错误：${data.errors.map(e=>e.error).join('; ')}` : ''}`
+          : `✅ Saved ${data.saved_count} product${data.saved_count !== 1 ? 's' : ''}. ${data.error_count > 0 ? `Errors: ${data.errors.map(e=>e.error).join('; ')}` : ''}`
+        })
+        fetchProducts()
+        fetchInventory()
+      } else {
+        setSaveAllResult({ type: 'error', text: `❌ ${data.error || t.common.error}` })
+      }
+    } catch {
+      setSaveAllResult({ type: 'error', text: `❌ ${t.common.error}` })
+    }
+    finally { setSavingAllProducts(false) }
   }
 
   const handleProductToggleStock = async (productId) => {
@@ -1434,6 +1511,44 @@ const StaffPortal = () => {
               </div>
             </div>
 
+            {/* ── Save All Changes Banner ── */}
+            {Object.keys(pendingProductEdits).length > 0 && (
+              <div className="mb-4 p-3 bg-blue-600 text-white rounded-xl flex items-center justify-between gap-3 shadow-md">
+                <span className="text-sm font-medium">
+                  {lang === 'zh'
+                    ? `您有 ${Object.keys(pendingProductEdits).length} 个产品有未保存的更改。`
+                    : `You have unsaved changes on ${Object.keys(pendingProductEdits).length} product${Object.keys(pendingProductEdits).length !== 1 ? 's' : ''}.`
+                  }
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setPendingProductEdits({}); fetchProducts() }}
+                    className="px-3 py-1.5 text-xs bg-white/20 hover:bg-white/30 rounded-lg transition-all"
+                  >
+                    {lang === 'zh' ? '放弃' : 'Discard'}
+                  </button>
+                  <button
+                    onClick={handleSaveAllProducts}
+                    disabled={savingAllProducts}
+                    className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold bg-white text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                  >
+                    {savingAllProducts ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {savingAllProducts
+                      ? (lang === 'zh' ? '保存中...' : 'Saving...')
+                      : (lang === 'zh' ? '保存所有更改' : 'Save All Changes')
+                    }
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {saveAllResult && (
+              <div className={`mb-4 p-3 rounded-lg text-sm ${saveAllResult.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                {saveAllResult.text}
+                <button onClick={() => setSaveAllResult(null)} className="ml-2 opacity-60 hover:opacity-100"><X className="w-3 h-3 inline" /></button>
+              </div>
+            )}
+
             {csvMessage && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${csvMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
                 {csvMessage.text}
@@ -1472,7 +1587,7 @@ const StaffPortal = () => {
               <table className="w-full text-sm min-w-[900px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    {[lang === 'zh' ? '图片' : 'Image', t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, t.products.stock, t.products.actions].map(h => (
+                    {[lang === 'zh' ? '图片' : 'Image', t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, lang === 'zh' ? '库存数量' : 'Inventory', t.products.actions].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -1489,6 +1604,7 @@ const StaffPortal = () => {
                       onDelete={handleProductDelete}
                       onToggleStock={handleProductToggleStock}
                       onImageUpdate={(id, url) => { setProducts(prev => prev.map(pr => pr.id === id ? {...pr, image_url: url} : pr)); fetchInventory() }}
+                      onMarkDirty={handleMarkProductDirty}
                       lang={lang}
                       t={t}
                       isAdmin={isAdmin}
@@ -1497,7 +1613,7 @@ const StaffPortal = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-stone-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击 ✏️ 图标可内联编辑。' : 'products shown. Click the ✏️ edit icon on any row to edit inline.'}</p>
+            <p className="text-xs text-stone-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击 ✏️ 图标内联编辑，编辑后点击《保存所有更改》同步到库存和产品目录。' : 'products shown. Click the ✏️ edit icon to edit inline. When done, click "Save All Changes" to sync updates across the product catalog and inventory.'}</p>
 
             {showAddProduct && (
               <AddProductForm

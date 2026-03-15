@@ -28,6 +28,7 @@ class Product(db.Model):
     unit_size = db.Column(db.String(50), nullable=True)  # e.g., "1 lb", "24 oz can"
     brand = db.Column(db.String(100), nullable=True)
     in_stock = db.Column(db.Boolean, default=True)
+    stock_quantity = db.Column(db.Integer, default=0, nullable=False)  # Units currently on hand
     image_url = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -48,8 +49,8 @@ class Product(db.Model):
             'unit_size': self.unit_size,
             'brand': self.brand,
             'in_stock': self.in_stock,
+            'stock_quantity': self.stock_quantity if self.stock_quantity is not None else 0,
             'image_url': self.image_url,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-
