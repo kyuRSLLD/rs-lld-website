@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { staffFetch } from '@/lib/staffApi'
 import {
   Key, Plus, Copy, Eye, EyeOff, Trash2, ShieldOff, ShieldCheck,
   AlertTriangle, CheckCircle, Clock, RefreshCw, X, Info
@@ -65,9 +66,8 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
     if (!form.name.trim()) { setError(t?.nameRequired || 'Key name is required'); return }
     setSaving(true)
     try {
-      const res = await fetch(`${API}/api/admin/keys`, {
+      const res = await staffFetch(`/api/admin/keys`, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
@@ -255,7 +255,7 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
   const fetchKeys = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API}/api/admin/keys`, { credentials: 'include' })
+      const res = await staffFetch(`/api/admin/keys`, {})
       const data = await res.json()
       setKeys(Array.isArray(data) ? data : [])
     } catch { setKeys([]) }
@@ -266,18 +266,18 @@ export function ApiKeyManagerTab({ t: tAll, lang }) {
 
   async function revokeKey(id) {
     if (!confirm(t?.revokeConfirm || 'Revoke this key? It will stop working immediately.')) return
-    await fetch(`${API}/api/admin/keys/${id}/revoke`, { method: 'POST', credentials: 'include' })
+    await staffFetch(`/api/admin/keys/${id}/revoke`, { method: 'POST' })
     fetchKeys()
   }
 
   async function activateKey(id) {
-    await fetch(`${API}/api/admin/keys/${id}/activate`, { method: 'POST', credentials: 'include' })
+    await staffFetch(`/api/admin/keys/${id}/activate`, { method: 'POST' })
     fetchKeys()
   }
 
   async function deleteKey(id) {
     if (!confirm(t?.deleteConfirm || 'Permanently delete this key record?')) return
-    await fetch(`${API}/api/admin/keys/${id}`, { method: 'DELETE', credentials: 'include' })
+    await staffFetch(`/api/admin/keys/${id}`, { method: 'DELETE' })
     fetchKeys()
   }
 

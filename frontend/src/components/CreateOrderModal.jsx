@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { staffFetch } from '@/lib/staffApi'
 import { X, Plus, Trash2, Search, Package, User } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -77,7 +78,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
     setCustomerSearching(true)
     customerSearchTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${API}/api/staff/customers/search?q=${encodeURIComponent(q)}`, { credentials: 'include' })
+        const res = await staffFetch(`/api/staff/customers/search?q=${encodeURIComponent(q)}`, {})
         const data = await res.json()
         setCustomerResults(Array.isArray(data) ? data : [])
       } catch { setCustomerResults([]) }
@@ -104,7 +105,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   async function searchProducts(idx, query) {
     if (!query || query.length < 2) { setSearchResults(r => ({ ...r, [idx]: [] })); return }
     try {
-      const res = await fetch(`${API}/api/products?search=${encodeURIComponent(query)}`, { credentials: 'include' })
+      const res = await staffFetch(`/api/products?search=${encodeURIComponent(query)}`, {})
       const data = await res.json()
       setSearchResults(r => ({ ...r, [idx]: data.products || data || [] }))
     } catch { setSearchResults(r => ({ ...r, [idx]: [] })) }
@@ -180,9 +181,8 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
         })),
       }
 
-      const res = await fetch(`${API}/api/staff/orders`, {
+      const res = await staffFetch(`/api/staff/orders`, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })

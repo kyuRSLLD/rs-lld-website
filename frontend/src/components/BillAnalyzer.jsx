@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { staffFetch } from '@/lib/staffApi'
 import {
   Upload, FileText, TrendingDown, CheckCircle, AlertCircle,
   Clock, RefreshCw, Trash2, ChevronDown, ChevronUp, Eye,
@@ -58,8 +59,8 @@ const UploadForm = ({ onUploaded, t }) => {
       fd.append('file', file)
       Object.entries(form).forEach(([k, v]) => fd.append(k, v))
 
-      const res = await fetch(`${API_BASE}/api/bills`, {
-        method: 'POST', credentials: 'include', body: fd
+      const res = await staffFetch(`/api/bills`, {
+        method: 'POST', body: fd
       })
       const data = await res.json()
       if (data.success) {
@@ -182,7 +183,7 @@ const ProcessingCard = ({ bill, onDone, t }) => {
 
   const poll = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/bills/${bill.id}/status`, { credentials: 'include' })
+      const res = await staffFetch(`/api/bills/${bill.id}/status`, {})
       const d = await res.json()
       setStatus(d.extraction_status)
       setData(d)
@@ -236,7 +237,7 @@ const BillDetail = ({ billId, onBack, onDelete, t }) => {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/bills/${billId}`, { credentials: 'include' })
+      const res = await staffFetch(`/api/bills/${billId}`, {})
       const d = await res.json()
       setBill(d)
       setNotes(d.notes || '')
@@ -247,8 +248,8 @@ const BillDetail = ({ billId, onBack, onDelete, t }) => {
   useEffect(() => { load() }, [load])
 
   const handleSaveNotes = async () => {
-    await fetch(`${API_BASE}/api/bills/${billId}/notes`, {
-      method: 'PUT', credentials: 'include',
+    await staffFetch(`/api/bills/${billId}/notes`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes })
     })
@@ -257,7 +258,7 @@ const BillDetail = ({ billId, onBack, onDelete, t }) => {
   }
 
   const handleReprocess = async () => {
-    await fetch(`${API_BASE}/api/bills/${billId}/reprocess`, { method: 'POST', credentials: 'include' })
+    await staffFetch(`/api/bills/${billId}/reprocess`, { method: 'POST' })
     setBill(p => ({ ...p, extraction_status: 'processing' }))
     load()
   }
@@ -534,7 +535,7 @@ export const BillAnalyzerTab = ({ t }) => {
 
   const loadBills = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/bills`, { credentials: 'include' })
+      const res = await staffFetch(`/api/bills`, {})
       const data = await res.json()
       setBills(Array.isArray(data) ? data : [])
     } catch {}
@@ -556,7 +557,7 @@ export const BillAnalyzerTab = ({ t }) => {
   }
 
   const handleDelete = async (billId) => {
-    await fetch(`${API_BASE}/api/bills/${billId}`, { method: 'DELETE', credentials: 'include' })
+    await staffFetch(`/api/bills/${billId}`, { method: 'DELETE' })
     setView('list')
     setSelectedId(null)
     loadBills()

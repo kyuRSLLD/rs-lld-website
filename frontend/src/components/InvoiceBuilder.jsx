@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { staffFetch } from '@/lib/staffApi'
 import {
   Plus, Trash2, X, Search, RefreshCw, Printer,
   FileText, ChevronDown, ChevronUp, Check, Save
@@ -29,7 +30,7 @@ const ProductSearchDropdown = ({ t, onSelect, onClose }) => {
       const url = q
         ? `${API_BASE}/api/invoices/products/search?q=${encodeURIComponent(q)}`
         : `${API_BASE}/api/invoices/products/search`
-      const res = await fetch(url, { credentials: 'include' })
+      const res = await staffFetch(url)
       const data = await res.json()
       setResults(Array.isArray(data) ? data : [])
     } catch { setResults([]) }
@@ -347,8 +348,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
+                body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (res.ok) {
@@ -783,7 +783,7 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
       const url = statusFilter
         ? `${API_BASE}/api/invoices?status=${statusFilter}`
         : `${API_BASE}/api/invoices`
-      const res = await fetch(url, { credentials: 'include' })
+      const res = await staffFetch(url)
       const data = await res.json()
       setInvoices(Array.isArray(data) ? data : [])
     } catch { setInvoices([]) }
@@ -795,7 +795,7 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
   const handleDelete = async (inv) => {
     if (!window.confirm(t.invoices.deleteConfirm)) return
     try {
-      await fetch(`${API_BASE}/api/invoices/${inv.id}`, { method: 'DELETE', credentials: 'include' })
+      await staffFetch(`/api/invoices/${inv.id}`, { method: 'DELETE' })
       fetchInvoices()
     } catch {}
   }
@@ -806,10 +806,9 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
       : null
     if (confirmMsg && !window.confirm(confirmMsg)) return
     try {
-      await fetch(`${API_BASE}/api/invoices/${inv.id}`, {
+      await staffFetch(`/api/invoices/${inv.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ ...inv, status: newStatus }),
       })
       fetchInvoices()

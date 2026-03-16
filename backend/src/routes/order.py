@@ -2,11 +2,26 @@ from flask import Blueprint, request, jsonify, session
 from datetime import datetime, timedelta
 import random
 import string
+import os
+import jwt
 
 from src.models.user import db
 from src.models.order import Order, OrderItem
 from src.models.product import Product
 from src.routes.user import login_required
+
+
+def _get_jwt_secret():
+    return os.environ.get('SECRET_KEY', 'REDACTED_SECRET_KEY')
+
+
+def _verify_staff_jwt(token):
+    """Decode a staff JWT token. Returns staff_id on success, None on failure."""
+    try:
+        payload = jwt.decode(token, _get_jwt_secret(), algorithms=['HS256'])
+        return payload.get('staff_id')
+    except Exception:
+        return None
 
 order_bp = Blueprint('order', __name__)
 
@@ -190,10 +205,28 @@ def staff_required(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Accept JWT token from Authorization header (cross-domain support)
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+            staff_id = _verify_staff_jwt(token)
+            if staff_id:
+                # Inject staff_id into session-like context via g
+                from flask import g
+                g.staff_id = staff_id
+                return f(*args, **kwargs)
+            return jsonify({'error': 'Invalid or expired token'}), 401
+        # Fall back to session cookie
         if 'staff_id' not in session:
             return jsonify({'error': 'Staff authentication required'}), 401
         return f(*args, **kwargs)
     return decorated
+
+
+def get_current_staff_id():
+    """Get staff_id from either JWT (g.staff_id) or session."""
+    from flask import g
+    return getattr(g, 'staff_id', None) or session.get('staff_id')
 
 
 @order_bp.route('/staff/login', methods=['POST'])
@@ -203,7 +236,13 @@ def staff_login():
     staff = StaffUser.query.filter_by(username=data.get('username')).first()
     if staff and staff.check_password(data.get('password', '')):
         session['staff_id'] = staff.id
-        return jsonify({'success': True, 'staff': staff.to_dict()})
+        # Also issue a JWT token for cross-domain auth (Bluehost frontend -> Railway backend)
+        token = jwt.encode(
+            {'staff_id': staff.id, 'exp': datetime.utcnow() + timedelta(days=30)},
+            _get_jwt_secret(),
+            algorithm='HS256'
+        )
+        return jsonify({'success': True, 'staff': staff.to_dict(), 'token': token})
     return jsonify({'error': 'Invalid credentials'}), 401
 
 
@@ -217,7 +256,7 @@ def staff_logout():
 @staff_required
 def get_staff_me():
     from src.models.order import StaffUser
-    staff = StaffUser.query.get(session['staff_id'])
+    staff = StaffUser.query.get(get_current_staff_id())
     return jsonify(staff.to_dict())
 
 

@@ -25,9 +25,20 @@ def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         from src.models.order import StaffUser
-        staff_id = session.get('staff_id')
-        if not staff_id:
-            return jsonify({'error': 'Authentication required'}), 401
+        from src.routes.order import _verify_staff_jwt, get_current_staff_id
+        # Support JWT token auth (cross-domain) and session cookie auth
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+            staff_id = _verify_staff_jwt(token)
+            if not staff_id:
+                return jsonify({'error': 'Invalid or expired token'}), 401
+            from flask import g
+            g.staff_id = staff_id
+        else:
+            staff_id = session.get('staff_id')
+            if not staff_id:
+                return jsonify({'error': 'Authentication required'}), 401
         staff = StaffUser.query.get(staff_id)
         if not staff or not staff.is_active:
             return jsonify({'error': 'Account inactive'}), 403
@@ -84,7 +95,8 @@ def create_key():
     if APIKey.query.filter_by(key_hash=key_hash).first():
         return jsonify({'error': 'Key collision — please try again'}), 500
 
-    staff = StaffUser.query.get(session['staff_id'])
+    from src.routes.order import get_current_staff_id
+    staff = StaffUser.query.get(get_current_staff_id())
     api_key = APIKey(
         name=name,
         prefix=prefix,
@@ -116,7 +128,8 @@ def revoke_key(key_id):
     if not api_key.is_active:
         return jsonify({'error': 'Key is already revoked'}), 400
 
-    staff = StaffUser.query.get(session['staff_id'])
+    from src.routes.order import get_current_staff_id
+    staff = StaffUser.query.get(get_current_staff_id())
     api_key.is_active = False
     api_key.revoked_at = datetime.utcnow()
     api_key.revoked_by = staff.username

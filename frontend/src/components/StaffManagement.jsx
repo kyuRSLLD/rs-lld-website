@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { staffFetch } from '@/lib/staffApi'
 import { Users, Plus, Edit3, Trash2, RefreshCw, X, Check, Shield, UserCheck, UserX, Key } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -50,8 +51,7 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
+                body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (res.ok) { onSave(data) }
@@ -203,7 +203,7 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/staff/users`, { credentials: 'include' })
+      const res = await staffFetch(`/api/staff/users`, {})
       const data = await res.json()
       setUsers(Array.isArray(data) ? data : [])
     } catch { setUsers([]) }
@@ -228,10 +228,9 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
     const action = user.is_active ? t.staffMgmt.deactivate : t.staffMgmt.activate
     if (!window.confirm(`${action} "${user.username}"?`)) return
     try {
-      const res = await fetch(`${API_BASE}/api/staff/users/${user.id}`, {
+      const res = await staffFetch(`/api/staff/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ is_active: !user.is_active }),
       })
       const data = await res.json()
@@ -243,9 +242,8 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
   const handleDelete = async (user) => {
     if (!window.confirm(`${t.staffMgmt.deleteConfirm} "${user.username}"?`)) return
     try {
-      const res = await fetch(`${API_BASE}/api/staff/users/${user.id}`, {
+      const res = await staffFetch(`/api/staff/users/${user.id}`, {
         method: 'DELETE',
-        credentials: 'include',
       })
       const data = await res.json()
       if (res.ok) { fetchUsers(); showMsg(t.staffMgmt.deletedSuccess) }

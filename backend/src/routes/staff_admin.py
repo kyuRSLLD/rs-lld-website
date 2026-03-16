@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import db
 from src.models.order import StaffUser
-from src.routes.order import staff_required
+from src.routes.order import staff_required, get_current_staff_id
 
 staff_admin_bp = Blueprint('staff_admin', __name__)
 
@@ -11,9 +11,20 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
-        staff_id = session.get('staff_id')
-        if not staff_id:
-            return jsonify({'error': 'Authentication required'}), 401
+        # Support JWT token auth (cross-domain) and session cookie auth
+        from src.routes.order import _verify_staff_jwt
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+            staff_id = _verify_staff_jwt(token)
+            if not staff_id:
+                return jsonify({'error': 'Invalid or expired token'}), 401
+            from flask import g
+            g.staff_id = staff_id
+        else:
+            staff_id = session.get('staff_id')
+            if not staff_id:
+                return jsonify({'error': 'Authentication required'}), 401
         staff = StaffUser.query.get(staff_id)
         if not staff or staff.role != 'admin':
             return jsonify({'error': 'Admin access required'}), 403
@@ -81,7 +92,7 @@ def update_staff_user(user_id):
         return jsonify({'error': 'No data provided'}), 400
 
     # Prevent admin from demoting themselves
-    current_id = session.get('staff_id')
+    current_id = get_current_staff_id()
     if user_id == current_id and data.get('role') and data['role'] != 'admin':
         return jsonify({'error': 'You cannot change your own role'}), 400
     if user_id == current_id and data.get('is_active') is False:
@@ -115,7 +126,7 @@ def update_staff_user(user_id):
 @staff_admin_bp.route('/staff/users/<int:user_id>', methods=['DELETE'])
 @admin_required
 def delete_staff_user(user_id):
-    current_id = session.get('staff_id')
+    current_id = get_current_staff_id()
     if user_id == current_id:
         return jsonify({'error': 'You cannot delete your own account'}), 400
 
