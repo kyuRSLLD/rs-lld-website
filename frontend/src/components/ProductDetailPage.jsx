@@ -181,7 +181,7 @@ const ProductDetailPage = () => {
             <div className="bg-gray-50 flex items-center justify-center p-8 min-h-[320px]">
               {product.image_url ? (
                 <img
-                  src={`${API_BASE}${product.image_url}`}
+                  src={product.image_url.startsWith('data:') || product.image_url.startsWith('http') ? product.image_url : `${API_BASE}${product.image_url}`}
                   alt={product.name}
                   className="max-h-72 max-w-full object-contain rounded-lg"
                   onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
@@ -317,7 +317,7 @@ const ProductDetailPage = () => {
                   <div className="bg-gray-50 h-36 flex items-center justify-center p-3">
                     {p.image_url ? (
                       <img
-                        src={`${API_BASE}${p.image_url}`}
+                        src={p.image_url.startsWith('data:') || p.image_url.startsWith('http') ? p.image_url : `${API_BASE}${p.image_url}`}
                         alt={p.name}
                         className="max-h-28 max-w-full object-contain group-hover:scale-105 transition-transform"
                         onError={e => { e.target.style.display = 'none' }}

@@ -1,22 +1,42 @@
 import csv
+import base64
 import io
 import os
-import uuid
-from werkzeug.utils import secure_filename
-from flask import Blueprint, jsonify, request, session, Response, send_from_directory
+from flask import Blueprint, jsonify, request, session, Response
 from src.models.product import Product, Category, db
 from src.routes.order import staff_required
 
-PRODUCT_IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'products')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MIME_MAP = {
+    'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+    'png': 'image/png', 'gif': 'image/gif', 'webp': 'image/webp'
+}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 product_admin_bp = Blueprint('product_admin', __name__)
 
-# ─── UPLOAD product image ────────────────────────────────────────────────────
+
+def _file_to_data_url(file, ext):
+    """Read an uploaded file and return a base64 data URL string.
+    Images are stored as data URLs in the database so they survive
+    container restarts and redeploys (no filesystem dependency).
+    """
+    data = file.read()
+    if len(data) > MAX_IMAGE_SIZE:
+        return None, 'Image must be under 5 MB'
+    mime = MIME_MAP.get(ext, 'image/jpeg')
+    b64 = base64.b64encode(data).decode('utf-8')
+    return f"data:{mime};base64,{b64}", None
+
+
+# ─── UPLOAD product image (existing product) ─────────────────────────────────
 @product_admin_bp.route('/staff/products/<int:product_id>/image', methods=['POST'])
 @staff_required
 def upload_product_image(product_id):
-    """Upload or replace the display image for a product."""
+    """Upload or replace the display image for a product.
+    Stores the image as a base64 data URL in the database so it persists
+    across container restarts and redeploys (no filesystem dependency).
+    """
     product = Product.query.get_or_404(product_id)
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
@@ -26,40 +46,44 @@ def upload_product_image(product_id):
     ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         return jsonify({'error': 'Invalid file type. Use JPG, PNG, GIF, or WebP.'}), 400
-    os.makedirs(PRODUCT_IMAGE_FOLDER, exist_ok=True)
-    # Delete old image file if it was a local upload
-    if product.image_url and product.image_url.startswith('/api/staff/products/images/'):
-        old_filename = product.image_url.split('/')[-1]
-        old_path = os.path.join(PRODUCT_IMAGE_FOLDER, old_filename)
-        if os.path.exists(old_path):
-            os.remove(old_path)
-    filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
-    filepath = os.path.join(PRODUCT_IMAGE_FOLDER, filename)
-    file.save(filepath)
-    product.image_url = f"/api/staff/products/images/{filename}"
+    data_url, err = _file_to_data_url(file, ext)
+    if err:
+        return jsonify({'error': err}), 400
+    product.image_url = data_url
     db.session.commit()
     return jsonify({'success': True, 'image_url': product.image_url, 'product': product.to_dict()})
 
 
-@product_admin_bp.route('/staff/products/images/<path:filename>', methods=['GET'])
-def serve_product_image(filename):
-    """Serve uploaded product images."""
-    return send_from_directory(PRODUCT_IMAGE_FOLDER, filename)
-
-
+# ─── DELETE product image ─────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/products/<int:product_id>/image', methods=['DELETE'])
 @staff_required
 def delete_product_image(product_id):
     """Remove the image from a product."""
     product = Product.query.get_or_404(product_id)
-    if product.image_url and product.image_url.startswith('/api/staff/products/images/'):
-        old_filename = product.image_url.split('/')[-1]
-        old_path = os.path.join(PRODUCT_IMAGE_FOLDER, old_filename)
-        if os.path.exists(old_path):
-            os.remove(old_path)
     product.image_url = None
     db.session.commit()
     return jsonify({'success': True, 'product': product.to_dict()})
+
+
+# ─── TEMP UPLOAD for new-product form (before product record exists) ──────────
+@product_admin_bp.route('/staff/products/upload-image', methods=['POST'])
+@staff_required
+def upload_image_temp():
+    """Pre-upload an image before the product record exists.
+    Returns a base64 data URL that the caller includes in the create-product payload.
+    """
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({'error': 'Invalid file type. Use JPG, PNG, GIF, or WebP.'}), 400
+    data_url, err = _file_to_data_url(file, ext)
+    if err:
+        return jsonify({'error': err}), 400
+    return jsonify({'success': True, 'image_url': data_url})
 
 
 # ─── GET all products for admin (includes inactive) ──────────────────────────
@@ -82,12 +106,14 @@ def admin_get_products():
     products = query.order_by(Product.category_id, Product.name).all()
     return jsonify([p.to_dict() for p in products])
 
+
 # ─── GET all categories ───────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/categories', methods=['GET'])
 @staff_required
 def admin_get_categories():
     categories = Category.query.order_by(Category.name).all()
     return jsonify([c.to_dict() for c in categories])
+
 
 # ─── ADD new product ──────────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/products', methods=['POST'])
@@ -115,6 +141,7 @@ def admin_add_product():
             brand=data.get('brand', ''),
             in_stock=data.get('in_stock', True),
             stock_quantity=int(data['stock_quantity']) if data.get('stock_quantity') else 0,
+            image_url=data.get('image_url'),
         )
         db.session.add(product)
         db.session.commit()
@@ -122,6 +149,7 @@ def admin_add_product():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
 
 # ─── UPDATE product (price, SKU, name, stock, etc.) ──────────────────────────
 @product_admin_bp.route('/staff/products/<int:product_id>', methods=['PUT'])
@@ -162,11 +190,14 @@ def admin_update_product(product_id):
                 product.in_stock = False
             elif qty > 0 and not product.in_stock:
                 product.in_stock = True
+        if 'image_url' in data:
+            product.image_url = data['image_url']
         db.session.commit()
         return jsonify({'success': True, 'product': product.to_dict()})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
 
 # ─── BULK SAVE products (save all pending edits at once) ─────────────────────
 @product_admin_bp.route('/staff/products/bulk-save', methods=['POST'])
@@ -230,6 +261,8 @@ def admin_bulk_save_products():
                     product.in_stock = False
                 else:
                     product.in_stock = True
+            if 'image_url' in item:
+                product.image_url = item['image_url']
             saved.append({'id': product_id, 'sku': product.sku, 'name': product.name})
         except (ValueError, TypeError) as e:
             errors.append({'id': product_id, 'error': str(e)})
@@ -248,6 +281,7 @@ def admin_bulk_save_products():
         'errors': errors,
     })
 
+
 # ─── TOGGLE stock status ──────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/products/<int:product_id>/toggle-stock', methods=['POST'])
 @staff_required
@@ -256,6 +290,7 @@ def admin_toggle_stock(product_id):
     product.in_stock = not product.in_stock
     db.session.commit()
     return jsonify({'success': True, 'in_stock': product.in_stock, 'product': product.to_dict()})
+
 
 # ─── DELETE product ───────────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/products/<int:product_id>', methods=['DELETE'])
@@ -278,6 +313,7 @@ def admin_delete_product(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
 
 # ─── EXPORT products as CSV ───────────────────────────────────────────────────
 @product_admin_bp.route('/staff/products/export-csv', methods=['GET'])
@@ -308,6 +344,7 @@ def admin_export_csv():
         mimetype='text/csv',
         headers={'Content-Disposition': 'attachment; filename=lld_products.csv'}
     )
+
 
 # ─── IMPORT products from CSV (bulk price update) ────────────────────────────
 @product_admin_bp.route('/staff/products/import-csv', methods=['POST'])
@@ -365,6 +402,7 @@ def admin_import_csv():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
 
 # ─── ADD new category ─────────────────────────────────────────────────────────
 @product_admin_bp.route('/staff/categories', methods=['POST'])

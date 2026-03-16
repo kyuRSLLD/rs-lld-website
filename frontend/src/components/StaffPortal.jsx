@@ -735,7 +735,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
         <div className="flex flex-col items-center gap-1" style={{minWidth: 64}}>
           {currentImageUrl ? (
             <img
-              src={currentImageUrl.startsWith('/api') ? `${API_BASE}${currentImageUrl}` : currentImageUrl}
+              src={currentImageUrl.startsWith('data:') || currentImageUrl.startsWith('http') ? currentImageUrl : `${API_BASE}${currentImageUrl}`}
               alt={product.name}
               className="w-12 h-12 object-cover rounded-lg border border-stone-200 bg-stone-50"
             />
@@ -1647,7 +1647,7 @@ const StaffPortal = () => {
                         <div className="flex flex-col items-center gap-1.5" style={{minWidth: 72}}>
                           {p.image_url ? (
                             <img
-                              src={p.image_url.startsWith('/api') ? `${API_BASE}${p.image_url}` : p.image_url}
+                              src={p.image_url.startsWith('data:') || p.image_url.startsWith('http') ? p.image_url : `${API_BASE}${p.image_url}`}
                               alt={p.name}
                               className="w-14 h-14 object-cover rounded-lg border border-stone-200 bg-stone-50"
                             />

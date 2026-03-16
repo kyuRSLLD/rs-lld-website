@@ -316,7 +316,7 @@ const ProductsPage = () => {
                 <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100 group-hover:opacity-90 transition-opacity">
                     {product.image_url ? (
                       <img
-                        src={`${API_BASE}${product.image_url}`}
+                        src={product.image_url.startsWith('data:') || product.image_url.startsWith('http') ? product.image_url : `${API_BASE}${product.image_url}`}
                         alt={product.name}
                         className="w-full h-full object-contain p-2"
                         onError={(e) => {

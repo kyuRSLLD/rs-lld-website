@@ -7,22 +7,28 @@ All endpoints require an API key passed via the X-API-Key header.
 Base URL: /api/v1
 """
 
-import os
-import uuid
+import base64
 import hmac
 import hashlib
 from flask import Blueprint, jsonify, request, current_app
-from werkzeug.utils import secure_filename
 from src.models.product import Product, Category, db
 
 inventory_api_bp = Blueprint('inventory_api', __name__)
 
-# ─── Allowed image extensions ─────────────────────────────────────────────────
+# ─── Allowed image extensions ───────────────────────────────────────────────────
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MIME_MAP = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'gif': 'image/gif', 'webp': 'image/webp'}
 MAX_IMAGE_SIZE_MB = 5
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def file_to_data_url(file, ext):
+    """Convert an uploaded file to a base64 data URL for persistent storage."""
+    data = file.read()
+    mime = MIME_MAP.get(ext, 'image/jpeg')
+    b64 = base64.b64encode(data).decode('utf-8')
+    return f"data:{mime};base64,{b64}"
 
 # ─── API Key authentication ───────────────────────────────────────────────────
 def require_api_key(f):
@@ -284,19 +290,8 @@ def api_upload_image(identifier):
 
     try:
         ext = file.filename.rsplit('.', 1)[1].lower()
-        # Use SKU-based filename for easy identification
-        safe_sku = secure_filename(product.sku.lower().replace(' ', '_'))
-        unique_id = uuid.uuid4().hex[:8]
-        filename = f"{safe_sku}_{unique_id}.{ext}"
-
-        # Save to static/uploads/products/
-        upload_dir = os.path.join(current_app.static_folder, 'uploads', 'products')
-        os.makedirs(upload_dir, exist_ok=True)
-        filepath = os.path.join(upload_dir, filename)
-        file.save(filepath)
-
-        # Build the public URL
-        image_url = f"/uploads/products/{filename}"
+        # Store as base64 data URL — persists across container restarts/redeploys
+        image_url = file_to_data_url(file, ext)
         product.image_url = image_url
         db.session.commit()
 
