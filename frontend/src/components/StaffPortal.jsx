@@ -898,7 +898,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
                     ref={galleryFileInputRef}
                     type="file"
                     accept="image/*"
-                    className="hidden"
+                    style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
                     disabled={galleryLoading}
                     onChange={e => {
                       handleAddGalleryImage(e.target.files[0])
