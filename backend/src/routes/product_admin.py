@@ -3,7 +3,7 @@ import base64
 import io
 import os
 from flask import Blueprint, jsonify, request, session, Response
-from src.models.product import Product, Category, db
+from src.models.product import Product, Category, ProductImage, db
 from src.routes.order import staff_required
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -402,6 +402,78 @@ def admin_import_csv():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
+
+# ─── MULTI-IMAGE: add an extra image to a product ───────────────────────────
+@product_admin_bp.route('/staff/products/<int:product_id>/images', methods=['POST'])
+@staff_required
+def add_product_image(product_id):
+    """Add an additional image to a product's gallery."""
+    product = Product.query.get_or_404(product_id)
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({'error': 'Invalid file type. Use JPG, PNG, GIF, or WebP.'}), 400
+    data_url, err = _file_to_data_url(file, ext)
+    if err:
+        return jsonify({'error': err}), 400
+    # Determine sort order (append to end)
+    max_order = db.session.query(db.func.max(ProductImage.sort_order)).filter_by(product_id=product_id).scalar() or 0
+    img = ProductImage(product_id=product_id, image_url=data_url, sort_order=max_order + 1)
+    db.session.add(img)
+    # If this is the first image and the product has no primary image, also set image_url
+    if not product.image_url:
+        product.image_url = data_url
+    db.session.commit()
+    return jsonify({'success': True, 'image': img.to_dict(), 'product': product.to_dict()}), 201
+
+
+# ─── MULTI-IMAGE: delete a specific extra image ───────────────────────────────
+@product_admin_bp.route('/staff/products/<int:product_id>/images/<int:image_id>', methods=['DELETE'])
+@staff_required
+def delete_product_image_by_id(product_id, image_id):
+    """Remove a specific image from a product's gallery."""
+    img = ProductImage.query.filter_by(id=image_id, product_id=product_id).first_or_404()
+    db.session.delete(img)
+    # If the deleted image was the primary image, update primary to next available
+    product = Product.query.get_or_404(product_id)
+    if product.image_url == img.image_url:
+        next_img = ProductImage.query.filter_by(product_id=product_id).order_by(ProductImage.sort_order).first()
+        product.image_url = next_img.image_url if next_img else None
+    db.session.commit()
+    return jsonify({'success': True, 'product': product.to_dict()})
+
+
+# ─── MULTI-IMAGE: set primary image ──────────────────────────────────────────
+@product_admin_bp.route('/staff/products/<int:product_id>/images/<int:image_id>/set-primary', methods=['POST'])
+@staff_required
+def set_primary_image(product_id, image_id):
+    """Set a gallery image as the primary display image."""
+    img = ProductImage.query.filter_by(id=image_id, product_id=product_id).first_or_404()
+    product = Product.query.get_or_404(product_id)
+    product.image_url = img.image_url
+    db.session.commit()
+    return jsonify({'success': True, 'product': product.to_dict()})
+
+
+# ─── MULTI-IMAGE: reorder images ─────────────────────────────────────────────
+@product_admin_bp.route('/staff/products/<int:product_id>/images/reorder', methods=['POST'])
+@staff_required
+def reorder_product_images(product_id):
+    """Update sort_order for all images. Body: { "order": [id1, id2, id3, ...] }"""
+    data = request.json
+    order = data.get('order', [])
+    for i, img_id in enumerate(order):
+        img = ProductImage.query.filter_by(id=img_id, product_id=product_id).first()
+        if img:
+            img.sort_order = i
+    db.session.commit()
+    product = Product.query.get_or_404(product_id)
+    return jsonify({'success': True, 'product': product.to_dict()})
 
 
 # ─── ADD new category ─────────────────────────────────────────────────────────

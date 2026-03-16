@@ -23,19 +23,20 @@ class Product(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     sku = db.Column(db.String(50), unique=True, nullable=False)
     unit_price = db.Column(db.Float, nullable=False)
-    bulk_price = db.Column(db.Float, nullable=True)  # Price for bulk orders
-    bulk_quantity = db.Column(db.Integer, nullable=True)  # Minimum quantity for bulk price
-    unit_size = db.Column(db.String(50), nullable=True)  # e.g., "1 lb", "24 oz can"
+    bulk_price = db.Column(db.Float, nullable=True)
+    bulk_quantity = db.Column(db.Integer, nullable=True)
+    unit_size = db.Column(db.String(50), nullable=True)
     brand = db.Column(db.String(100), nullable=True)
     in_stock = db.Column(db.Boolean, default=True)
-    stock_quantity = db.Column(db.Integer, default=0, nullable=False)  # Units currently on hand
-    image_url = db.Column(db.Text, nullable=True)  # stores base64 data URL or external URL
+    stock_quantity = db.Column(db.Integer, default=0, nullable=False)
+    image_url = db.Column(db.Text, nullable=True)  # primary image (base64 data URL or external URL)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     category = db.relationship('Category', backref=db.backref('products', lazy=True))
 
     def to_dict(self):
+        extra_imgs = ProductImage.query.filter_by(product_id=self.id).order_by(ProductImage.sort_order).all()
         return {
             'id': self.id,
             'name': self.name,
@@ -51,6 +52,27 @@ class Product(db.Model):
             'in_stock': self.in_stock,
             'stock_quantity': self.stock_quantity if self.stock_quantity is not None else 0,
             'image_url': self.image_url,
+            'images': [img.to_dict() for img in extra_imgs],
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class ProductImage(db.Model):
+    """Additional images for a product (supports multiple images per product)."""
+    __tablename__ = 'product_image'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id', ondelete='CASCADE'), nullable=False)
+    image_url = db.Column(db.Text, nullable=False)  # base64 data URL
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    product = db.relationship('Product', backref=db.backref('extra_images', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'image_url': self.image_url,
+            'sort_order': self.sort_order,
         }

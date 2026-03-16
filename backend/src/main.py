@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from src.models.user import db
-from src.models.product import Product, Category
+from src.models.product import Product, Category, ProductImage
 from src.models.order import Order, OrderItem, StaffUser
 from src.models.invoice import CustomInvoice
 from src.routes.user import user_bp
@@ -92,7 +92,9 @@ with app.app_context():
 
     _add_column_if_missing('product', 'image_url', 'TEXT')
     _add_column_if_missing('product', 'stock_quantity', 'INTEGER DEFAULT 0 NOT NULL')
+    _add_column_if_missing('product', 'description', 'TEXT')
     _add_column_if_missing('custom_invoice', 'shipping_fee', 'FLOAT DEFAULT 0.0')
+    # product_image table: created by db.create_all() above (new table, no ALTER needed)
     # ─────────────────────────────────────────────────────────────────────────
 
     # Seed categories

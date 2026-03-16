@@ -9,7 +9,7 @@ import {
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye, EyeOff,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown
+  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
@@ -614,6 +614,9 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
   const [saving, setSaving] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
   const [currentImageUrl, setCurrentImageUrl] = useState(product.image_url || null)
+  // Multi-image gallery state
+  const [gallery, setGallery] = useState(product.images || [])
+  const [galleryLoading, setGalleryLoading] = useState(false)
   const [form, setForm] = useState({
     name: product.name,
     sku: product.sku,
@@ -637,6 +640,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
     })
   }
 
+  // ── Single primary image upload (replaces image_url) ──────────────────────
   const handleImageUpload = async (file) => {
     if (!file) return
     setImageUploading(true)
@@ -669,7 +673,66 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
     } catch {}
     finally { setImageUploading(false) }
   }
+
+  // ── Multi-image gallery: add a new image ──────────────────────────────────
+  const handleAddGalleryImage = async (file) => {
+    if (!file) return
+    setGalleryLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const res = await fetch(`${API_BASE}/api/staff/products/${product.id}/images`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.product) {
+        setGallery(data.product.images || [])
+        setCurrentImageUrl(data.product.image_url)
+        if (onImageUpdate) onImageUpdate(product.id, data.product.image_url)
+      }
+    } catch {}
+    finally { setGalleryLoading(false) }
+  }
+
+  // ── Multi-image gallery: remove a specific image ──────────────────────────
+  const handleRemoveGalleryImage = async (imgId) => {
+    setGalleryLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/products/${product.id}/images/${imgId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.product) {
+        setGallery(data.product.images || [])
+        setCurrentImageUrl(data.product.image_url)
+        if (onImageUpdate) onImageUpdate(product.id, data.product.image_url)
+      }
+    } catch {}
+    finally { setGalleryLoading(false) }
+  }
+
+  // ── Multi-image gallery: set an image as primary ──────────────────────────
+  const handleSetPrimary = async (imgId) => {
+    setGalleryLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/staff/products/${product.id}/images/${imgId}/set-primary`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.product) {
+        setCurrentImageUrl(data.product.image_url)
+        if (onImageUpdate) onImageUpdate(product.id, data.product.image_url)
+      }
+    } catch {}
+    finally { setGalleryLoading(false) }
+  }
+
   const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
+  const imgSrc = (url) => url && (url.startsWith('data:') || url.startsWith('http')) ? url : url ? `${API_BASE}${url}` : null
 
   const handleSave = async () => {
     setSaving(true)
@@ -689,17 +752,18 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
       category_id: product.category_id, description: product.description || '',
     }
     setForm(reset)
-    // Remove from dirty map since we cancelled
     if (onMarkDirty) onMarkDirty(product.id, null)
     setEditing(false)
     setError('')
   }
 
   const inp = 'border border-stone-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-stone-400 w-full'
+  const colCount = 11 // total columns in the products table
 
   if (editing) {
     return (
       <>
+        {/* Main editing row */}
         <tr className="bg-blue-50 border-l-4 border-blue-500">
           <td className="px-3 py-2"><input className={inp} value={form.name} onChange={e => updateForm({name:e.target.value})} placeholder={t.products.productName} /></td>
           <td className="px-3 py-2"><input className={`${inp} font-mono uppercase`} value={form.sku} onChange={e => updateForm({sku:e.target.value})} placeholder={t.products.enterSku} /></td>
@@ -726,17 +790,12 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
           </td>
           <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => updateForm({bulk_quantity:e.target.value})} placeholder={t.products.minQty} /></td>
           <td className="px-3 py-2">
-            <input
-              className={inp}
-              type="number"
-              min="0"
-              value={form.stock_quantity}
+            <input className={inp} type="number" min="0" value={form.stock_quantity}
               onChange={e => updateForm({stock_quantity: Math.max(0, parseInt(e.target.value) || 0)})}
-              placeholder="0"
-              title={lang === 'zh' ? '库存数量' : 'Units in stock'}
+              placeholder="0" title={lang === 'zh' ? '库存数量' : 'Units in stock'}
             />
           </td>
-          <td className="px-3 py-2">
+          <td className="px-3 py-2" colSpan={2}>
             <div className="flex gap-1">
               <button onClick={handleSave} disabled={saving} className="bg-stone-900 hover:bg-stone-700 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                 {saving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} {t.products.saving.replace('...', '') || 'Save'}
@@ -748,40 +807,145 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
             {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
           </td>
         </tr>
+
+        {/* Description + Image Gallery expansion row */}
+        <tr className="bg-blue-50 border-l-4 border-blue-400">
+          <td colSpan={colCount} className="px-4 pb-4 pt-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-600 mb-1">
+                  {lang === 'zh' ? '产品描述' : 'Product Description'}
+                </label>
+                <textarea
+                  className="border border-stone-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-stone-400 w-full resize-y"
+                  rows={6}
+                  value={form.description}
+                  onChange={e => updateForm({description: e.target.value})}
+                  placeholder={lang === 'zh' ? '输入产品详细描述（支持多行）...' : 'Enter a detailed product description (supports multiple lines)...'}
+                />
+                <p className="text-xs text-stone-400 mt-0.5">{form.description.length} {lang === 'zh' ? '字符' : 'characters'}</p>
+              </div>
+
+              {/* Image Gallery */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-600 mb-1 flex items-center gap-1">
+                  <Images className="w-3.5 h-3.5" />
+                  {lang === 'zh' ? '产品图片库' : 'Product Image Gallery'}
+                  <span className="text-stone-400 font-normal ml-1">({gallery.length} {lang === 'zh' ? '张' : 'photo(s)'})</span>
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {gallery.map(img => (
+                    <div key={img.id} className="relative group">
+                      <img
+                        src={imgSrc(img.image_url)}
+                        alt="product"
+                        className={`w-16 h-16 object-cover rounded-lg border-2 transition-all ${
+                          currentImageUrl === img.image_url ? 'border-blue-500' : 'border-stone-200'
+                        }`}
+                      />
+                      {/* Primary badge */}
+                      {currentImageUrl === img.image_url && (
+                        <span className="absolute top-0.5 left-0.5 bg-blue-500 text-white text-[9px] px-1 rounded">
+                          {lang === 'zh' ? '主图' : 'Main'}
+                        </span>
+                      )}
+                      {/* Hover controls */}
+                      <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                        {currentImageUrl !== img.image_url && (
+                          <button
+                            onClick={() => handleSetPrimary(img.id)}
+                            className="bg-white/90 hover:bg-yellow-100 text-yellow-600 p-1 rounded"
+                            title={lang === 'zh' ? '设为主图' : 'Set as main image'}
+                            disabled={galleryLoading}
+                          >
+                            <Star className="w-3 h-3" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveGalleryImage(img.id)}
+                          className="bg-white/90 hover:bg-red-100 text-red-500 p-1 rounded"
+                          title={lang === 'zh' ? '删除' : 'Remove'}
+                          disabled={galleryLoading}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add photo button */}
+                  <label className={`w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
+                    galleryLoading ? 'border-stone-200 text-stone-300 cursor-not-allowed' : 'border-blue-300 text-blue-500 hover:bg-blue-50'
+                  }`}>
+                    {galleryLoading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        <span className="text-[9px] mt-0.5">{lang === 'zh' ? '添加' : 'Add'}</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" disabled={galleryLoading}
+                      onChange={e => handleAddGalleryImage(e.target.files[0])} />
+                  </label>
+                </div>
+                <p className="text-xs text-stone-400">
+                  {lang === 'zh'
+                    ? '点击图片可设为主图或删除。主图显示在产品列表和网站上。'
+                    : 'Hover over an image to set it as the main display image or remove it. The main image appears on the product listing and website.'}
+                </p>
+              </div>
+
+            </div>
+          </td>
+        </tr>
       </>
     )
   }
 
   return (
     <tr className={`hover:bg-stone-50 transition-colors ${!product.in_stock ? 'opacity-60' : ''}`}>
-      {/* Image cell */}
+      {/* Image cell — shows primary image with gallery count badge */}
       <td className="px-3 py-2.5">
         <div className="flex flex-col items-center gap-1" style={{minWidth: 64}}>
-          {currentImageUrl ? (
-            <img
-              src={currentImageUrl.startsWith('data:') || currentImageUrl.startsWith('http') ? currentImageUrl : `${API_BASE}${currentImageUrl}`}
-              alt={product.name}
-              className="w-12 h-12 object-cover rounded-lg border border-stone-200 bg-stone-50"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-lg border border-dashed border-stone-300 bg-stone-50 flex items-center justify-center">
-              <Package className="w-4 h-4 text-stone-300" />
+          <div className="relative">
+            {currentImageUrl ? (
+              <img
+                src={imgSrc(currentImageUrl)}
+                alt={product.name}
+                className="w-12 h-12 object-cover rounded-lg border border-stone-200 bg-stone-50"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg border border-dashed border-stone-300 bg-stone-50 flex items-center justify-center">
+                <Package className="w-4 h-4 text-stone-300" />
+              </div>
+            )}
+            {gallery.length > 1 && (
+              <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {gallery.length}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-blue-500 hover:text-blue-700 underline whitespace-nowrap"
+          >
+            {lang === 'zh' ? '编辑图片' : 'Edit photos'}
+          </button>
+        </div>
+      </td>
+      <td className="px-3 py-2.5">
+        <div>
+          <div className="font-medium text-stone-900 text-sm">{product.name}</div>
+          {product.description && (
+            <div className="text-stone-400 text-xs mt-0.5 line-clamp-1" title={product.description}>
+              {product.description.length > 60 ? product.description.slice(0, 60) + '…' : product.description}
             </div>
-          )}
-          <label className={`cursor-pointer text-xs px-1.5 py-0.5 rounded border transition-all whitespace-nowrap ${
-            imageUploading ? 'border-stone-200 text-stone-400 cursor-not-allowed' : 'border-blue-200 text-blue-600 hover:bg-blue-50'
-          }`}>
-            {imageUploading ? '...' : currentImageUrl ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '上传' : 'Upload')}
-            <input type="file" accept="image/*" className="hidden" disabled={imageUploading} onChange={e => handleImageUpload(e.target.files[0])} />
-          </label>
-          {currentImageUrl && !imageUploading && (
-            <button onClick={handleImageRemove} className="text-xs text-red-400 hover:text-red-600 underline">
-              {lang === 'zh' ? '删除' : 'Remove'}
-            </button>
           )}
         </div>
       </td>
-      <td className="px-3 py-2.5 font-medium text-stone-900 text-sm">{product.name}</td>
       <td className="px-3 py-2.5 text-stone-500 font-mono text-xs">{product.sku}</td>
       <td className="px-3 py-2.5 text-stone-600 text-sm">{product.brand || '—'}</td>
       <td className="px-3 py-2.5 text-stone-500 text-xs">{product.unit_size || '—'}</td>
