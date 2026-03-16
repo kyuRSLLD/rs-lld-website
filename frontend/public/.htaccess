@@ -2,6 +2,10 @@ Options -MultiViews
 RewriteEngine On
 RewriteBase /
 
+# Proxy /api/ requests to Railway backend
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule ^api/(.*)$ https://rs-lld-website-production.up.railway.app/api/$1 [P,L,QSA]
+
 # If the request is for an existing file or directory, serve it directly
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
