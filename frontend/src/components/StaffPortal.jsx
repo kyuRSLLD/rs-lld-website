@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { InvoicesTab } from './InvoiceBuilder'
 import { StaffManagementTab } from './StaffManagement'
 import CreateOrderModal from './CreateOrderModal'
@@ -617,6 +617,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
   // Multi-image gallery state
   const [gallery, setGallery] = useState(product.images || [])
   const [galleryLoading, setGalleryLoading] = useState(false)
+  const galleryFileInputRef = useRef(null)
   const [form, setForm] = useState({
     name: product.name,
     sku: product.sku,
@@ -876,9 +877,14 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
                   ))}
 
                   {/* Add photo button */}
-                  <label className={`w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                    galleryLoading ? 'border-stone-200 text-stone-300 cursor-not-allowed' : 'border-blue-300 text-blue-500 hover:bg-blue-50'
-                  }`}>
+                  <button
+                    type="button"
+                    onClick={() => galleryFileInputRef.current && galleryFileInputRef.current.click()}
+                    disabled={galleryLoading}
+                    className={`w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all ${
+                      galleryLoading ? 'border-stone-200 text-stone-300 cursor-not-allowed' : 'border-blue-300 text-blue-500 hover:bg-blue-50 cursor-pointer'
+                    }`}
+                  >
                     {galleryLoading ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : (
@@ -887,9 +893,18 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
                         <span className="text-[9px] mt-0.5">{lang === 'zh' ? '添加' : 'Add'}</span>
                       </>
                     )}
-                    <input type="file" accept="image/*" className="hidden" disabled={galleryLoading}
-                      onChange={e => handleAddGalleryImage(e.target.files[0])} />
-                  </label>
+                  </button>
+                  <input
+                    ref={galleryFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={galleryLoading}
+                    onChange={e => {
+                      handleAddGalleryImage(e.target.files[0])
+                      e.target.value = '' // reset so same file can be re-selected
+                    }}
+                  />
                 </div>
                 <p className="text-xs text-stone-400">
                   {lang === 'zh'
