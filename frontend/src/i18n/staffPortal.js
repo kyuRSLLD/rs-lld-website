@@ -150,6 +150,10 @@ export const staffPortalTranslations = {
       removeImage: 'Remove Image',
       uploading: 'Uploading...',
       noImage: 'No image',
+      stockCount: 'Stock',
+      updateStock: 'Update',
+      stockUpdated: 'Stock updated',
+      lowStock: 'Low',
     },
     // Customers tab
     customers: {
@@ -630,6 +634,10 @@ export const staffPortalTranslations = {
       removeImage: '删除图片',
       uploading: '上传中...',
       noImage: '暂无图片',
+      stockCount: '库存数量',
+      updateStock: '更新',
+      stockUpdated: '库存已更新',
+      lowStock: '低库存',
     },
     // 客户标签页
     customers: {

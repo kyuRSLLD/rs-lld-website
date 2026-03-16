@@ -1312,6 +1312,24 @@ const StaffPortal = () => {
     } catch {}
   }
 
+  const [inventoryStockEdits, setInventoryStockEdits] = useState({})
+  const [inventoryStockSaving, setInventoryStockSaving] = useState({})
+  const handleInventoryStockUpdate = async (productId, qty) => {
+    setInventoryStockSaving(s => ({ ...s, [productId]: true }))
+    try {
+      await fetch(`${API_BASE}/api/staff/inventory/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ stock_quantity: parseInt(qty, 10) || 0 }),
+      })
+      setInventoryStockEdits(s => { const n = { ...s }; delete n[productId]; return n })
+      fetchInventory()
+      fetchProducts()
+    } catch {}
+    setInventoryStockSaving(s => ({ ...s, [productId]: false }))
+  }
+
   const [inventoryImageUploading, setInventoryImageUploading] = useState({})
 
   const handleInventoryImageUpload = async (productId, file) => {
@@ -1822,7 +1840,7 @@ const StaffPortal = () => {
               <table className="w-full text-sm min-w-[700px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    {[t.inventory.image, t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.status, t.inventory.action].map(h => (
+                    {[t.inventory.image, t.inventory.name, t.inventory.sku, t.inventory.brand, t.inventory.price, t.inventory.bulkPrice, t.inventory.bulkQty, t.inventory.stockCount, t.inventory.status, t.inventory.action].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -1876,6 +1894,30 @@ const StaffPortal = () => {
                       <td className="px-4 py-3 text-stone-900">{formatPrice(p.unit_price)}</td>
                       <td className="px-4 py-3 text-green-700">{p.bulk_price ? formatPrice(p.bulk_price) : '—'}</td>
                       <td className="px-4 py-3 text-stone-500">{p.bulk_quantity ? `${p.bulk_quantity}+` : '—'}</td>
+                      {/* Stock Count cell */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1" style={{minWidth: 90}}>
+                          <input
+                            type="number"
+                            min="0"
+                            value={inventoryStockEdits[p.id] !== undefined ? inventoryStockEdits[p.id] : (p.stock_quantity ?? 0)}
+                            onChange={e => setInventoryStockEdits(s => ({ ...s, [p.id]: e.target.value }))}
+                            className="w-14 border border-stone-200 rounded px-1.5 py-0.5 text-xs text-center focus:ring-1 focus:ring-blue-400 focus:border-transparent"
+                          />
+                          {inventoryStockEdits[p.id] !== undefined && (
+                            <button
+                              onClick={() => handleInventoryStockUpdate(p.id, inventoryStockEdits[p.id])}
+                              disabled={inventoryStockSaving[p.id]}
+                              className="text-xs px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
+                            >
+                              {inventoryStockSaving[p.id] ? '...' : t.inventory.updateStock}
+                            </button>
+                          )}
+                          {(p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity <= 5 && p.stock_quantity > 0) && inventoryStockEdits[p.id] === undefined && (
+                            <span className="text-xs text-orange-500 font-medium">{t.inventory.lowStock}</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.in_stock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                           {p.in_stock ? t.inventory.inStock : t.inventory.outOfStock}

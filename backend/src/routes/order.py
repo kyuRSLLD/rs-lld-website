@@ -18,6 +18,25 @@ def generate_order_number():
     return f"RS-{year}-{suffix}"
 
 
+def deduct_stock(items, restore=False):
+    """Deduct (or restore) stock_quantity for each item in an order.
+    restore=True is used when an order is cancelled."""
+    for item in items:
+        product = Product.query.get(item.product_id) if hasattr(item, 'product_id') else Product.query.get(item.get('product_id'))
+        if not product:
+            continue
+        qty = item.quantity if hasattr(item, 'quantity') else int(item.get('quantity', 1))
+        if restore:
+            product.stock_quantity = (product.stock_quantity or 0) + qty
+            if product.stock_quantity > 0:
+                product.in_stock = True
+        else:
+            new_qty = max(0, (product.stock_quantity or 0) - qty)
+            product.stock_quantity = new_qty
+            if new_qty == 0:
+                product.in_stock = False
+
+
 def calculate_order_totals(items_data):
     """Calculate subtotal, discount, delivery fee, and total for a list of cart items."""
     subtotal = 0.0
@@ -111,9 +130,9 @@ def create_order():
                 line_total=unit_price * qty,
             )
             db.session.add(order_item)
-
+        # Deduct stock for each item ordered
+        deduct_stock(items_data)
         db.session.commit()
-
         return jsonify({
             'success': True,
             'message': 'Order placed successfully',
@@ -226,6 +245,7 @@ def update_order_status(order_id):
     if new_status not in valid_statuses:
         return jsonify({'error': f'Invalid status. Must be one of: {valid_statuses}'}), 400
 
+    old_status = order.status
     order.status = new_status
     now = datetime.utcnow()
     if new_status == 'confirmed':
@@ -235,12 +255,13 @@ def update_order_status(order_id):
     elif new_status == 'delivered':
         order.delivered_at = now
         order.payment_status = 'paid'
-
+    elif new_status == 'cancelled' and old_status != 'cancelled':
+        # Restore stock quantities when an order is cancelled
+        deduct_stock(order.items, restore=True)
     if data.get('staff_notes'):
         order.staff_notes = data['staff_notes']
     if data.get('assigned_to'):
         order.assigned_to = data['assigned_to']
-
     db.session.commit()
     return jsonify({'success': True, 'order': order.to_dict(include_items=True)})
 
@@ -403,6 +424,11 @@ def update_inventory(product_id):
         product.unit_price = data['unit_price']
     if 'bulk_price' in data:
         product.bulk_price = data['bulk_price']
+    if 'stock_quantity' in data:
+        qty = max(0, int(data['stock_quantity']))
+        product.stock_quantity = qty
+        # Auto-update in_stock based on quantity
+        product.in_stock = qty > 0
     db.session.commit()
     return jsonify({'success': True, 'product': product.to_dict()})
 
@@ -505,10 +531,10 @@ def staff_create_order():
                 line_total=round(qty * unit_price, 2),
             )
             db.session.add(order_item)
-
+        # Deduct stock for each item in the staff-created order
+        deduct_stock(items_data)
         db.session.commit()
         return jsonify({'success': True, 'order': order.to_dict(include_items=True)}), 201
-
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
