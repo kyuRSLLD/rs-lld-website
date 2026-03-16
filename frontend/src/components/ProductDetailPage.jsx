@@ -96,6 +96,30 @@ const ProductDetailPage = () => {
   }
   const t = L[currentLanguage] || L.en
 
+  const categoryTranslations = {
+    zh: {
+      'Disposable Goods': '一次性用品',
+      'Kitchen Tools': '厨房工具',
+      'Cleaning Supplies': '清洁用品',
+      'Packaging Supplies': '包装用品',
+      'Pest Control': '害虫防治',
+      'Dry Ingredients': '干货食材',
+    },
+    ko: {
+      'Disposable Goods': '일회용품',
+      'Kitchen Tools': '주방 도구',
+      'Cleaning Supplies': '청소 용품',
+      'Packaging Supplies': '포장 용품',
+      'Pest Control': '해충 방제',
+      'Dry Ingredients': '건조 식재료',
+    },
+  }
+
+  const getCategoryName = (name) => {
+    if (!name || currentLanguage === 'en') return name
+    return (categoryTranslations[currentLanguage] || {})[name] || name
+  }
+
   const [related, setRelated] = useState([])
 
   useEffect(() => {
@@ -197,7 +221,7 @@ const ProductDetailPage = () => {
             <div className="p-8 flex flex-col">
               {/* Category badge */}
               <span className="inline-block bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full mb-3 w-fit">
-                {product.category_name}
+                {getCategoryName(product.category_name)}
               </span>
 
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h1>
@@ -229,7 +253,7 @@ const ProductDetailPage = () => {
                 <div><span className="text-gray-500">{t.sku}:</span> <span className="font-medium text-gray-900">{product.sku}</span></div>
                 {product.brand && <div><span className="text-gray-500">{t.brand}:</span> <span className="font-medium text-gray-900">{product.brand}</span></div>}
                 {product.unit_size && <div><span className="text-gray-500">{t.unitSize}:</span> <span className="font-medium text-gray-900">{product.unit_size}</span></div>}
-                {product.category_name && <div><span className="text-gray-500">{t.category}:</span> <span className="font-medium text-gray-900">{product.category_name}</span></div>}
+                {product.category_name && <div><span className="text-gray-500">{t.category}:</span> <span className="font-medium text-gray-900">{getCategoryName(product.category_name)}</span></div>}
               </div>
 
               {/* Qty + Add to Cart */}

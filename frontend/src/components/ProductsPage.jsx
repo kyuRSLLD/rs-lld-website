@@ -192,6 +192,31 @@ const ProductsPage = () => {
     'Dry Ingredients': '🌾',
   }
 
+  // Translations for category names by language
+  const categoryTranslations = {
+    zh: {
+      'Disposable Goods': '一次性用品',
+      'Kitchen Tools': '厨房工具',
+      'Cleaning Supplies': '清洁用品',
+      'Packaging Supplies': '包装用品',
+      'Pest Control': '害虫防治',
+      'Dry Ingredients': '干货食材',
+    },
+    ko: {
+      'Disposable Goods': '일회용품',
+      'Kitchen Tools': '주방 도구',
+      'Cleaning Supplies': '청소 용품',
+      'Packaging Supplies': '포장 용품',
+      'Pest Control': '해충 방제',
+      'Dry Ingredients': '건조 식재료',
+    },
+  }
+
+  const getCategoryName = (name) => {
+    if (currentLanguage === 'en') return name
+    return (categoryTranslations[currentLanguage] || {})[name] || name
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -250,7 +275,7 @@ const ProductsPage = () => {
                 <option value="">{L.allCategories}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {categoryIcons[cat.name] || '📦'} {cat.name}
+                    {categoryIcons[cat.name] || '📦'} {getCategoryName(cat.name)}
                   </option>
                 ))}
               </select>
@@ -288,7 +313,7 @@ const ProductsPage = () => {
                 selectedCategory === String(cat.id) ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'
               }`}
             >
-              {categoryIcons[cat.name] || '📦'} {cat.name}
+              {categoryIcons[cat.name] || '📦'} {getCategoryName(cat.name)}
             </button>
           ))}
         </div>
@@ -345,7 +370,7 @@ const ProductsPage = () => {
                   <p className="text-xs text-gray-500 mb-1">{product.brand} · {product.unit_size}</p>
 
                   <span className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded mb-3 w-fit">
-                    {categoryIcons[product.category_name] || ''} {product.category_name}
+                    {categoryIcons[product.category_name] || ''} {getCategoryName(product.category_name)}
                   </span>
 
                   {/* Pricing */}
