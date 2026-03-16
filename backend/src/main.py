@@ -76,6 +76,25 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+    # ── Schema migrations: safely add new columns to existing tables ──────────
+    # These use ALTER TABLE ... ADD COLUMN IF NOT EXISTS (SQLite 3.37+)
+    # or fall back to a try/except for older SQLite versions.
+    import sqlalchemy as _sa
+    _engine = db.engine
+    def _add_column_if_missing(table, column, col_type):
+        """Add a column to a table only if it doesn't already exist."""
+        try:
+            with _engine.connect() as conn:
+                conn.execute(_sa.text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+                conn.commit()
+        except Exception:
+            pass  # Column already exists or other benign error
+
+    _add_column_if_missing('product', 'image_url', 'TEXT')
+    _add_column_if_missing('product', 'stock_quantity', 'INTEGER DEFAULT 0 NOT NULL')
+    _add_column_if_missing('custom_invoice', 'shipping_fee', 'FLOAT DEFAULT 0.0')
+    # ─────────────────────────────────────────────────────────────────────────
+
     # Seed categories
     if Category.query.count() == 0:
         categories = [

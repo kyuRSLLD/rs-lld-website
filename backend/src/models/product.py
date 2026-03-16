@@ -29,7 +29,7 @@ class Product(db.Model):
     brand = db.Column(db.String(100), nullable=True)
     in_stock = db.Column(db.Boolean, default=True)
     stock_quantity = db.Column(db.Integer, default=0, nullable=False)  # Units currently on hand
-    image_url = db.Column(db.String(255), nullable=True)
+    image_url = db.Column(db.Text, nullable=True)  # stores base64 data URL or external URL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
