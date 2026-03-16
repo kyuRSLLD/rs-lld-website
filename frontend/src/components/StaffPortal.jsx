@@ -7,7 +7,7 @@ import { BillAnalyzerTab } from './BillAnalyzer'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
-  Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye,
+  Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye, EyeOff,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
   PenLine, Check, Globe, FileText, Shield, Key, TrendingDown
 } from 'lucide-react'
@@ -54,6 +54,9 @@ const StaffLogin = ({ onLogin }) => {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [resetToken, setResetToken] = useState('')
+  const [showLoginPwd, setShowLoginPwd] = useState(false)
+  const [showNewPwd, setShowNewPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const t = staffPortalTranslations[lang]
 
   const toggleLang = () => {
@@ -192,9 +195,16 @@ const StaffLogin = ({ onLogin }) => {
               </div>
               <div>
                 <label className={labelClass}>{t.login.password}</label>
-                <input type="password" value={form.password}
-                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                  className={inputClass} placeholder={t.login.passwordPlaceholder} />
+                <div className="relative">
+                  <input type={showLoginPwd ? 'text' : 'password'} value={form.password}
+                    onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                    className={`${inputClass} pr-10`} placeholder={t.login.passwordPlaceholder} />
+                  <button type="button" onClick={() => setShowLoginPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+                    title={showLoginPwd ? (lang === 'zh' ? '隐藏密码' : 'Hide password') : (lang === 'zh' ? '显示密码' : 'Show password')}>
+                    {showLoginPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <Button type="submit" disabled={loading} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
@@ -265,13 +275,27 @@ const StaffLogin = ({ onLogin }) => {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
                 <label className={labelClass}>{lang === 'zh' ? '新密码' : 'New Password'}</label>
-                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  className={inputClass} placeholder={lang === 'zh' ? '请输入新密码' : 'New password'} />
+                <div className="relative">
+                  <input type={showNewPwd ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                    className={`${inputClass} pr-10`} placeholder={lang === 'zh' ? '请输入新密码' : 'New password'} />
+                  <button type="button" onClick={() => setShowNewPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+                    title={showNewPwd ? (lang === 'zh' ? '隐藏密码' : 'Hide password') : (lang === 'zh' ? '显示密码' : 'Show password')}>
+                    {showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className={labelClass}>{lang === 'zh' ? '确认密码' : 'Confirm Password'}</label>
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                  className={inputClass} placeholder={lang === 'zh' ? '再次输入新密码' : 'Confirm new password'} />
+                <div className="relative">
+                  <input type={showConfirmPwd ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                    className={`${inputClass} pr-10`} placeholder={lang === 'zh' ? '再次输入新密码' : 'Confirm new password'} />
+                  <button type="button" onClick={() => setShowConfirmPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+                    title={showConfirmPwd ? (lang === 'zh' ? '隐藏密码' : 'Hide password') : (lang === 'zh' ? '显示密码' : 'Show password')}>
+                    {showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <Button type="submit" disabled={loading || !newPassword || !confirmPassword} className="w-full bg-stone-900 hover:bg-stone-700 text-white">
