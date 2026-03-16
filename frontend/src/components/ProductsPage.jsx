@@ -96,7 +96,7 @@ const ProductsPage = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/categories`)
+      const response = await fetch(`${API_BASE}/api/categories`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setCategories(data)
@@ -114,7 +114,7 @@ const ProductsPage = () => {
       const params = new URLSearchParams()
       if (selectedCategory) params.append('category_id', selectedCategory)
       if (search) params.append('search', search)
-      const response = await fetch(`${API_BASE}/api/products?${params}`)
+      const response = await fetch(`${API_BASE}/api/products?${params}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setProducts(data.products || [])

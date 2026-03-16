@@ -102,7 +102,7 @@ const ProductDetailPage = () => {
     setLoading(true)
     setError(null)
     setRelated([])
-    fetch(`${API_BASE}/api/products/sku/${sku}`)
+    fetch(`${API_BASE}/api/products/sku/${sku}`, { cache: 'no-store' })
       .then(r => {
         if (!r.ok) throw new Error('not found')
         return r.json()
@@ -112,7 +112,7 @@ const ProductDetailPage = () => {
         // Fetch related products from same category
         const catName = data.category_name || ''
         if (catName) {
-          fetch(`${API_BASE}/api/products?category=${encodeURIComponent(catName)}&per_page=5`)
+          fetch(`${API_BASE}/api/products?category=${encodeURIComponent(catName)}&per_page=5`, { cache: 'no-store' })
             .then(r => r.ok ? r.json() : { products: [] })
             .then(res => {
               const others = (res.products || []).filter(p => p.sku !== sku).slice(0, 4)
