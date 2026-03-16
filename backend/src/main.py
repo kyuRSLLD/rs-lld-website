@@ -24,6 +24,7 @@ from src.routes.social_auth import social_bp
 from src.routes.password_reset import password_reset_bp
 from src.routes.save_me_money import save_me_money_bp
 from src.routes.seed_products import seed_bp
+from src.routes.db_backup import db_backup_bp
 from src.models.api_key import APIKey
 from src.models.supplier_bill import SupplierBill
 
@@ -63,11 +64,19 @@ app.register_blueprint(social_bp, url_prefix='/api')
 app.register_blueprint(password_reset_bp, url_prefix='/api')
 app.register_blueprint(save_me_money_bp, url_prefix='/api')
 app.register_blueprint(seed_bp, url_prefix='/api')
+app.register_blueprint(db_backup_bp, url_prefix='/api')
 
-# Ensure database directory exists
-_db_dir = os.path.join(os.path.dirname(__file__), 'database')
-os.makedirs(_db_dir, exist_ok=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(_db_dir, 'app.db')}"
+# Database configuration: use PostgreSQL (DATABASE_URL) if available, else fall back to SQLite
+_database_url = os.environ.get('DATABASE_URL', '')
+if _database_url:
+    # Railway provides postgres:// URLs; SQLAlchemy requires postgresql://
+    if _database_url.startswith('postgres://'):
+        _database_url = _database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = _database_url
+else:
+    _db_dir = os.path.join(os.path.dirname(__file__), 'database')
+    os.makedirs(_db_dir, exist_ok=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(_db_dir, 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Max upload size: 10MB
 app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # 25MB for bill uploads

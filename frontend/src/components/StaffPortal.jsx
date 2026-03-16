@@ -1171,6 +1171,8 @@ const StaffPortal = () => {
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [csvImporting, setCsvImporting] = useState(false)
   const [csvMessage, setCsvMessage] = useState(null)
+  const [dbImporting, setDbImporting] = useState(false)
+  const [dbMessage, setDbMessage] = useState(null)
   const [pendingProductEdits, setPendingProductEdits] = useState({}) // { productId: formData }
   const [savingAllProducts, setSavingAllProducts] = useState(false)
   const [saveAllResult, setSaveAllResult] = useState(null)
@@ -1485,6 +1487,39 @@ const StaffPortal = () => {
     finally { setCsvImporting(false); e.target.value = '' }
   }
 
+  const handleDbExport = async () => {
+    try {
+      const res = await staffFetch('/api/staff/export-db')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `lld-products-backup-${new Date().toISOString().slice(0,10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { alert(t.products.backupError) }
+  }
+
+  const handleDbImport = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setDbImporting(true)
+    setDbMessage(null)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await staffFetch('/api/staff/import-db', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.success) {
+        setDbMessage({ type: 'success', text: `✅ ${data.message}` })
+        fetchProducts()
+      } else {
+        setDbMessage({ type: 'error', text: `❌ ${data.error || t.products.backupError}` })
+      }
+    } catch { setDbMessage({ type: 'error', text: `❌ ${t.products.backupError}` }) }
+    finally { setDbImporting(false); e.target.value = '' }
+  }
+
   const handleLogout = async () => {
     await staffFetch(`/api/staff/logout`, { method: 'POST' })
     setStaff(null)
@@ -1713,6 +1748,15 @@ const StaffPortal = () => {
                   {csvImporting ? t.products.importing : t.products.importCsv}
                   <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} disabled={csvImporting} />
                 </label>
+                {/* ── DB Backup / Restore ── */}
+                <button onClick={handleDbExport} className="flex items-center gap-2 px-3 py-2 border border-emerald-300 bg-emerald-50 rounded-lg text-sm text-emerald-800 hover:bg-emerald-100">
+                  <Download className="w-4 h-4" /> {t.products.exportDb}
+                </button>
+                <label className={`flex items-center gap-2 px-3 py-2 border border-emerald-300 bg-emerald-50 rounded-lg text-sm text-emerald-800 hover:bg-emerald-100 cursor-pointer ${dbImporting ? 'opacity-50' : ''}`}>
+                  {dbImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {dbImporting ? t.products.importingDb : t.products.importDb}
+                  <input type="file" accept=".json" style={{opacity:0,position:'absolute',width:0,height:0}} onChange={handleDbImport} disabled={dbImporting} />
+                </label>
                 <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium">
                   <Plus className="w-4 h-4" /> {t.products.addProduct}
                 </button>
@@ -1761,6 +1805,12 @@ const StaffPortal = () => {
               <div className={`mb-4 p-3 rounded-lg text-sm ${csvMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
                 {csvMessage.text}
                 <button onClick={() => setCsvMessage(null)} className="ml-2 opacity-60 hover:opacity-100"><X className="w-3 h-3 inline" /></button>
+              </div>
+            )}
+            {dbMessage && (
+              <div className={`mb-4 p-3 rounded-lg text-sm ${dbMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                {dbMessage.text}
+                <button onClick={() => setDbMessage(null)} className="ml-2 opacity-60 hover:opacity-100"><X className="w-3 h-3 inline" /></button>
               </div>
             )}
 
