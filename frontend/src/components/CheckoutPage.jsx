@@ -121,20 +121,84 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
   const [preview, setPreview] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  const [cameraMode, setCameraMode] = useState(true) // default to camera
+  // Live camera states
+  const [showCamera, setShowCamera] = useState(false)
+  const [stream, setStream] = useState(null)
+  const [cameraError, setCameraError] = useState('')
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
-  const galleryInputRef = useRef(null)
 
-  // Auto-open camera when component mounts (triggered by selecting check payment)
+  // Stop camera stream on unmount
   useEffect(() => {
-    if (autoOpen && fileInputRef.current) {
-      // Small delay to ensure the component is fully rendered
-      const timer = setTimeout(() => {
-        fileInputRef.current.click()
-      }, 300)
-      return () => clearTimeout(timer)
+    return () => {
+      if (stream) stream.getTracks().forEach(t => t.stop())
     }
-  }, [autoOpen])
+  }, [stream])
+
+  // Open live camera using getUserMedia (works on desktop + mobile)
+  const openCamera = async () => {
+    setCameraError('')
+    setError('')
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Browser doesn't support getUserMedia — fall back to file input with capture
+      fileInputRef.current?.click()
+      return
+    }
+    try {
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' }, // prefer rear camera on mobile
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        }
+      }
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      setStream(mediaStream)
+      setShowCamera(true)
+      // Attach stream to video element after render
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream
+          videoRef.current.play()
+        }
+      }, 100)
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setCameraError('Camera permission denied. Please allow camera access or use "Choose from Gallery" instead.')
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('No camera found. Please use "Choose from Gallery" instead.')
+      } else {
+        // Fall back to file input
+        fileInputRef.current?.click()
+      }
+    }
+  }
+
+  // Capture a still frame from the live video
+  const capturePhoto = () => {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas) return
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0)
+    canvas.toBlob((blob) => {
+      const capturedFile = new File([blob], 'check-photo.jpg', { type: 'image/jpeg' })
+      setFile(capturedFile)
+      setPreview(canvas.toDataURL('image/jpeg', 0.92))
+      // Stop the stream
+      if (stream) stream.getTracks().forEach(t => t.stop())
+      setStream(null)
+      setShowCamera(false)
+    }, 'image/jpeg', 0.92)
+  }
+
+  const closeCamera = () => {
+    if (stream) stream.getTracks().forEach(t => t.stop())
+    setStream(null)
+    setShowCamera(false)
+  }
 
   const handleFileChange = (e) => {
     const f = e.target.files[0]
@@ -182,23 +246,48 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
         </ol>
       </div>
 
-      {/* Hidden camera input — opens rear camera directly */}
+      {/* Hidden file input — fallback for gallery or browsers without getUserMedia */}
       <input
         ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-      {/* Hidden gallery input — for choosing from photo library */}
-      <input
-        ref={galleryInputRef}
         type="file"
         accept="image/*,.pdf"
         onChange={handleFileChange}
         className="hidden"
       />
+      {/* Hidden canvas for capturing frames */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Live camera viewfinder */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full max-h-[70vh] object-cover"
+          />
+          <div className="absolute bottom-8 flex gap-6 items-center">
+            <button
+              onClick={closeCamera}
+              className="bg-white/20 hover:bg-white/30 text-white text-sm px-5 py-2 rounded-full border border-white/40"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={capturePhoto}
+              className="w-16 h-16 rounded-full bg-white border-4 border-amber-400 shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
+            >
+              <Camera className="w-7 h-7 text-amber-600" />
+            </button>
+          </div>
+          <p className="absolute top-6 text-white text-sm font-medium drop-shadow">Position your check in frame, then tap the button</p>
+        </div>
+      )}
+
+      {cameraError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{cameraError}</div>
+      )}
 
       {/* Preview or camera prompt */}
       {preview ? (
@@ -207,14 +296,14 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
           <p className="text-sm text-green-700 font-semibold">✓ Check photo captured</p>
           <div className="flex gap-2 mt-3 justify-center">
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={openCamera}
               className="text-xs text-blue-600 underline hover:text-blue-800"
             >
               📷 Retake Photo
             </button>
             <span className="text-gray-300">|</span>
             <button
-              onClick={() => galleryInputRef.current?.click()}
+              onClick={() => fileInputRef.current?.click()}
               className="text-xs text-blue-600 underline hover:text-blue-800"
             >
               🖼 Choose from Gallery
@@ -228,13 +317,13 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
           <p className="text-xs text-gray-500 mb-4">Position your check clearly in frame</p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={openCamera}
               className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               <Camera className="w-4 h-4" /> Open Camera
             </button>
             <button
-              onClick={() => galleryInputRef.current?.click()}
+              onClick={() => fileInputRef.current?.click()}
               className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               <Upload className="w-4 h-4" /> Choose from Gallery
