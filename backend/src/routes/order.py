@@ -359,8 +359,8 @@ def update_order_status(order_id):
     db.session.commit()
 
     # Send status update email to customer (non-blocking)
-    # Only send for meaningful customer-facing status changes
-    if new_status in ('confirmed', 'packed', 'shipped', 'delivered', 'cancelled'):
+    # Only send for confirmed and cancelled — not packed/shipped/delivered
+    if new_status in ('confirmed', 'cancelled'):
         try:
             from src.utils.email import send_order_status_update
             send_order_status_update(order)

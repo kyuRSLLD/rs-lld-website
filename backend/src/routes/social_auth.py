@@ -67,6 +67,14 @@ def _find_or_create_user(email: str, name: str, provider: str, provider_id: str)
     user.set_password(_random_password())
     db.session.add(user)
     db.session.commit()
+
+    # Send welcome email for new social accounts (non-blocking)
+    try:
+        from src.utils.email import send_welcome_email
+        send_welcome_email(user)
+    except Exception as _email_err:
+        print(f"[EMAIL] Social welcome email failed: {_email_err}")
+
     return user
 
 
