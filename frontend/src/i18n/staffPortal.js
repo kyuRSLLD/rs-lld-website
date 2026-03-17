@@ -181,6 +181,15 @@ export const staffPortalTranslations = {
       shippingAddress: 'Shipping Address',
       billingAddress: 'Billing Address',
       noAddress: 'Not provided yet',
+      importCsv: 'Import CSV',
+      exportCsv: 'Export CSV',
+      downloadTemplate: 'Download Template',
+      importing: 'Importing...',
+      importSuccess: 'Import complete',
+      importError: 'Import failed',
+      created: 'created',
+      updated: 'updated',
+      skipped: 'skipped',
     },
     // Dashboard tab
     stats: {
@@ -675,6 +684,15 @@ export const staffPortalTranslations = {
       shippingAddress: '送货地址',
       billingAddress: '账单地址',
       noAddress: '尚未提供',
+      importCsv: '导入CSV',
+      exportCsv: '导出CSV',
+      downloadTemplate: '下载模板',
+      importing: '导入中...',
+      importSuccess: '导入完成',
+      importError: '导入失败',
+      created: '已创建',
+      updated: '已更新',
+      skipped: '已跳过',
     },
     // 数据面板
     stats: {

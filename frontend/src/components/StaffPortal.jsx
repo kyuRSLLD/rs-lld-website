@@ -1173,6 +1173,8 @@ const StaffPortal = () => {
   const [csvMessage, setCsvMessage] = useState(null)
   const [dbImporting, setDbImporting] = useState(false)
   const [dbMessage, setDbMessage] = useState(null)
+  const [customerImporting, setCustomerImporting] = useState(false)
+  const [customerMessage, setCustomerMessage] = useState(null)
   const [pendingProductEdits, setPendingProductEdits] = useState({}) // { productId: formData }
   const [savingAllProducts, setSavingAllProducts] = useState(false)
   const [saveAllResult, setSaveAllResult] = useState(null)
@@ -1521,6 +1523,57 @@ const StaffPortal = () => {
     finally { setDbImporting(false); e.target.value = '' }
   }
 
+  const handleCustomerExport = async () => {
+    try {
+      const res = await staffFetch('/api/staff/customers/export-csv')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `lld-customers-${new Date().toISOString().slice(0,10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { alert(t.customers.importError) }
+  }
+
+  const handleCustomerTemplateDownload = async () => {
+    try {
+      const res = await staffFetch('/api/staff/customers/csv-template')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'lld_customers_template.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { alert(t.customers.importError) }
+  }
+
+  const handleCustomerImport = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setCustomerImporting(true)
+    setCustomerMessage(null)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await staffFetch('/api/staff/customers/import-csv', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.success) {
+        const parts = [
+          `${data.created} ${t.customers.created}`,
+          `${data.updated} ${t.customers.updated}`,
+          `${data.skipped} ${t.customers.skipped}`,
+        ]
+        setCustomerMessage({ type: 'success', text: `✅ ${t.customers.importSuccess}: ${parts.join(', ')}` })
+        fetchCustomers()
+      } else {
+        setCustomerMessage({ type: 'error', text: `❌ ${data.error || t.customers.importError}` })
+      }
+    } catch { setCustomerMessage({ type: 'error', text: `❌ ${t.customers.importError}` }) }
+    finally { setCustomerImporting(false); e.target.value = '' }
+  }
+
   const handleLogout = async () => {
     await staffFetch(`/api/staff/logout`, { method: 'POST' })
     setStaff(null)
@@ -1689,7 +1742,35 @@ const StaffPortal = () => {
               </div>
             ) : (
             <div>
-            <h2 className="text-xl font-bold text-stone-900 mb-4">{t.customers.title}</h2>
+              {/* ── Customers toolbar ── */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-bold text-stone-900">{t.customers.title}</h2>
+                <div className="flex flex-wrap gap-2">
+                  {/* Download template */}
+                  <button onClick={handleCustomerTemplateDownload} className="flex items-center gap-2 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50">
+                    <Download className="w-4 h-4" /> {t.customers.downloadTemplate}
+                  </button>
+                  {/* Export CSV */}
+                  <button onClick={handleCustomerExport} className="flex items-center gap-2 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50">
+                    <Download className="w-4 h-4" /> {t.customers.exportCsv}
+                  </button>
+                  {/* Import CSV */}
+                  <label className={`flex items-center gap-2 px-3 py-2 border border-blue-300 bg-blue-50 rounded-lg text-sm text-blue-800 hover:bg-blue-100 cursor-pointer ${customerImporting ? 'opacity-50' : ''}`}>
+                    {customerImporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {customerImporting ? t.customers.importing : t.customers.importCsv}
+                    <input type="file" accept=".csv" className="hidden" onChange={handleCustomerImport} disabled={customerImporting} />
+                  </label>
+                </div>
+              </div>
+              {/* Import result message */}
+              {customerMessage && (
+                <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${
+                  customerMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  {customerMessage.text}
+                  <button onClick={() => setCustomerMessage(null)} className="ml-3 text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+                </div>
+              )}
             {customers.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border border-stone-100">
                 <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
