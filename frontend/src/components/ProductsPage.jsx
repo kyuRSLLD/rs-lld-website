@@ -6,10 +6,15 @@ import { Search, ShoppingCart, Sparkles, X, Tag, CheckCircle, Package } from 'lu
 import { useLanguage } from '../contexts/LanguageContext'
 import { useCart } from '../contexts/CartContext'
 
+// Simple in-memory cache shared across mounts (survives tab navigation)
+const _cache = { products: null, categories: null, ts: 0 }
+const CACHE_TTL = 30_000 // 30 s
+
 const ProductsPage = () => {
-  const [products, setProducts] = useState([])
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState(_cache.products || [])
+  const [categories, setCategories] = useState(_cache.categories || [])
+  // If we have cached data show it immediately (no spinner)
+  const [loading, setLoading] = useState(!_cache.products)
   const [aiLoading, setAiLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
@@ -101,10 +106,11 @@ const ProductsPage = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/categories`, { cache: 'no-store' })
+      const response = await fetch(`${API_BASE}/api/categories`)
       if (response.ok) {
         const data = await response.json()
         setCategories(data)
+        _cache.categories = data
       }
     } catch (error) {
       console.error('Error fetching categories:', error)
@@ -112,17 +118,25 @@ const ProductsPage = () => {
   }
 
   const fetchProducts = async (search = '') => {
-    setLoading(true)
+    // Only show spinner when we have no cached data to display
+    const hasCached = _cache.products && !search && !selectedCategory
+    if (!hasCached) setLoading(true)
     setIsAiSearch(false)
     setAiSuggestion('')
     try {
       const params = new URLSearchParams()
       if (selectedCategory) params.append('category_id', selectedCategory)
       if (search) params.append('search', search)
-      const response = await fetch(`${API_BASE}/api/products?${params}`, { cache: 'no-store' })
+      const response = await fetch(`${API_BASE}/api/products?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setProducts(data.products || [])
+        const list = data.products || []
+        setProducts(list)
+        // Cache only unfiltered full list
+        if (!search && !selectedCategory) {
+          _cache.products = list
+          _cache.ts = Date.now()
+        }
       }
     } catch (error) {
       console.error('Error fetching products:', error)

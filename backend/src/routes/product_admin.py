@@ -3,7 +3,7 @@ import base64
 import io
 import os
 from flask import Blueprint, jsonify, request, session, Response
-from src.models.product import Product, Category, ProductImage, db
+from src.models.product import Product, Category, ProductImage, db, query_with_images
 from src.routes.order import staff_required
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -103,7 +103,7 @@ def admin_get_products():
                 Product.brand.ilike(f'%{search}%')
             )
         )
-    products = query.order_by(Product.category_id, Product.name).all()
+    products = query_with_images(query).order_by(Product.category_id, Product.name).all()
     return jsonify([p.to_dict() for p in products])
 
 

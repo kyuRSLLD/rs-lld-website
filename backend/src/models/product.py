@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from src.models.user import db
 
+
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -15,6 +16,7 @@ class Category(db.Model):
             'description': self.description,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -34,9 +36,28 @@ class Product(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     category = db.relationship('Category', backref=db.backref('products', lazy=True))
+    # Eager-loadable relationship used by the optimised query helpers below
+    extra_images = db.relationship(
+        'ProductImage',
+        backref=db.backref('product', lazy=True),
+        lazy='select',
+        cascade='all, delete-orphan',
+        order_by='ProductImage.sort_order',
+    )
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+
+    def _in_stock_computed(self):
+        return bool(self.in_stock) and (self.stock_quantity or 0) > 0
 
     def to_dict(self):
-        extra_imgs = ProductImage.query.filter_by(product_id=self.id).order_by(ProductImage.sort_order).all()
+        """
+        Full serialisation including gallery images.
+
+        IMPORTANT: callers that return many products MUST use the module-level
+        helper `products_to_list()` (or `query_with_images()`) so that images
+        are fetched in a single JOIN rather than one query per product.
+        """
         return {
             'id': self.id,
             'name': self.name,
@@ -49,13 +70,12 @@ class Product(db.Model):
             'bulk_quantity': self.bulk_quantity,
             'unit_size': self.unit_size,
             'brand': self.brand,
-            # A product is only in stock if the manual flag is True AND quantity > 0
-            'in_stock': bool(self.in_stock) and (self.stock_quantity or 0) > 0,
+            'in_stock': self._in_stock_computed(),
             'stock_quantity': self.stock_quantity if self.stock_quantity is not None else 0,
             'image_url': self.image_url,
-            'images': [img.to_dict() for img in extra_imgs],
+            'images': [img.to_dict() for img in self.extra_images],
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
@@ -68,8 +88,6 @@ class ProductImage(db.Model):
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    product = db.relationship('Product', backref=db.backref('extra_images', lazy=True, cascade='all, delete-orphan'))
-
     def to_dict(self):
         return {
             'id': self.id,
@@ -77,3 +95,14 @@ class ProductImage(db.Model):
             'image_url': self.image_url,
             'sort_order': self.sort_order,
         }
+
+
+# ── Module-level query helpers (avoid N+1) ────────────────────────────────────
+
+def query_with_images(base_query):
+    """
+    Apply joinedload for extra_images to an existing Product query.
+    Returns the modified query — call .all() / .paginate() on the result.
+    """
+    from sqlalchemy.orm import joinedload
+    return base_query.options(joinedload(Product.extra_images))

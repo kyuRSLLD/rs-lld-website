@@ -1,20 +1,32 @@
 from flask import Blueprint, jsonify, request, make_response
-from src.models.product import Product, Category, db
+from src.models.product import Product, Category, db, query_with_images
 from src.routes.user import login_required
 
 product_bp = Blueprint('product', __name__)
 
+
+def _cache(response, seconds=30):
+    """Allow CDN / browser to cache for `seconds`; stale-while-revalidate for 60 s."""
+    response.headers['Cache-Control'] = (
+        f'public, max-age={seconds}, stale-while-revalidate=60'
+    )
+    return response
+
+
 def _no_cache(response):
-    """Add Cache-Control: no-store, no-cache headers to prevent browser caching."""
+    """Prevent caching entirely (used for single-product detail pages)."""
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
 
+
 @product_bp.route('/categories', methods=['GET'])
 def get_categories():
     categories = Category.query.all()
-    return _no_cache(make_response(jsonify([c.to_dict() for c in categories])))
+    resp = make_response(jsonify([c.to_dict() for c in categories]))
+    return _cache(resp, seconds=120)
+
 
 @product_bp.route('/products', methods=['GET'])
 def get_products():
@@ -37,6 +49,9 @@ def get_products():
     if search:
         query = query.filter(Product.name.contains(search))
 
+    # ── Single JOIN to fetch all gallery images — eliminates N+1 ──
+    query = query_with_images(query)
+
     products = query.paginate(page=page, per_page=per_page, error_out=False)
 
     resp = make_response(jsonify({
@@ -44,33 +59,40 @@ def get_products():
         'total': products.total,
         'pages': products.pages,
         'current_page': page,
-        'per_page': per_page
+        'per_page': per_page,
     }))
-    return _no_cache(resp)
+    # Cache public product list for 30 s; browser shows stale data instantly
+    # while refreshing in the background (stale-while-revalidate).
+    return _cache(resp, seconds=30)
+
 
 @product_bp.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
-    product = Product.query.get_or_404(product_id)
-    return _no_cache(make_response(jsonify(product.to_dict())))
+    product = query_with_images(Product.query).filter_by(id=product_id).first_or_404()
+    return _cache(make_response(jsonify(product.to_dict())), seconds=30)
+
 
 @product_bp.route('/products/sku/<string:sku>', methods=['GET'])
 def get_product_by_sku(sku):
-    product = Product.query.filter_by(sku=sku).first_or_404()
-    return _no_cache(make_response(jsonify(product.to_dict())))
+    product = query_with_images(Product.query).filter_by(sku=sku).first_or_404()
+    return _cache(make_response(jsonify(product.to_dict())), seconds=30)
+
 
 @product_bp.route('/products/featured', methods=['GET'])
 def get_featured_products():
-    # Return up to 8 in-stock products ordered by most recently updated
     products = (
-        Product.query
+        query_with_images(Product.query)
         .filter(Product.in_stock == True)
         .order_by(Product.updated_at.desc())
         .limit(8)
         .all()
     )
-    return _no_cache(make_response(jsonify([p.to_dict() for p in products])))
+    resp = make_response(jsonify([p.to_dict() for p in products]))
+    return _cache(resp, seconds=60)
 
-# Admin routes
+
+# ── Admin routes ──────────────────────────────────────────────────────────────
+
 @product_bp.route('/admin/categories', methods=['POST'])
 @login_required
 def create_category():
@@ -82,6 +104,7 @@ def create_category():
     db.session.add(category)
     db.session.commit()
     return jsonify(category.to_dict()), 201
+
 
 @product_bp.route('/admin/products', methods=['POST'])
 @login_required
