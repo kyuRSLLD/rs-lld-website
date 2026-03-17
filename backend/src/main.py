@@ -86,18 +86,34 @@ with app.app_context():
     db.create_all()
 
     # ── Schema migrations: safely add new columns to existing tables ──────────
-    # These use ALTER TABLE ... ADD COLUMN IF NOT EXISTS (SQLite 3.37+)
-    # or fall back to a try/except for older SQLite versions.
     import sqlalchemy as _sa
     _engine = db.engine
+    _is_postgres = _engine.dialect.name == 'postgresql'
+
     def _add_column_if_missing(table, column, col_type):
-        """Add a column to a table only if it doesn't already exist."""
-        try:
-            with _engine.connect() as conn:
-                conn.execute(_sa.text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
-                conn.commit()
-        except Exception:
-            pass  # Column already exists or other benign error
+        """Add a column to a table only if it doesn't already exist.
+        Uses IF NOT EXISTS for PostgreSQL (avoids transaction abort on duplicate).
+        Falls back to try/except for SQLite.
+        """
+        if _is_postgres:
+            # PostgreSQL: quote table name to handle reserved words like 'user'
+            quoted_table = f'"{table}"'
+            try:
+                with _engine.connect() as conn:
+                    conn.execute(_sa.text(
+                        f"ALTER TABLE {quoted_table} ADD COLUMN IF NOT EXISTS {column} {col_type}"
+                    ))
+                    conn.commit()
+            except Exception:
+                pass
+        else:
+            # SQLite: try/except (no IF NOT EXISTS support in older versions)
+            try:
+                with _engine.connect() as conn:
+                    conn.execute(_sa.text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+                    conn.commit()
+            except Exception:
+                pass  # Column already exists
 
     _add_column_if_missing('product', 'image_url', 'TEXT')
     _add_column_if_missing('product', 'stock_quantity', 'INTEGER DEFAULT 0 NOT NULL')
