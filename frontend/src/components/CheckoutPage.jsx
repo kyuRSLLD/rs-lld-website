@@ -285,7 +285,9 @@ const CheckoutPage = ({ user }) => {
     delivery_phone: user?.phone || '',
     special_notes: '',
     payment_method: 'credit_card',
+    billing_address: '',
   })
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true)
 
   const L = {
     en: {
@@ -311,6 +313,8 @@ const CheckoutPage = ({ user }) => {
       trackOrder: 'Track Your Order', continueShopping: 'Continue Shopping',
       bulkSavings: 'Bulk savings applied!', qty: 'Qty',
       payNow: 'Pay Now', payByCheck: 'Pay by Check',
+      billingAddress: 'Billing Address', billingSame: 'Same as shipping address',
+      billingAddressPlaceholder: 'e.g. 123 Main St, Suite 100, New York, NY 10001',
     },
     zh: {
       title: '结账', cart: '购物车', delivery: '配送', review: '确认', payment: '付款', confirmed: '已确认',
@@ -335,6 +339,8 @@ const CheckoutPage = ({ user }) => {
       trackOrder: '跟踪订单', continueShopping: '继续购物',
       bulkSavings: '已享受批量优惠！', qty: '数量',
       payNow: '立即付款', payByCheck: '支票付款',
+      billingAddress: '账单地址', billingSame: '与送货地址相同',
+      billingAddressPlaceholder: '例如：123 Main St, Suite 100, New York, NY 10001',
     },
     ko: {
       title: '결제', cart: '장바구니', delivery: '배송', review: '확인', payment: '결제', confirmed: '완료',
@@ -359,6 +365,8 @@ const CheckoutPage = ({ user }) => {
       trackOrder: '주문 추적', continueShopping: '쇼핑 계속하기',
       bulkSavings: '대량 할인 적용!', qty: '수량',
       payNow: '지금 결제', payByCheck: '수표로 결제',
+      billingAddress: '청구지 주소', billingSame: '배송지와 동일',
+      billingAddressPlaceholder: '예: 123 Main St, Suite 100, New York, NY 10001',
     }
   }
   const t = L[currentLanguage] || L.en
@@ -579,6 +587,33 @@ const CheckoutPage = ({ user }) => {
                     rows={3}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
+                </div>
+
+                {/* Billing Address */}
+                <div className="sm:col-span-2 border-t pt-4 mt-2">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">{t.billingAddress}</label>
+                  <label className="flex items-center gap-2 text-sm text-gray-600 mb-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={billingSameAsShipping}
+                      onChange={e => {
+                        setBillingSameAsShipping(e.target.checked)
+                        if (e.target.checked) setForm(prev => ({ ...prev, billing_address: '' }))
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    />
+                    {t.billingSame}
+                  </label>
+                  {!billingSameAsShipping && (
+                    <textarea
+                      name="billing_address"
+                      value={form.billing_address}
+                      onChange={handleFormChange}
+                      placeholder={t.billingAddressPlaceholder}
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    />
+                  )}
                 </div>
               </div>
               <div className="flex gap-3 mt-6">

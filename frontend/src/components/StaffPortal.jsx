@@ -1184,6 +1184,7 @@ const StaffPortal = () => {
   const [statsDateRange, setStatsDateRange] = useState('all')
   const [customerOrdersView, setCustomerOrdersView] = useState(null) // { name, orders }
   const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false)
+  const [expandedCustomer, setExpandedCustomer] = useState(null) // customer id for address expansion
 
   const t = staffPortalTranslations[lang]
 
@@ -1706,24 +1707,42 @@ const StaffPortal = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {customers.map(c => (
-                      <tr key={c.id} className="hover:bg-stone-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-stone-900">{c.username}</td>
-                        <td className="px-4 py-3 text-stone-600">{c.company_name || '—'}</td>
-                        <td className="px-4 py-3 text-stone-600">{c.email}</td>
-                        <td className="px-4 py-3 text-stone-600">{c.phone || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">{c.order_count}</span>
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-stone-900">{formatPrice(c.total_spent)}</td>
-                        <td className="px-4 py-3 text-stone-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => fetchCustomerOrders(c.company_name || c.username)}
-                            className="text-xs px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors">
-                            {t.customers.viewOrders}
-                          </button>
-                        </td>
-                      </tr>
+                      <>
+                        <tr key={c.id} className="hover:bg-stone-50 transition-colors cursor-pointer" onClick={() => setExpandedCustomer(expandedCustomer === c.id ? null : c.id)}>
+                          <td className="px-4 py-3 font-medium text-stone-900">{c.username}</td>
+                          <td className="px-4 py-3 text-stone-600">{c.company_name || '—'}</td>
+                          <td className="px-4 py-3 text-stone-600">{c.email}</td>
+                          <td className="px-4 py-3 text-stone-600">{c.phone || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">{c.order_count}</span>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-stone-900">{formatPrice(c.total_spent)}</td>
+                          <td className="px-4 py-3 text-stone-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={e => { e.stopPropagation(); fetchCustomerOrders(c.company_name || c.username) }}
+                              className="text-xs px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors">
+                              {t.customers.viewOrders}
+                            </button>
+                          </td>
+                        </tr>
+                        {expandedCustomer === c.id && (
+                          <tr key={`${c.id}-addr`} className="bg-blue-50">
+                            <td colSpan={8} className="px-6 py-4">
+                              <div className="grid sm:grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">{t.customers.shippingAddress}</p>
+                                  <p className="text-sm text-stone-800">{c.shipping_address || <span className="text-stone-400 italic">{t.customers.noAddress}</span>}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">{t.customers.billingAddress}</p>
+                                  <p className="text-sm text-stone-800">{c.billing_address || <span className="text-stone-400 italic">{t.customers.noAddress}</span>}</p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>

@@ -17,6 +17,10 @@ class User(db.Model):
     reset_token = db.Column(db.String(100), nullable=True, unique=True)
     reset_token_expires = db.Column(db.DateTime, nullable=True)
 
+    # Address fields — blank at signup, populated from checkout
+    shipping_address = db.Column(db.Text, nullable=True)  # most recent shipping address used
+    billing_address = db.Column(db.Text, nullable=True)   # most recent billing address used
+
     # Social OAuth fields
     oauth_provider = db.Column(db.String(20), nullable=True)   # 'google' | 'facebook' | 'twitter'
     oauth_id = db.Column(db.String(255), nullable=True)         # provider's user ID
@@ -43,6 +47,8 @@ class User(db.Model):
             'phone': self.phone,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_active': self.is_active,
+            'shipping_address': self.shipping_address,
+            'billing_address': self.billing_address,
             'oauth_provider': self.oauth_provider,
             'avatar_url': self.avatar_url,
         }

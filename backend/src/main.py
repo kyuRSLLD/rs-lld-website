@@ -103,6 +103,8 @@ with app.app_context():
     _add_column_if_missing('product', 'stock_quantity', 'INTEGER DEFAULT 0 NOT NULL')
     _add_column_if_missing('product', 'description', 'TEXT')
     _add_column_if_missing('custom_invoice', 'shipping_fee', 'FLOAT DEFAULT 0.0')
+    _add_column_if_missing('user', 'shipping_address', 'TEXT')
+    _add_column_if_missing('user', 'billing_address', 'TEXT')
     # product_image table: created by db.create_all() above (new table, no ALTER needed)
     # ─────────────────────────────────────────────────────────────────────────
 

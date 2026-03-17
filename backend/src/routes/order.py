@@ -124,6 +124,27 @@ def create_order():
         db.session.add(order)
         db.session.flush()  # get order.id before adding items
 
+        # Save shipping and billing addresses to the user profile (if logged in)
+        from src.models.user import User as _User
+        _uid = session.get('user_id')
+        if _uid:
+            _user = _User.query.get(_uid)
+            if _user:
+                # Build formatted shipping address from delivery fields
+                _ship_parts = [
+                    data['delivery_address'],
+                    data['delivery_city'],
+                    data['delivery_state'],
+                    data['delivery_zip'],
+                ]
+                _user.shipping_address = ', '.join(p for p in _ship_parts if p)
+                # Billing address: use explicit billing_address if provided, else same as shipping
+                _billing = data.get('billing_address', '').strip()
+                if _billing:
+                    _user.billing_address = _billing
+                elif not _user.billing_address:
+                    _user.billing_address = _user.shipping_address
+
         # Create order items
         for item_data in items_data:
             product = Product.query.get(item_data['product_id'])

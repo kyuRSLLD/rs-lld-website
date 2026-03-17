@@ -178,6 +178,9 @@ export const staffPortalTranslations = {
       ordersFor: 'Orders for',
       backToCustomers: '← Back to Customers',
       noOrdersForCustomer: 'No orders found for this customer.',
+      shippingAddress: 'Shipping Address',
+      billingAddress: 'Billing Address',
+      noAddress: 'Not provided yet',
     },
     // Dashboard tab
     stats: {
@@ -669,6 +672,9 @@ export const staffPortalTranslations = {
       ordersFor: '订单 —',
       backToCustomers: '← 返回客户列表',
       noOrdersForCustomer: '该客户暂无订单。',
+      shippingAddress: '送货地址',
+      billingAddress: '账单地址',
+      noAddress: '尚未提供',
     },
     // 数据面板
     stats: {
