@@ -180,7 +180,7 @@ def create_order():
         return jsonify({
             'success': True,
             'message': 'Order placed successfully',
-            'order': order.to_dict(include_items=True)
+            'order': order.to_dict(include_items=True),
         }), 201
 
     except Exception as e:
