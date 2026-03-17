@@ -202,19 +202,24 @@ const ProductDetailPage = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
           <div className="grid md:grid-cols-2 gap-0">
             {/* Image */}
-            <div className="bg-gray-50 flex items-center justify-center p-8 min-h-[320px]">
+            <div className="bg-gray-50 flex items-center justify-center p-8 min-h-[320px] relative">
               {product.image_url ? (
                 <img
                   src={product.image_url.startsWith('data:') || product.image_url.startsWith('http') ? product.image_url : `${API_BASE}${product.image_url}`}
                   alt={product.name}
-                  className="max-h-72 max-w-full object-contain rounded-lg"
+                  className={`max-h-72 max-w-full object-contain rounded-lg transition-all duration-200 ${!product.in_stock ? 'grayscale opacity-50' : ''}`}
                   onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                 />
               ) : null}
-              <div className={`${product.image_url ? 'hidden' : 'flex'} flex-col items-center justify-center text-gray-300`}>
+              <div className={`${product.image_url ? 'hidden' : 'flex'} flex-col items-center justify-center text-gray-300 ${!product.in_stock ? 'opacity-50' : ''}`}>
                 <Package className="w-24 h-24 mb-2" />
                 <span className="text-sm">No image</span>
               </div>
+              {!product.in_stock && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-gray-700/70 text-white text-sm font-semibold px-4 py-2 rounded-full">{t.outOfStock}</span>
+                </div>
+              )}
             </div>
 
             {/* Info */}
@@ -258,23 +263,33 @@ const ProductDetailPage = () => {
 
               {/* Qty + Add to Cart */}
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                <div className={`flex items-center border rounded-lg overflow-hidden ${!product.in_stock ? 'border-gray-200 opacity-40 pointer-events-none' : 'border-gray-200'}`}>
                   <button
                     className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium"
                     onClick={() => setQty(q => Math.max(1, q - 1))}
+                    disabled={!product.in_stock}
                   >−</button>
                   <span className="px-4 py-2 font-semibold text-gray-900 min-w-[3rem] text-center">{qty}</span>
                   <button
                     className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium"
                     onClick={() => setQty(q => q + 1)}
+                    disabled={!product.in_stock}
                   >+</button>
                 </div>
                 <Button
-                  className={`flex-1 text-white transition-all ${added ? 'bg-green-500 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  className={`flex-1 text-white transition-all ${
+                    !product.in_stock
+                      ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed'
+                      : added
+                        ? 'bg-green-500 hover:bg-green-500'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                   disabled={!product.in_stock}
                   onClick={handleAddToCart}
                 >
-                  {added ? (
+                  {!product.in_stock ? (
+                    t.outOfStock
+                  ) : added ? (
                     <><CheckCircle className="w-4 h-4 mr-2" /> {t.added}</>
                   ) : (
                     <><ShoppingCart className="w-4 h-4 mr-2" /> {t.addToCart}</>

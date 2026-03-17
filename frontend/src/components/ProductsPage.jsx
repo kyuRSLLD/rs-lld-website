@@ -338,19 +338,24 @@ const ProductsPage = () => {
                 className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 flex flex-col cursor-pointer group"
               >
                 {/* Product Image */}
-                <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100 group-hover:opacity-90 transition-opacity">
+                <div className="w-full h-44 bg-gray-50 rounded-t-xl flex items-center justify-center overflow-hidden border-b border-gray-100 group-hover:opacity-90 transition-opacity relative">
                     {product.image_url ? (
                       <img
                         src={product.image_url.startsWith('data:') || product.image_url.startsWith('http') ? product.image_url : `${API_BASE}${product.image_url}`}
                         alt={product.name}
-                        className="w-full h-full object-contain p-2"
+                        className={`w-full h-full object-contain p-2 transition-all duration-200 ${!product.in_stock ? 'grayscale opacity-50' : ''}`}
                         onError={(e) => {
                           e.target.style.display = 'none'
                           e.target.parentElement.innerHTML = `<span class="text-4xl">${categoryIcons[product.category_name] || '📦'}</span>`
                         }}
                       />
                     ) : (
-                      <span className="text-4xl">{categoryIcons[product.category_name] || '📦'}</span>
+                      <span className={`text-4xl ${!product.in_stock ? 'grayscale opacity-50' : ''}`}>{categoryIcons[product.category_name] || '📦'}</span>
+                    )}
+                    {!product.in_stock && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="bg-gray-700/70 text-white text-xs font-semibold px-3 py-1 rounded-full">{L.outOfStock}</span>
+                      </div>
                     )}
                 </div>
 
@@ -384,14 +389,18 @@ const ProductsPage = () => {
 
                     <Button
                       className={`w-full mt-3 text-white text-sm transition-all ${
-                        addedProductId === product.id
-                          ? 'bg-green-500 hover:bg-green-500'
-                          : 'bg-blue-600 hover:bg-blue-700'
+                        !product.in_stock
+                          ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed'
+                          : addedProductId === product.id
+                            ? 'bg-green-500 hover:bg-green-500'
+                            : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                       disabled={!product.in_stock}
-                      onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
+                      onClick={(e) => { e.preventDefault(); if (product.in_stock) handleAddToCart(product); }}
                     >
-                      {addedProductId === product.id ? (
+                      {!product.in_stock ? (
+                        L.outOfStock
+                      ) : addedProductId === product.id ? (
                         <><CheckCircle className="w-4 h-4 mr-2" /> Added!</>
                       ) : (
                         <><ShoppingCart className="w-4 h-4 mr-2" /> {L.addToCart}</>
