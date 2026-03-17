@@ -169,6 +169,14 @@ def create_order():
         # Deduct stock for each item ordered
         deduct_stock(items_data)
         db.session.commit()
+
+        # Send order confirmation email (non-blocking)
+        try:
+            from src.utils.email import send_order_confirmation
+            send_order_confirmation(order)
+        except Exception as _email_err:
+            print(f"[EMAIL] Order confirmation failed: {_email_err}")
+
         return jsonify({
             'success': True,
             'message': 'Order placed successfully',
@@ -323,6 +331,16 @@ def update_order_status(order_id):
     if data.get('assigned_to'):
         order.assigned_to = data['assigned_to']
     db.session.commit()
+
+    # Send status update email to customer (non-blocking)
+    # Only send for meaningful customer-facing status changes
+    if new_status in ('confirmed', 'packed', 'shipped', 'delivered', 'cancelled'):
+        try:
+            from src.utils.email import send_order_status_update
+            send_order_status_update(order)
+        except Exception as _email_err:
+            print(f"[EMAIL] Status update email failed: {_email_err}")
+
     return jsonify({'success': True, 'order': order.to_dict(include_items=True)})
 
 

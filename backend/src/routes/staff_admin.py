@@ -112,12 +112,23 @@ def update_staff_user(user_id):
         user.role = data['role']
     if 'is_active' in data:
         user.is_active = bool(data['is_active'])
+    password_changed = False
     if data.get('password'):
         if len(data['password']) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
         user.set_password(data['password'])
+        password_changed = True
 
     db.session.commit()
+
+    # Send password changed security notification if password was updated
+    if password_changed and user.email:
+        try:
+            from src.utils.email import send_password_changed_email
+            send_password_changed_email(user, account_type='staff')
+        except Exception as _email_err:
+            print(f"[EMAIL] Staff password-changed notification failed: {_email_err}")
+
     return jsonify(user.to_dict())
 
 

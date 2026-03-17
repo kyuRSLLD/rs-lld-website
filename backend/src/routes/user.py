@@ -35,10 +35,17 @@ def register():
         
         db.session.add(user)
         db.session.commit()
-        
+
+        # Send welcome email (non-blocking)
+        try:
+            from src.utils.email import send_welcome_email
+            send_welcome_email(user)
+        except Exception as _email_err:
+            print(f"[EMAIL] Welcome email failed: {_email_err}")
+
         # Log user in
         session['user_id'] = user.id
-        
+
         return jsonify({
             'message': 'Registration successful',
             'user': user.to_dict()
@@ -107,3 +114,33 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return '', 204
+
+
+@user_bp.route('/auth/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Allow a logged-in customer to change their own password."""
+    data = request.json or {}
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    if not current_password or not new_password:
+        return jsonify({'error': 'Both current and new password are required'}), 400
+    if len(new_password) < 6:
+        return jsonify({'error': 'New password must be at least 6 characters'}), 400
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.check_password(current_password):
+        return jsonify({'error': 'Current password is incorrect'}), 400
+
+    user.set_password(new_password)
+    db.session.commit()
+
+    # Send password changed security notification
+    try:
+        from src.utils.email import send_password_changed_email
+        send_password_changed_email(user, account_type='customer')
+    except Exception as _email_err:
+        print(f"[EMAIL] Password-changed notification failed: {_email_err}")
+
+    return jsonify({'message': 'Password updated successfully'}), 200
