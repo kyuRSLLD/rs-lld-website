@@ -326,6 +326,32 @@ def update_order_status(order_id):
     elif new_status == 'cancelled' and old_status != 'cancelled':
         # Restore stock quantities when an order is cancelled
         deduct_stock(order.items, restore=True)
+        # Issue Stripe refund if the order was paid by credit card
+        refund_result = None
+        if order.payment_method == 'credit_card' and order.payment_intent_id and order.payment_status == 'paid':
+            try:
+                import stripe as _stripe
+                import os as _os
+                _stripe.api_key = _os.environ.get('STRIPE_SECRET_KEY', '')
+                refund = _stripe.Refund.create(
+                    payment_intent=order.payment_intent_id,
+                    reason='requested_by_customer',
+                    metadata={
+                        'order_number': order.order_number,
+                        'cancelled_by': session.get('staff_username', 'staff'),
+                    }
+                )
+                order.payment_status = 'refunded'
+                refund_result = {
+                    'refund_id': refund.id,
+                    'amount': refund.amount / 100,  # convert cents to dollars
+                    'status': refund.status,
+                }
+                print(f"[REFUND] Stripe refund issued for order {order.order_number}: {refund.id} (${refund.amount/100:.2f})")
+            except Exception as _refund_err:
+                # Don't block cancellation if refund fails — log it for manual follow-up
+                print(f"[REFUND ERROR] Failed to refund order {order.order_number}: {_refund_err}")
+                refund_result = {'error': str(_refund_err)}
     if data.get('staff_notes'):
         order.staff_notes = data['staff_notes']
     if data.get('assigned_to'):
@@ -341,7 +367,10 @@ def update_order_status(order_id):
         except Exception as _email_err:
             print(f"[EMAIL] Status update email failed: {_email_err}")
 
-    return jsonify({'success': True, 'order': order.to_dict(include_items=True)})
+    response = {'success': True, 'order': order.to_dict(include_items=True)}
+    if new_status == 'cancelled' and 'refund_result' in dir():
+        response['refund'] = refund_result
+    return jsonify(response)
 
 
 @order_bp.route('/staff/orders/<int:order_id>/notes', methods=['PUT'])

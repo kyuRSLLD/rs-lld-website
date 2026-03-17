@@ -1300,13 +1300,30 @@ const StaffPortal = () => {
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
-      await staffFetch(`/api/staff/orders/${orderId}/status`, {
+      const res = await staffFetch(`/api/staff/orders/${orderId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
+      const data = await res.json()
       fetchOrders()
       fetchStats()
+      // Show refund notification if a Stripe refund was processed
+      if (newStatus === 'cancelled' && data.refund) {
+        if (data.refund.error) {
+          alert(
+            lang === 'zh'
+              ? `订单已取消，但 Stripe 退款失败：${data.refund.error}\n请在 Stripe 控制台手动处理退款。`
+              : `Order cancelled, but Stripe refund failed: ${data.refund.error}\nPlease process the refund manually in the Stripe dashboard.`
+          )
+        } else {
+          alert(
+            lang === 'zh'
+              ? `订单已取消。已向客户退款 $${Number(data.refund.amount).toFixed(2)}（退款编号：${data.refund.refund_id}）。`
+              : `Order cancelled. A refund of $${Number(data.refund.amount).toFixed(2)} has been issued to the customer (Refund ID: ${data.refund.refund_id}).`
+          )
+        }
+      }
     } catch {}
   }
 
