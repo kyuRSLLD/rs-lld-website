@@ -6,15 +6,19 @@ product_bp = Blueprint('product', __name__)
 
 
 def _cache(response, seconds=30):
-    """Allow CDN / browser to cache for `seconds`; stale-while-revalidate for 60 s."""
+    """
+    Allow the *browser* to cache for `seconds` but tell CDN/proxies (Cloudflare)
+    NOT to cache. Using `private` prevents Cloudflare from serving one user's
+    response to another, which caused empty product lists on mobile.
+    """
     response.headers['Cache-Control'] = (
-        f'public, max-age={seconds}, stale-while-revalidate=60'
+        f'private, max-age={seconds}, stale-while-revalidate=60'
     )
     return response
 
 
 def _no_cache(response):
-    """Prevent caching entirely (used for single-product detail pages)."""
+    """Prevent all caching."""
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
