@@ -104,6 +104,8 @@ def update_user(user_id):
     user.email = data.get('email', user.email)
     user.company_name = data.get('company_name', user.company_name)
     user.phone = data.get('phone', user.phone)
+    user.shipping_address = data.get('shipping_address', user.shipping_address)
+    user.billing_address = data.get('billing_address', user.billing_address)
     db.session.commit()
     return jsonify(user.to_dict())
 
