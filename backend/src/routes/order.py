@@ -655,3 +655,52 @@ def staff_delete_order(order_id):
     db.session.delete(order)
     db.session.commit()
     return jsonify({'success': True})
+
+
+@order_bp.route('/staff/test-email', methods=['POST'])
+@staff_required
+def staff_test_email():
+    """Send a test email to verify SMTP configuration. Staff only."""
+    import os as _os
+    from src.utils.email import send_email, SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT
+
+    data = request.json or {}
+    to_addr = data.get('to', SMTP_USER)
+
+    # Report config status (without revealing the password)
+    config_status = {
+        'SMTP_HOST': SMTP_HOST,
+        'SMTP_PORT': SMTP_PORT,
+        'SMTP_USER': SMTP_USER if SMTP_USER else '(not set)',
+        'SMTP_PASSWORD': '(set, {} chars)'.format(len(SMTP_PASS)) if SMTP_PASS else '(not set)',
+        'sending_to': to_addr,
+    }
+
+    if not SMTP_USER or not SMTP_PASS:
+        return jsonify({
+            'success': False,
+            'error': 'SMTP credentials not configured. Set SMTP_USER and SMTP_PASSWORD in Railway environment variables.',
+            'config': config_status,
+        }), 500
+
+    html = """
+    <h2 style="color:#1c1917;font-size:20px;margin:0 0 16px;">Test Email ✅</h2>
+    <p style="color:#57534e;font-size:14px;">
+      This is a test email from RS LLD Restaurant Supply.<br>
+      If you received this, your SMTP configuration is working correctly.
+    </p>
+    <p style="color:#a8a29e;font-size:12px;margin-top:24px;">
+      Sent from the Staff Portal test email function.
+    </p>
+    """
+    from src.utils.email import _wrap
+    full_html = _wrap('Test Email', html)
+
+    ok = send_email(to_addr, 'RS LLD — Test Email (SMTP Check)', full_html,
+                    'This is a test email from RS LLD Restaurant Supply. SMTP is working.')
+
+    return jsonify({
+        'success': ok,
+        'config': config_status,
+        'message': f'Test email sent to {to_addr}' if ok else 'Failed to send — check Railway logs for SMTP error details.',
+    })
