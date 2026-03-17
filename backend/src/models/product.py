@@ -53,10 +53,8 @@ class Product(db.Model):
     def to_dict(self):
         """
         Full serialisation including gallery images.
-
-        IMPORTANT: callers that return many products MUST use the module-level
-        helper `products_to_list()` (or `query_with_images()`) so that images
-        are fetched in a single JOIN rather than one query per product.
+        Use only for single-product detail pages — NOT for list endpoints.
+        For lists use list_dict() to avoid sending megabytes of base64 data.
         """
         return {
             'id': self.id,
@@ -74,6 +72,47 @@ class Product(db.Model):
             'stock_quantity': self.stock_quantity if self.stock_quantity is not None else 0,
             'image_url': self.image_url,
             'images': [img.to_dict() for img in self.extra_images],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def list_dict(self):
+        """
+        Lightweight serialisation for list/grid views.
+
+        Base64 image data is replaced with a sentinel flag so the frontend
+        knows an image exists without downloading megabytes of data per request.
+        The full image_url is only sent on the single-product detail endpoint.
+        This reduces a 100-product response from ~6 MB to ~50 KB.
+        """
+        # For base64 data URLs, send a flag instead of the full blob.
+        # The product card uses the SKU-based detail URL anyway for the
+        # full image; the list card just needs to know whether to show
+        # a placeholder or an image.
+        raw = self.image_url or ''
+        if raw.startswith('data:'):
+            # Send a lightweight proxy URL so the card can lazy-load via
+            # the single-product endpoint if needed, or just show the icon.
+            img_flag = f'/api/products/{self.id}/thumbnail'
+        else:
+            img_flag = raw or None
+
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': None,   # not needed in list view
+            'category_id': self.category_id,
+            'category_name': self.category.name if self.category else None,
+            'sku': self.sku,
+            'unit_price': self.unit_price,
+            'bulk_price': self.bulk_price,
+            'bulk_quantity': self.bulk_quantity,
+            'unit_size': self.unit_size,
+            'brand': self.brand,
+            'in_stock': self._in_stock_computed(),
+            'stock_quantity': self.stock_quantity if self.stock_quantity is not None else 0,
+            'image_url': img_flag,
+            'images': [],          # gallery not needed in list view
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

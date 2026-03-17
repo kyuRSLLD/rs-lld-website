@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, make_response
+from flask import Blueprint, jsonify, request, make_response, Response
 from src.models.product import Product, Category, db, query_with_images
 from src.routes.user import login_required
 
@@ -59,14 +59,12 @@ def get_products():
     products = query.paginate(page=page, per_page=per_page, error_out=False)
 
     resp = make_response(jsonify({
-        'products': [p.to_dict() for p in products.items],
+        'products': [p.list_dict() for p in products.items],
         'total': products.total,
         'pages': products.pages,
         'current_page': page,
         'per_page': per_page,
     }))
-    # Cache public product list for 30 s; browser shows stale data instantly
-    # while refreshing in the background (stale-while-revalidate).
     return _cache(resp, seconds=30)
 
 
@@ -85,14 +83,42 @@ def get_product_by_sku(sku):
 @product_bp.route('/products/featured', methods=['GET'])
 def get_featured_products():
     products = (
-        query_with_images(Product.query)
+        Product.query
         .filter(Product.in_stock == True)
         .order_by(Product.updated_at.desc())
         .limit(8)
         .all()
     )
-    resp = make_response(jsonify([p.to_dict() for p in products]))
+    resp = make_response(jsonify([p.list_dict() for p in products]))
     return _cache(resp, seconds=60)
+
+
+@product_bp.route('/products/<int:product_id>/thumbnail', methods=['GET'])
+def get_product_thumbnail(product_id):
+    """
+    Serve the primary product image as a proper image response.
+    Used by the product list cards so they can lazy-load images
+    without the full base64 blob being embedded in the list JSON.
+    """
+    product = Product.query.get_or_404(product_id)
+    raw = product.image_url or ''
+    if raw.startswith('data:'):
+        # Parse  data:<mime>;base64,<data>
+        try:
+            header, b64data = raw.split(',', 1)
+            mime = header.split(':')[1].split(';')[0]
+            import base64
+            img_bytes = base64.b64decode(b64data)
+            resp = make_response(img_bytes)
+            resp.headers['Content-Type'] = mime
+            resp.headers['Cache-Control'] = 'private, max-age=86400'  # 24 h browser cache
+            return resp
+        except Exception:
+            return '', 404
+    elif raw.startswith('http'):
+        from flask import redirect
+        return redirect(raw, code=302)
+    return '', 404
 
 
 # ── Admin routes ──────────────────────────────────────────────────────────────
