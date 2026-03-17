@@ -11,9 +11,7 @@ def _cache(response, seconds=30):
     NOT to cache. Using `private` prevents Cloudflare from serving one user's
     response to another, which caused empty product lists on mobile.
     """
-    response.headers['Cache-Control'] = (
-        f'private, max-age={seconds}, stale-while-revalidate=60'
-    )
+    response.headers['Cache-Control'] = f'private, max-age={seconds}'
     return response
 
 
@@ -102,8 +100,12 @@ def get_product_thumbnail(product_id):
     """
     product = Product.query.get_or_404(product_id)
     raw = product.image_url or ''
+
+    # Allow any origin to load this image (needed for mobile cross-origin img tags)
+    from flask import request as _req
+    origin = _req.headers.get('Origin', '*')
+
     if raw.startswith('data:'):
-        # Parse  data:<mime>;base64,<data>
         try:
             header, b64data = raw.split(',', 1)
             mime = header.split(':')[1].split(';')[0]
@@ -111,7 +113,10 @@ def get_product_thumbnail(product_id):
             img_bytes = base64.b64decode(b64data)
             resp = make_response(img_bytes)
             resp.headers['Content-Type'] = mime
-            resp.headers['Cache-Control'] = 'private, max-age=86400'  # 24 h browser cache
+            resp.headers['Cache-Control'] = 'public, max-age=86400'  # 24 h
+            resp.headers['Access-Control-Allow-Origin'] = origin
+            resp.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            resp.headers['Vary'] = 'Origin'
             return resp
         except Exception:
             return '', 404

@@ -9,6 +9,7 @@ import { useCart } from '../contexts/CartContext'
 // Simple in-memory cache shared across mounts (survives tab navigation)
 const _cache = { products: null, categories: null, ts: 0 }
 const CACHE_TTL = 30_000 // 30 s
+const FETCH_TIMEOUT = 20_000 // 20 s abort timeout
 
 const ProductsPage = () => {
   const [products, setProducts] = useState(_cache.products || [])
@@ -21,6 +22,7 @@ const ProductsPage = () => {
   const [aiSuggestion, setAiSuggestion] = useState('')
   const [isAiSearch, setIsAiSearch] = useState(false)
   const [addedProductId, setAddedProductId] = useState(null)
+  const [fetchError, setFetchError] = useState(false)
   const searchTimeout = useRef(null)
   const { currentLanguage } = useLanguage()
   const { addToCart, cartCount } = useCart()
@@ -117,30 +119,50 @@ const ProductsPage = () => {
     }
   }
 
-  const fetchProducts = async (search = '') => {
+  const fetchProducts = async (search = '', attempt = 1) => {
     // Only show spinner when we have no cached data to display
     const hasCached = _cache.products && !search && !selectedCategory
     if (!hasCached) setLoading(true)
+    setFetchError(false)
     setIsAiSearch(false)
     setAiSuggestion('')
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
     try {
       const params = new URLSearchParams()
       if (selectedCategory) params.append('category_id', selectedCategory)
       if (search) params.append('search', search)
-      const response = await fetch(`${API_BASE}/api/products?${params}`)
+      const response = await fetch(`${API_BASE}/api/products?${params}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
       if (response.ok) {
         const data = await response.json()
         const list = data.products || []
         setProducts(list)
+        setFetchError(false)
         // Cache only unfiltered full list
         if (!search && !selectedCategory) {
           _cache.products = list
           _cache.ts = Date.now()
         }
+      } else {
+        throw new Error(`HTTP ${response.status}`)
       }
     } catch (error) {
-      console.error('Error fetching products:', error)
+      if (error.name === 'AbortError') {
+        console.warn('Products fetch timed out, attempt', attempt)
+      } else {
+        console.error('Error fetching products:', error)
+      }
+      // Auto-retry once on failure
+      if (attempt === 1) {
+        setTimeout(() => fetchProducts(search, 2), 2000)
+        return
+      }
+      setFetchError(true)
     } finally {
+      clearTimeout(timer)
       setLoading(false)
     }
   }
@@ -364,6 +386,17 @@ const ProductsPage = () => {
               ))}
             </div>
           )
+        ) : fetchError ? (
+          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+            <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 text-lg mb-4">Could not load products. Please check your connection.</p>
+            <button
+              onClick={() => fetchProducts()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+            >
+              Retry
+            </button>
+          </div>
         ) : products.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
