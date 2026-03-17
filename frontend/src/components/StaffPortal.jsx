@@ -326,7 +326,7 @@ const StaffLogin = ({ onLogin }) => {
 }
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
-const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
+const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(order.staff_notes || '')
@@ -460,6 +460,12 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, t, lang }) => {
             {expanded ? t.orders.hideDetails : t.orders.details}
             {expanded ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
           </Button>
+          {onDelete && (
+            <Button size="sm" variant="outline" onClick={() => onDelete(order.id, order.order_number)} disabled={updating}
+              className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700 text-xs">
+              <Trash2 className="w-3 h-3 mr-1" /> {t.orders.deleteOrder || 'Delete'}
+            </Button>
+          )}
         </div>
 
         {/* Staff Notes Editor */}
@@ -1315,6 +1321,34 @@ const StaffPortal = () => {
     } catch {}
   }
 
+  const handleDeleteOrder = async (orderId, orderNumber) => {
+    const confirmMsg = lang === 'zh'
+      ? `确定要永久删除订单 ${orderNumber} 吗？此操作无法撤销。`
+      : `Permanently delete order ${orderNumber}? This cannot be undone.`
+    if (!window.confirm(confirmMsg)) return
+    try {
+      await staffFetch(`/api/staff/orders/${orderId}`, { method: 'DELETE' })
+      fetchOrders()
+      fetchStats()
+    } catch (e) {
+      alert('Failed to delete order: ' + e.message)
+    }
+  }
+
+  const handleDeleteCustomer = async (userId, name) => {
+    const confirmMsg = lang === 'zh'
+      ? `确定要永久删除客户 "${name}" 吗？其订单记录将被保留但取消关联。`
+      : `Permanently delete customer "${name}"? Their order history will be kept but unlinked.`
+    if (!window.confirm(confirmMsg)) return
+    try {
+      await staffFetch(`/api/staff/customers/${userId}`, { method: 'DELETE' })
+      fetchCustomers()
+      fetchStats()
+    } catch (e) {
+      alert('Failed to delete customer: ' + e.message)
+    }
+  }
+
   const handleInventoryToggle = async (productId, inStock) => {
     try {
       await staffFetch(`/api/staff/inventory/${productId}`, {
@@ -1706,6 +1740,7 @@ const StaffPortal = () => {
                     order={order}
                     onStatusUpdate={handleStatusUpdate}
                     onNotesUpdate={handleNotesUpdate}
+                    onDelete={handleDeleteOrder}
                     t={t}
                     lang={lang}
                   />
@@ -1800,11 +1835,18 @@ const StaffPortal = () => {
                           <td className="px-4 py-3 font-semibold text-stone-900">{formatPrice(c.total_spent)}</td>
                           <td className="px-4 py-3 text-stone-500 text-xs">{new Date(c.created_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')}</td>
                           <td className="px-4 py-3">
-                            <button
-                              onClick={e => { e.stopPropagation(); fetchCustomerOrders(c.company_name || c.username) }}
-                              className="text-xs px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors">
-                              {t.customers.viewOrders}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={e => { e.stopPropagation(); fetchCustomerOrders(c.company_name || c.username) }}
+                                className="text-xs px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors">
+                                {t.customers.viewOrders}
+                              </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); handleDeleteCustomer(c.id, c.username) }}
+                                className="text-xs px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors flex items-center gap-1">
+                                <Trash2 className="w-3 h-3" /> {lang === 'zh' ? '删除' : 'Delete'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         {expandedCustomer === c.id && (

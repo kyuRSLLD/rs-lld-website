@@ -254,3 +254,46 @@ def import_customers_csv():
         'warnings': warnings,
         'errors':   errors,
     })
+
+
+# ─── Delete a single customer ─────────────────────────────────────────────────
+
+@customer_admin_bp.route('/staff/customers/<int:user_id>', methods=['DELETE'])
+@staff_required
+def delete_customer(user_id):
+    """
+    Permanently delete a customer account.
+    Associated orders are preserved but unlinked (user_id set to NULL).
+    """
+    user = User.query.get_or_404(user_id)
+    # Unlink orders rather than cascade-delete them so order history is kept
+    Order.query.filter_by(user_id=user_id).update({'user_id': None})
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'success': True, 'deleted_id': user_id})
+
+
+# ─── Bulk delete customers ────────────────────────────────────────────────────
+
+@customer_admin_bp.route('/staff/customers/bulk-delete', methods=['POST'])
+@staff_required
+def bulk_delete_customers():
+    """
+    Delete multiple customers at once.
+    Body: { "ids": [1, 2, 3] }
+    """
+    data = request.json or {}
+    ids = data.get('ids', [])
+    if not ids:
+        return jsonify({'error': 'No IDs provided'}), 400
+
+    deleted = 0
+    for uid in ids:
+        user = User.query.get(uid)
+        if user:
+            Order.query.filter_by(user_id=uid).update({'user_id': None})
+            db.session.delete(user)
+            deleted += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'deleted': deleted})

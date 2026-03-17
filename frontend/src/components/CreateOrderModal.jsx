@@ -164,6 +164,8 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
     }
 
     setSaving(true)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 30000) // 30s timeout
     try {
       const payload = {
         ...form,
@@ -185,12 +187,19 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
+      clearTimeout(timer)
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Failed to create order'); setSaving(false); return }
       onCreated(data.order)
     } catch (err) {
-      setError(err.message)
+      clearTimeout(timer)
+      if (err.name === 'AbortError') {
+        setError('Request timed out. The server may be waking up — please try again.')
+      } else {
+        setError(err.message)
+      }
       setSaving(false)
     }
   }

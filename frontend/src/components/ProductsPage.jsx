@@ -134,7 +134,6 @@ const ProductsPage = () => {
       if (search) params.append('search', search)
       const response = await fetch(`${API_BASE}/api/products?${params}`, {
         signal: controller.signal,
-        cache: 'no-store',
       })
       if (response.ok) {
         const data = await response.json()
