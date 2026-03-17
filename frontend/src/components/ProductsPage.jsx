@@ -89,6 +89,11 @@ const ProductsPage = () => {
 
   const L = labels[currentLanguage] || labels.en
 
+  // Ping Railway on first mount to wake it up before the real API calls
+  useEffect(() => {
+    fetch(`${API_BASE}/api/ping`, { cache: 'no-store' }).catch(() => {})
+  }, [])
+
   useEffect(() => {
     fetchCategories()
     fetchProducts()
@@ -320,10 +325,31 @@ const ProductsPage = () => {
 
         {/* Products Grid */}
         {loading || aiLoading ? (
-          <div className="text-center py-16">
-            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-3"></div>
-            <p className="text-gray-500">{aiLoading ? L.aiSearching : L.loading}</p>
-          </div>
+          aiLoading ? (
+            <div className="text-center py-16">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-3"></div>
+              <p className="text-gray-500">{L.aiSearching}</p>
+            </div>
+          ) : (
+            /* Skeleton loading cards */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col animate-pulse">
+                  <div className="w-full h-44 bg-gray-200 rounded-t-xl" />
+                  <div className="p-4 flex flex-col gap-3">
+                    <div className="flex justify-between gap-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-4 bg-gray-200 rounded w-1/5" />
+                    </div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    <div className="h-5 bg-gray-200 rounded w-1/3" />
+                    <div className="h-6 bg-gray-200 rounded w-2/5 mt-1" />
+                    <div className="h-9 bg-gray-200 rounded w-full mt-2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : products.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />

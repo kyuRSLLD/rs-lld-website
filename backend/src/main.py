@@ -191,6 +191,13 @@ with app.app_context():
         db.session.commit()
 
 
+@app.route('/api/ping')
+def ping():
+    """Lightweight keep-alive endpoint to prevent Railway cold starts."""
+    from flask import jsonify
+    return jsonify({'status': 'ok'})
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
