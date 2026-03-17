@@ -49,7 +49,8 @@ class Product(db.Model):
             'bulk_quantity': self.bulk_quantity,
             'unit_size': self.unit_size,
             'brand': self.brand,
-            'in_stock': self.in_stock,
+            # A product is only in stock if the manual flag is True AND quantity > 0
+            'in_stock': bool(self.in_stock) and (self.stock_quantity or 0) > 0,
             'stock_quantity': self.stock_quantity if self.stock_quantity is not None else 0,
             'image_url': self.image_url,
             'images': [img.to_dict() for img in extra_imgs],
