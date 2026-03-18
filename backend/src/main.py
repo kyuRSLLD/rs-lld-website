@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -37,32 +38,27 @@ _on_railway = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAIL
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-# CORS: allow lldrestaurantsupply.com and Railway URL, plus wildcard for local dev
-_allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
-if _allowed_origins == '*':
-    import re as _re
-    def _cors_origin_check(origin):
-        """Allow lldrestaurantsupply.com, Railway, Cloudflare Pages, and localhost."""
-        if not origin:
-            return False
-        _whitelist = [
-            'https://lldrestaurantsupply.com',
-            'https://www.lldrestaurantsupply.com',
-            'https://rs-lld-website-production.up.railway.app',
-            'http://localhost:5173',
-            'http://localhost:7777',
-        ]
-        if origin in _whitelist:
-            return True
-        # Allow any Cloudflare Pages subdomain (*.pages.dev)
-        if _re.match(r'https://[a-z0-9-]+\.lld-restaurant-supply\.pages\.dev$', origin):
-            return True
-        if origin == 'https://lld-restaurant-supply.pages.dev':
-            return True
+# CORS: allow lldrestaurantsupply.com, Railway, Cloudflare Pages, and localhost
+_CORS_WHITELIST = [
+    'https://lldrestaurantsupply.com',
+    'https://www.lldrestaurantsupply.com',
+    'https://rs-lld-website-production.up.railway.app',
+    'https://lld-restaurant-supply.pages.dev',
+    'http://localhost:5173',
+    'http://localhost:7777',
+]
+_PAGES_PATTERN = re.compile(r'^https://[a-z0-9-]+\.lld-restaurant-supply\.pages\.dev$')
+
+def _cors_origin_check(origin):
+    if not origin:
         return False
-    CORS(app, supports_credentials=True, origins=_cors_origin_check)
-else:
-    CORS(app, supports_credentials=True, origins=_allowed_origins.split(','))
+    if origin in _CORS_WHITELIST:
+        return True
+    if _PAGES_PATTERN.match(origin):
+        return True
+    return False
+
+CORS(app, supports_credentials=True, origins=_cors_origin_check)
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(product_bp, url_prefix='/api')
