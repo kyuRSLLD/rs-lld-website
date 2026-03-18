@@ -1456,20 +1456,24 @@ const StaffPortal = () => {
   }
 
   const [inventoryStockEdits, setInventoryStockEdits] = useState({})
-  const [inventoryStockSaving, setInventoryStockSaving] = useState({})
-  const handleInventoryStockUpdate = async (productId, qty) => {
-    setInventoryStockSaving(s => ({ ...s, [productId]: true }))
+  const [inventoryStockSaving, setInventoryStockSaving] = useState(false)
+  const handleSaveAllInventory = async () => {
+    const edits = Object.entries(inventoryStockEdits)
+    if (edits.length === 0) return
+    setInventoryStockSaving(true)
     try {
-      await staffFetch(`/api/staff/inventory/${productId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stock_quantity: parseInt(qty, 10) || 0 }),
-      })
-      setInventoryStockEdits(s => { const n = { ...s }; delete n[productId]; return n })
+      await Promise.all(edits.map(([productId, qty]) =>
+        staffFetch(`/api/staff/inventory/${productId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stock_quantity: parseInt(qty, 10) || 0 }),
+        })
+      ))
+      setInventoryStockEdits({})
       fetchInventory()
       fetchProducts()
     } catch {}
-    setInventoryStockSaving(s => ({ ...s, [productId]: false }))
+    setInventoryStockSaving(false)
   }
 
   const [inventoryImageUploading, setInventoryImageUploading] = useState({})
@@ -2123,7 +2127,24 @@ const StaffPortal = () => {
         {/* ── INVENTORY TAB ── */}
         {activeTab === 'inventory' && (
           <div>
-            <h2 className="text-xl font-bold text-stone-900 mb-4">{t.inventory.title}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-stone-900">{t.inventory.title}</h2>
+              <button
+                onClick={handleSaveAllInventory}
+                disabled={inventoryStockSaving || Object.keys(inventoryStockEdits).length === 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  Object.keys(inventoryStockEdits).length > 0
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                    : 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                }`}
+              >
+                {inventoryStockSaving ? (
+                  <><div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" /> {lang === 'zh' ? '保存中...' : 'Saving...'}</>
+                ) : (
+                  <>{lang === 'zh' ? `更新库存${Object.keys(inventoryStockEdits).length > 0 ? ` (${Object.keys(inventoryStockEdits).length})` : ''}` : `Update Inventory${Object.keys(inventoryStockEdits).length > 0 ? ` (${Object.keys(inventoryStockEdits).length})` : ''}`}</>
+                )}
+              </button>
+            </div>
             <div className="bg-white rounded-xl border border-stone-100 overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
@@ -2193,13 +2214,7 @@ const StaffPortal = () => {
                             className="w-14 border border-stone-200 rounded px-1.5 py-0.5 text-xs text-center focus:ring-1 focus:ring-blue-400 focus:border-transparent"
                           />
                           {inventoryStockEdits[p.id] !== undefined && (
-                            <button
-                              onClick={() => handleInventoryStockUpdate(p.id, inventoryStockEdits[p.id])}
-                              disabled={inventoryStockSaving[p.id]}
-                              className="text-xs px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
-                            >
-                              {inventoryStockSaving[p.id] ? '...' : t.inventory.updateStock}
-                            </button>
+                            <span className="text-xs text-blue-500 font-medium">✎</span>
                           )}
                           {(p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity <= 5 && p.stock_quantity > 0) && inventoryStockEdits[p.id] === undefined && (
                             <span className="text-xs text-orange-500 font-medium">{t.inventory.lowStock}</span>
