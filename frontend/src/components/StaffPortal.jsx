@@ -659,6 +659,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
     stock_quantity: product.stock_quantity ?? 0,
     category_id: product.category_id,
     description: product.description || '',
+    offer_bulk: !!(product.bulk_price && product.bulk_quantity),
   })
   const [error, setError] = useState('')
 
@@ -776,6 +777,7 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
       bulk_price: product.bulk_price || '', bulk_quantity: product.bulk_quantity || '',
       stock_quantity: product.stock_quantity ?? 0,
       category_id: product.category_id, description: product.description || '',
+      offer_bulk: !!(product.bulk_price && product.bulk_quantity),
     }
     setForm(reset)
     if (onMarkDirty) onMarkDirty(product.id, null)
@@ -809,12 +811,23 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
           </td>
           <td className="px-3 py-2">
             {isAdmin ? (
-              <input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => updateForm({bulk_price:e.target.value})} placeholder={t.products.enterPrice} />
+              <div className="space-y-1">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={!!form.offer_bulk} onChange={e => updateForm({ offer_bulk: e.target.checked, bulk_price: e.target.checked ? form.bulk_price : '', bulk_quantity: e.target.checked ? form.bulk_quantity : '' })} className="w-3 h-3 rounded" />
+                  <span className="text-xs text-stone-500">{lang === 'zh' ? '提供批量价' : 'Offer bulk'}</span>
+                </label>
+                {form.offer_bulk && <input className={inp} type="number" step="0.01" value={form.bulk_price} onChange={e => updateForm({bulk_price:e.target.value})} placeholder={t.products.enterPrice} />}
+              </div>
             ) : (
               <span className="text-xs text-stone-500 italic" title={t.products.priceLockedAdmin}>{form.bulk_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(form.bulk_price) : '—'} 🔒</span>
             )}
           </td>
-          <td className="px-3 py-2"><input className={inp} type="number" value={form.bulk_quantity} onChange={e => updateForm({bulk_quantity:e.target.value})} placeholder={t.products.minQty} /></td>
+          <td className="px-3 py-2">
+            {form.offer_bulk
+              ? <input className={inp} type="number" value={form.bulk_quantity} onChange={e => updateForm({bulk_quantity:e.target.value})} placeholder={t.products.minQty} />
+              : <span className="text-xs text-stone-400 italic">{lang === 'zh' ? '无批量' : 'No bulk'}</span>
+            }
+          </td>
           <td className="px-3 py-2">
             <input className={inp} type="number" min="0" value={form.stock_quantity}
               onChange={e => updateForm({stock_quantity: Math.max(0, parseInt(e.target.value) || 0)})}
@@ -1024,6 +1037,7 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
     name: '', sku: '', brand: '', unit_size: '', description: '',
     category_id: categories[0]?.id || '',
     unit_price: '', bulk_price: '', bulk_quantity: '',
+    offer_bulk: false,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -1128,13 +1142,23 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
               <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.unitPrice} ($) *</label>
               <input className={inp} type="number" step="0.01" min="0" value={form.unit_price} onChange={e=>setForm(p=>({...p,unit_price:e.target.value}))} required placeholder={t.products.enterPrice} />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.bulkPrice} ($)</label>
-              <input className={inp} type="number" step="0.01" min="0" value={form.bulk_price} onChange={e=>setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.bulkQty}</label>
-              <input className={inp} type="number" min="1" value={form.bulk_quantity} onChange={e=>setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} />
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer mb-2">
+                <input type="checkbox" checked={form.offer_bulk} onChange={e => setForm(p => ({ ...p, offer_bulk: e.target.checked, bulk_price: e.target.checked ? p.bulk_price : '', bulk_quantity: e.target.checked ? p.bulk_quantity : '' }))} className="w-4 h-4 rounded" />
+                <span className="text-sm font-medium text-stone-700">{t.products.bulkPrice ? `${t.products.bulkPrice} (${t.products.bulkQty})` : 'Offer Bulk Pricing'}</span>
+              </label>
+              {form.offer_bulk && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">{t.products.bulkPrice} ($)</label>
+                    <input className={inp} type="number" step="0.01" min="0" value={form.bulk_price} onChange={e=>setForm(p=>({...p,bulk_price:e.target.value}))} placeholder={t.products.enterPrice} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">{t.products.bulkQty}</label>
+                    <input className={inp} type="number" min="1" value={form.bulk_quantity} onChange={e=>setForm(p=>({...p,bulk_quantity:e.target.value}))} placeholder={t.products.minQty} />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-stone-700 mb-1">{t.products.description}</label>
@@ -1179,6 +1203,39 @@ const AddProductForm = ({ categories, onAdd, onClose, t }) => {
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+// ─── Combined Invoices Tab (Invoice Builder + Bill Analyzer) ─────────────────
+const CombinedInvoicesTab = ({ t, lang, isAdmin }) => {
+  const [subTab, setSubTab] = useState('invoices')
+  const subTabs = [
+    { id: 'invoices', label: lang === 'zh' ? '发票生成' : 'Custom Invoices', icon: FileText },
+    ...(isAdmin ? [{ id: 'billAnalyzer', label: lang === 'zh' ? '账单分析' : 'Bill Analyzer', icon: TrendingDown }] : []),
+  ]
+  return (
+    <div>
+      <div className="border-b border-stone-200 bg-white px-4 sm:px-6">
+        <div className="flex gap-0">
+          {subTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setSubTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                subTab === tab.id
+                  ? 'border-stone-900 text-stone-900'
+                  : 'border-transparent text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              <tab.icon className="w-3.5 h-3.5" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {subTab === 'invoices' && <InvoicesTab t={t} lang={lang} />}
+      {subTab === 'billAnalyzer' && isAdmin && <BillAnalyzerTab t={t.billAnalyzer} />}
     </div>
   )
 }
@@ -1671,8 +1728,7 @@ const StaffPortal = () => {
     { id: 'inventory', label: t.tabs.inventory, icon: ShoppingBag },
     { id: 'invoices', label: t.tabs.invoices, icon: FileText },
     { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
-    ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true },
-    { id: 'billAnalyzer', label: t.tabs.billAnalyzer, icon: TrendingDown }] : []),
+    ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
   ]
 
   return (
@@ -2175,9 +2231,9 @@ const StaffPortal = () => {
           </div>
         )}
 
-        {/* ── INVOICES TAB ── */}
+        {/* ── INVOICES TAB (with Bill Analyzer sub-tab) ── */}
         {activeTab === 'invoices' && (
-          <InvoicesTab t={t} lang={lang} />
+          <CombinedInvoicesTab t={t} lang={lang} isAdmin={isAdmin} />
         )}
 
         {/* ── STAFF MANAGEMENT TAB (admin only) ── */}
@@ -2192,9 +2248,6 @@ const StaffPortal = () => {
         )}
 
         {/* ── API KEYS TAB (admin only) ── */}
-        {activeTab === 'billAnalyzer' && (
-          <BillAnalyzerTab t={t.billAnalyzer} />
-        )}
         {activeTab === 'apiKeys' && isAdmin && (
           <ApiKeyManagerTab t={t} lang={lang} />
         )}
