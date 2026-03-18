@@ -75,7 +75,7 @@ function App() {
           onLogin={handleLogin}
         />
       )}
-      <ChatBot />
+      {/* <ChatBot /> */}{/* Temporarily disabled — needs more training */}
     </>
   )
 
