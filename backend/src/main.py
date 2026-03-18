@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -39,26 +38,16 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 # CORS: allow lldrestaurantsupply.com, Railway, Cloudflare Pages, and localhost
-_CORS_WHITELIST = [
+# flask-cors supports regex strings in the origins list
+CORS(app, supports_credentials=True, origins=[
     'https://lldrestaurantsupply.com',
     'https://www.lldrestaurantsupply.com',
     'https://rs-lld-website-production.up.railway.app',
     'https://lld-restaurant-supply.pages.dev',
+    r'https://[a-z0-9-]+\.lld-restaurant-supply\.pages\.dev',
     'http://localhost:5173',
     'http://localhost:7777',
-]
-_PAGES_PATTERN = re.compile(r'^https://[a-z0-9-]+\.lld-restaurant-supply\.pages\.dev$')
-
-def _cors_origin_check(origin):
-    if not origin:
-        return False
-    if origin in _CORS_WHITELIST:
-        return True
-    if _PAGES_PATTERN.match(origin):
-        return True
-    return False
-
-CORS(app, supports_credentials=True, origins=_cors_origin_check)
+])
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(product_bp, url_prefix='/api')
