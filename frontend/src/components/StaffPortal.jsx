@@ -556,12 +556,33 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
                      t.orders.pendingReview}
                   </span>
                 </div>
-                <img
-                  src={`${API_BASE}/api/staff/checks/${order.order_number}`}
-                  alt="Check image"
-                  className="max-h-48 rounded-lg border border-stone-200 object-contain w-full"
-                  onError={(e) => { e.target.style.display='none' }}
-                />
+                {/* Front and back check images side by side */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-stone-500 font-medium mb-1">🔵 Front</p>
+                    <a href={`${API_BASE}/api/staff/checks/${order.order_number}`} target="_blank" rel="noreferrer">
+                      <img
+                        src={`${API_BASE}/api/staff/checks/${order.order_number}`}
+                        alt="Check front"
+                        className="max-h-40 rounded-lg border border-stone-200 object-contain w-full hover:opacity-90 cursor-pointer"
+                        onError={(e) => { e.target.style.display='none' }}
+                      />
+                    </a>
+                  </div>
+                  {order.has_check_back_image && (
+                    <div>
+                      <p className="text-xs text-stone-500 font-medium mb-1">🟢 Back</p>
+                      <a href={`${API_BASE}/api/staff/checks/${order.order_number}/back`} target="_blank" rel="noreferrer">
+                        <img
+                          src={`${API_BASE}/api/staff/checks/${order.order_number}/back`}
+                          alt="Check back"
+                          className="max-h-40 rounded-lg border border-stone-200 object-contain w-full hover:opacity-90 cursor-pointer"
+                          onError={(e) => { e.target.style.display='none' }}
+                        />
+                      </a>
+                    </div>
+                  )}
+                </div>
                 {order.payment_status === 'pending_review' && (
                   <div className="flex gap-2">
                     <Button

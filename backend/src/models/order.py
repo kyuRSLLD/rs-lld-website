@@ -34,7 +34,8 @@ class Order(db.Model):
     payment_method = db.Column(db.String(50), default='net30')  # net30, net15, credit_card, check, cod
     payment_status = db.Column(db.String(30), default='pending')  # pending, paid, overdue, pending_review, rejected
     payment_intent_id = db.Column(db.String(200), nullable=True)  # Stripe PaymentIntent ID
-    check_image_filename = db.Column(db.String(300), nullable=True)  # uploaded check image filename
+    check_image_filename = db.Column(db.String(300), nullable=True)  # uploaded check front image filename
+    check_back_image_filename = db.Column(db.String(300), nullable=True)  # uploaded check back image filename
 
     # Internal staff notes
     staff_notes = db.Column(db.Text, nullable=True)
@@ -77,7 +78,9 @@ class Order(db.Model):
             'payment_status': self.payment_status,
             'payment_intent_id': self.payment_intent_id,
             'check_image_filename': self.check_image_filename,
+            'check_back_image_filename': self.check_back_image_filename,
             'has_check_image': bool(self.check_image_filename),
+            'has_check_back_image': bool(self.check_back_image_filename),
             'staff_notes': self.staff_notes,
             'assigned_to': self.assigned_to,
             'item_count': len(self.items),

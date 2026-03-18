@@ -110,46 +110,59 @@ def confirm_payment():
 @payment_bp.route('/payments/upload-check', methods=['POST'])
 def upload_check():
     """
-    Accepts a check image upload for an order.
-    The check image is stored on the server and linked to the order.
-    Staff will review it in the internal portal.
+    Accepts front and back check image uploads for an order.
+    Both images are stored on the server and linked to the order.
+    Staff will review them in the internal portal.
     """
     try:
         order_number = request.form.get('order_number')
         if not order_number:
             return jsonify({'error': 'order_number is required'}), 400
 
-        if 'check_image' not in request.files:
-            return jsonify({'error': 'No check image provided'}), 400
+        # Support both legacy single-image (check_image) and new dual-image (check_front + check_back)
+        front_file = request.files.get('check_front') or request.files.get('check_image')
+        back_file = request.files.get('check_back')
 
-        file = request.files['check_image']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+        if not front_file or front_file.filename == '':
+            return jsonify({'error': 'Front check image is required'}), 400
 
-        if not allowed_file(file.filename):
-            return jsonify({'error': 'File type not allowed. Please upload a JPG, PNG, or PDF.'}), 400
+        if not allowed_file(front_file.filename):
+            return jsonify({'error': 'File type not allowed. Please upload a JPG or PNG.'}), 400
 
         # Ensure upload directory exists
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        # Save file with order number prefix for easy identification
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = secure_filename(f"check_{order_number}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{ext}")
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(filepath)
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+
+        # Save front image
+        front_ext = front_file.filename.rsplit('.', 1)[1].lower() if '.' in front_file.filename else 'jpg'
+        front_filename = secure_filename(f"check_{order_number}_front_{timestamp}.{front_ext}")
+        front_file.save(os.path.join(UPLOAD_FOLDER, front_filename))
+
+        # Save back image (optional for legacy compatibility, required for new flow)
+        back_filename = None
+        if back_file and back_file.filename != '':
+            if not allowed_file(back_file.filename):
+                return jsonify({'error': 'Back image file type not allowed. Please upload a JPG or PNG.'}), 400
+            back_ext = back_file.filename.rsplit('.', 1)[1].lower() if '.' in back_file.filename else 'jpg'
+            back_filename = secure_filename(f"check_{order_number}_back_{timestamp}.{back_ext}")
+            back_file.save(os.path.join(UPLOAD_FOLDER, back_filename))
 
         # Update order with check image info
         order = Order.query.filter_by(order_number=order_number).first()
         if order:
             order.payment_method = 'check'
-            order.check_image_filename = filename
+            order.check_image_filename = front_filename
+            if back_filename:
+                order.check_back_image_filename = back_filename
             order.payment_status = 'pending_review'
             db.session.commit()
 
         return jsonify({
             'success': True,
-            'message': 'Check image uploaded successfully. Your order will be confirmed once we review your check.',
-            'filename': filename,
+            'message': 'Check images uploaded successfully. Your order will be confirmed once we review your check.',
+            'front_filename': front_filename,
+            'back_filename': back_filename,
         })
 
     except Exception as e:
@@ -159,12 +172,22 @@ def upload_check():
 
 @payment_bp.route('/staff/checks/<string:order_number>', methods=['GET'])
 def get_check_image(order_number):
-    """Serve the check image for staff review."""
+    """Serve the check front image for staff review."""
     from flask import send_from_directory
     order = Order.query.filter_by(order_number=order_number).first_or_404()
     if not order.check_image_filename:
         return jsonify({'error': 'No check image for this order'}), 404
     return send_from_directory(UPLOAD_FOLDER, order.check_image_filename)
+
+
+@payment_bp.route('/staff/checks/<string:order_number>/back', methods=['GET'])
+def get_check_back_image(order_number):
+    """Serve the check back image for staff review."""
+    from flask import send_from_directory
+    order = Order.query.filter_by(order_number=order_number).first_or_404()
+    if not order.check_back_image_filename:
+        return jsonify({'error': 'No check back image for this order'}), 404
+    return send_from_directory(UPLOAD_FOLDER, order.check_back_image_filename)
 
 
 @payment_bp.route('/staff/checks/<string:order_number>/approve', methods=['POST'])

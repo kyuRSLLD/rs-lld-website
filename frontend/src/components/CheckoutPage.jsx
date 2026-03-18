@@ -1,5 +1,5 @@
 import API_BASE from '../config/api'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -116,66 +116,103 @@ const StripeCardForm = ({ orderTotal, orderNumber, onSuccess, onError, t }) => {
 }
 
 // ─── Check Upload Component ───────────────────────────────────────────────────
+// ─── Single photo capture panel (reusable for front/back) ────────────────────
+const CheckPhotoPanel = ({ label, side, file, preview, onCamera, onGallery, onRetake, fileInputRef }) => (
+  <div className="flex-1 min-w-0">
+    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1">
+      {side === 'front' ? '🔵' : '🟢'} {label}
+    </p>
+    {preview ? (
+      <div className="border-2 border-green-400 bg-green-50 rounded-xl p-3 text-center">
+        <img src={preview} alt={`Check ${side}`} className="max-h-40 mx-auto rounded-lg mb-2 object-contain shadow" />
+        <p className="text-xs text-green-700 font-semibold mb-2">✓ Captured</p>
+        <div className="flex gap-2 justify-center flex-wrap">
+          <button onClick={onRetake} className="text-xs text-blue-600 underline hover:text-blue-800">📷 Retake</button>
+          <span className="text-gray-300">|</span>
+          <button onClick={onGallery} className="text-xs text-blue-600 underline hover:text-blue-800">🖼 Gallery</button>
+        </div>
+      </div>
+    ) : (
+      <div className="border-2 border-dashed border-amber-300 bg-amber-50 rounded-xl p-4 text-center">
+        <Camera className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+        <p className="text-xs text-gray-500 mb-3">No photo yet</p>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={onCamera}
+            className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+          >
+            <Camera className="w-3 h-3" /> Open Camera
+          </button>
+          <button
+            onClick={onGallery}
+            className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+          >
+            <Upload className="w-3 h-3" /> Choose from Gallery
+          </button>
+        </div>
+      </div>
+    )}
+    {/* Hidden file input for this side */}
+    <input ref={fileInputRef} type="file" accept="image/*" onChange={() => {}} className="hidden" />
+  </div>
+)
+
 const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
+  // Front photo state
+  const [frontFile, setFrontFile] = useState(null)
+  const [frontPreview, setFrontPreview] = useState(null)
+  // Back photo state
+  const [backFile, setBackFile] = useState(null)
+  const [backPreview, setBackPreview] = useState(null)
+
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  // Live camera states
+
+  // Camera states — track which side is being captured
+  const [cameraTarget, setCameraTarget] = useState(null) // 'front' | 'back'
   const [showCamera, setShowCamera] = useState(false)
   const [stream, setStream] = useState(null)
   const [cameraError, setCameraError] = useState('')
+
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
-  const fileInputRef = useRef(null)
+  const frontFileRef = useRef(null)
+  const backFileRef = useRef(null)
 
   // Stop camera stream on unmount
   useEffect(() => {
-    return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop())
-    }
+    return () => { if (stream) stream.getTracks().forEach(tr => tr.stop()) }
   }, [stream])
 
-  // Open live camera using getUserMedia (works on desktop + mobile)
-  const openCamera = async () => {
+  const openCamera = async (side) => {
     setCameraError('')
     setError('')
+    setCameraTarget(side)
     if (!navigator.mediaDevices?.getUserMedia) {
-      // Browser doesn't support getUserMedia — fall back to file input with capture
-      fileInputRef.current?.click()
+      // Fallback to file input
+      ;(side === 'front' ? frontFileRef : backFileRef).current?.click()
       return
     }
     try {
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' }, // prefer rear camera on mobile
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        }
-      }
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      })
       setStream(mediaStream)
       setShowCamera(true)
-      // Attach stream to video element after render
       setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream
-          videoRef.current.play()
-        }
+        if (videoRef.current) { videoRef.current.srcObject = mediaStream; videoRef.current.play() }
       }, 100)
     } catch (err) {
       if (err.name === 'NotAllowedError') {
-        setCameraError('Camera permission denied. Please allow camera access or use "Choose from Gallery" instead.')
+        setCameraError('Camera permission denied. Please use "Choose from Gallery" instead.')
       } else if (err.name === 'NotFoundError') {
         setCameraError('No camera found. Please use "Choose from Gallery" instead.')
       } else {
-        // Fall back to file input
-        fileInputRef.current?.click()
+        ;(side === 'front' ? frontFileRef : backFileRef).current?.click()
       }
     }
   }
 
-  // Capture a still frame from the live video
   const capturePhoto = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -184,38 +221,45 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
     canvas.height = video.videoHeight
     canvas.getContext('2d').drawImage(video, 0, 0)
     canvas.toBlob((blob) => {
-      const capturedFile = new File([blob], 'check-photo.jpg', { type: 'image/jpeg' })
-      setFile(capturedFile)
-      setPreview(canvas.toDataURL('image/jpeg', 0.92))
-      // Stop the stream
-      if (stream) stream.getTracks().forEach(t => t.stop())
+      const filename = cameraTarget === 'front' ? 'check-front.jpg' : 'check-back.jpg'
+      const capturedFile = new File([blob], filename, { type: 'image/jpeg' })
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+      if (cameraTarget === 'front') { setFrontFile(capturedFile); setFrontPreview(dataUrl) }
+      else { setBackFile(capturedFile); setBackPreview(dataUrl) }
+      if (stream) stream.getTracks().forEach(tr => tr.stop())
       setStream(null)
       setShowCamera(false)
     }, 'image/jpeg', 0.92)
   }
 
   const closeCamera = () => {
-    if (stream) stream.getTracks().forEach(t => t.stop())
+    if (stream) stream.getTracks().forEach(tr => tr.stop())
     setStream(null)
     setShowCamera(false)
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (side) => (e) => {
     const f = e.target.files[0]
     if (!f) return
-    setFile(f)
     const reader = new FileReader()
-    reader.onload = (ev) => setPreview(ev.target.result)
+    reader.onload = (ev) => {
+      if (side === 'front') { setFrontFile(f); setFrontPreview(ev.target.result) }
+      else { setBackFile(f); setBackPreview(ev.target.result) }
+    }
     reader.readAsDataURL(f)
+    // Reset input so same file can be re-selected
+    e.target.value = ''
   }
 
   const handleUpload = async () => {
-    if (!file) { setError('Please take or select a check photo'); return }
+    if (!frontFile) { setError('Please provide a photo of the front of the check'); return }
+    if (!backFile) { setError('Please provide a photo of the back of the check'); return }
     setUploading(true)
     setError('')
     try {
       const formData = new FormData()
-      formData.append('check_image', file)
+      formData.append('check_front', frontFile)
+      formData.append('check_back', backFile)
       formData.append('order_number', orderNumber)
       const res = await fetch(`${API_BASE}/api/payments/upload-check`, {
         method: 'POST',
@@ -235,43 +279,35 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
     }
   }
 
+  const bothCaptured = frontFile && backFile
+
   return (
     <div className="space-y-4">
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
         <p className="font-semibold mb-1">📋 How check payment works:</p>
         <ol className="list-decimal list-inside space-y-1 text-xs">
           <li>Make your check payable to: <strong>LLD Restaurant Supply</strong></li>
-          <li>Take a clear photo of the front of the check</li>
+          <li>Take a clear photo of <strong>both the front and back</strong> of the check</li>
           <li>Your order will be confirmed once we review and verify your check</li>
         </ol>
       </div>
 
-      {/* Hidden file input — fallback for gallery or browsers without getUserMedia */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,.pdf"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-      {/* Hidden canvas for capturing frames */}
+      {/* Hidden canvases */}
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Hidden file inputs */}
+      <input ref={frontFileRef} type="file" accept="image/*" onChange={handleFileChange('front')} className="hidden" />
+      <input ref={backFileRef} type="file" accept="image/*" onChange={handleFileChange('back')} className="hidden" />
 
       {/* Live camera viewfinder */}
       {showCamera && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full max-h-[70vh] object-cover"
-          />
+          <p className="absolute top-6 text-white text-sm font-semibold drop-shadow bg-black/40 px-4 py-1 rounded-full">
+            {cameraTarget === 'front' ? '📸 Front of Check' : '📸 Back of Check'} — tap the button to capture
+          </p>
+          <video ref={videoRef} autoPlay playsInline muted className="w-full max-h-[70vh] object-cover" />
           <div className="absolute bottom-8 flex gap-6 items-center">
-            <button
-              onClick={closeCamera}
-              className="bg-white/20 hover:bg-white/30 text-white text-sm px-5 py-2 rounded-full border border-white/40"
-            >
+            <button onClick={closeCamera} className="bg-white/20 hover:bg-white/30 text-white text-sm px-5 py-2 rounded-full border border-white/40">
               Cancel
             </button>
             <button
@@ -281,7 +317,6 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
               <Camera className="w-7 h-7 text-amber-600" />
             </button>
           </div>
-          <p className="absolute top-6 text-white text-sm font-medium drop-shadow">Position your check in frame, then tap the button</p>
         </div>
       )}
 
@@ -289,48 +324,83 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{cameraError}</div>
       )}
 
-      {/* Preview or camera prompt */}
-      {preview ? (
-        <div className="border-2 border-green-400 bg-green-50 rounded-xl p-4 text-center">
-          <img src={preview} alt="Check preview" className="max-h-56 mx-auto rounded-lg mb-3 object-contain shadow" />
-          <p className="text-sm text-green-700 font-semibold">✓ Check photo captured</p>
-          <div className="flex gap-2 mt-3 justify-center">
-            <button
-              onClick={openCamera}
-              className="text-xs text-blue-600 underline hover:text-blue-800"
-            >
-              📷 Retake Photo
-            </button>
-            <span className="text-gray-300">|</span>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs text-blue-600 underline hover:text-blue-800"
-            >
-              🖼 Choose from Gallery
-            </button>
-          </div>
+      {/* Two photo panels side by side */}
+      <div className="flex gap-3">
+        {/* Front */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">🔵 Front of Check <span className="text-red-500">*</span></p>
+          {frontPreview ? (
+            <div className="border-2 border-green-400 bg-green-50 rounded-xl p-3 text-center">
+              <img src={frontPreview} alt="Check front" className="max-h-36 mx-auto rounded-lg mb-2 object-contain shadow" />
+              <p className="text-xs text-green-700 font-semibold mb-2">✓ Captured</p>
+              <div className="flex gap-2 justify-center">
+                <button onClick={() => openCamera('front')} className="text-xs text-blue-600 underline">📷 Retake</button>
+                <span className="text-gray-300">|</span>
+                <button onClick={() => frontFileRef.current?.click()} className="text-xs text-blue-600 underline">🖼 Gallery</button>
+              </div>
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-amber-300 bg-amber-50 rounded-xl p-4 text-center">
+              <Camera className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+              <p className="text-xs text-gray-500 mb-3">No photo yet</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => openCamera('front')} className="flex items-center justify-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium px-3 py-2 rounded-lg">
+                  <Camera className="w-3 h-3" /> Camera
+                </button>
+                <button onClick={() => frontFileRef.current?.click()} className="flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg">
+                  <Upload className="w-3 h-3" /> Gallery
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="border-2 border-dashed border-amber-300 bg-amber-50 rounded-xl p-6 text-center">
-          <Camera className="w-12 h-12 text-amber-400 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-gray-700 mb-1">Take a photo of your check</p>
-          <p className="text-xs text-gray-500 mb-4">Position your check clearly in frame</p>
-          <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <button
-              onClick={openCamera}
-              className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <Camera className="w-4 h-4" /> Open Camera
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <Upload className="w-4 h-4" /> Choose from Gallery
-            </button>
-          </div>
+
+        {/* Back */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">🟢 Back of Check <span className="text-red-500">*</span></p>
+          {backPreview ? (
+            <div className="border-2 border-green-400 bg-green-50 rounded-xl p-3 text-center">
+              <img src={backPreview} alt="Check back" className="max-h-36 mx-auto rounded-lg mb-2 object-contain shadow" />
+              <p className="text-xs text-green-700 font-semibold mb-2">✓ Captured</p>
+              <div className="flex gap-2 justify-center">
+                <button onClick={() => openCamera('back')} className="text-xs text-blue-600 underline">📷 Retake</button>
+                <span className="text-gray-300">|</span>
+                <button onClick={() => backFileRef.current?.click()} className="text-xs text-blue-600 underline">🖼 Gallery</button>
+              </div>
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-4 text-center">
+              <Camera className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-xs text-gray-400 mb-3">{frontFile ? 'Now add back' : 'Add front first'}</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => openCamera('back')}
+                  disabled={!frontFile}
+                  className="flex items-center justify-center gap-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Camera className="w-3 h-3" /> Camera
+                </button>
+                <button
+                  onClick={() => backFileRef.current?.click()}
+                  disabled={!frontFile}
+                  className="flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Upload className="w-3 h-3" /> Gallery
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Progress indicator */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className={`w-2 h-2 rounded-full ${frontFile ? 'bg-green-500' : 'bg-gray-300'}`} />
+        <span className={frontFile ? 'text-green-700 font-medium' : ''}>Front photo</span>
+        <div className={`w-2 h-2 rounded-full ml-2 ${backFile ? 'bg-green-500' : 'bg-gray-300'}`} />
+        <span className={backFile ? 'text-green-700 font-medium' : ''}>Back photo</span>
+        {bothCaptured && <span className="ml-auto text-green-600 font-semibold">✓ Ready to submit</span>}
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>
@@ -338,8 +408,8 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
 
       <Button
         onClick={handleUpload}
-        disabled={!file || uploading}
-        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3"
+        disabled={!bothCaptured || uploading}
+        className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold py-3"
       >
         {uploading ? (
           <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</>
@@ -377,6 +447,23 @@ const CheckoutPage = ({ user }) => {
     billing_address: '',
   })
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true)
+  const [phoneError, setPhoneError] = useState('')
+
+  // ─── Phone helpers ────────────────────────────────────────────────────────────
+  const formatPhoneNumber = (raw) => {
+    // Strip everything except digits
+    const digits = raw.replace(/\D/g, '').slice(0, 10)
+    if (digits.length === 0) return ''
+    if (digits.length <= 3) return `(${digits}`
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+
+  const isValidPhone = (val) => {
+    if (!val) return true // phone is optional
+    const digits = val.replace(/\D/g, '')
+    return digits.length === 10
+  }
 
   const L = {
     en: {
@@ -483,9 +570,30 @@ const CheckoutPage = ({ user }) => {
     } else if (name === 'payment_method') {
       setCheckJustSelected(false)
     }
+    // Auto-format phone number as user types
+    if (name === 'delivery_phone') {
+      const formatted = formatPhoneNumber(value)
+      setForm(prev => ({ ...prev, [name]: formatted }))
+      if (phoneError && isValidPhone(formatted)) setPhoneError('')
+      return
+    }
     setForm(prev => ({ ...prev, [name]: value }))
   }
-  const validateDelivery = () => form.delivery_name && form.delivery_address && form.delivery_city && form.delivery_state && form.delivery_zip
+
+  const handlePhoneBlur = () => {
+    if (form.delivery_phone && !isValidPhone(form.delivery_phone)) {
+      setPhoneError('Please enter a valid 10-digit US phone number')
+    } else {
+      setPhoneError('')
+    }
+  }
+  const validateDelivery = () =>
+    form.delivery_name &&
+    form.delivery_address &&
+    form.delivery_city &&
+    form.delivery_state &&
+    form.delivery_zip &&
+    isValidPhone(form.delivery_phone)
 
   // Place order (creates order in DB, then goes to payment step)
   const handlePlaceOrder = async () => {
@@ -651,7 +759,6 @@ const CheckoutPage = ({ user }) => {
                   { name: 'delivery_city', label: t.city, required: true },
                   { name: 'delivery_state', label: t.state, required: true },
                   { name: 'delivery_zip', label: t.zip, required: true },
-                  { name: 'delivery_phone', label: t.phone, required: false },
                 ].map(field => (
                   <div key={field.name} className={field.full ? 'sm:col-span-2' : ''}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -666,6 +773,31 @@ const CheckoutPage = ({ user }) => {
                     />
                   </div>
                 ))}
+                {/* Phone field with validation */}
+                <div className="sm:col-span-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t.phone}
+                  </label>
+                  <input
+                    type="tel"
+                    name="delivery_phone"
+                    value={form.delivery_phone}
+                    onChange={handleFormChange}
+                    onBlur={handlePhoneBlur}
+                    placeholder="(555) 123-4567"
+                    inputMode="numeric"
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:border-transparent ${
+                      phoneError
+                        ? 'border-red-400 focus:ring-red-400 bg-red-50'
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
+                  />
+                  {phoneError && (
+                    <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                      <span>⚠</span> {phoneError}
+                    </p>
+                  )}
+                </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t.notes}</label>
                   <textarea

@@ -123,6 +123,7 @@ with app.app_context():
     _add_column_if_missing('custom_invoice', 'shipping_fee', 'FLOAT DEFAULT 0.0')
     _add_column_if_missing('user', 'shipping_address', 'TEXT')
     _add_column_if_missing('user', 'billing_address', 'TEXT')
+    _add_column_if_missing('order', 'check_back_image_filename', 'VARCHAR(300)')
     # product_image table: created by db.create_all() above (new table, no ALTER needed)
     # ─────────────────────────────────────────────────────────────────────────
 
