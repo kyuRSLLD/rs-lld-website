@@ -717,8 +717,8 @@ const CheckoutPage = ({ user }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 overflow-x-hidden">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
 
         {/* Page Title */}
         <h1 className="text-3xl font-bold text-gray-900 mb-6">{t.title}</h1>
@@ -837,7 +837,7 @@ const CheckoutPage = ({ user }) => {
         {/* ── STEP 2: DELIVERY ── */}
         {step === 2 && (
           <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-6">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-4 sm:p-6 min-w-0 overflow-hidden">
               <h2 className="text-xl font-semibold text-gray-900 mb-5 flex items-center gap-2">
                 <Truck className="w-5 h-5 text-blue-600" /> {t.deliveryInfo}
               </h2>
