@@ -421,6 +421,76 @@ const CheckUploadForm = ({ orderNumber, onSuccess, t, autoOpen }) => {
   )
 }
 
+// ─── Google Places Address Autocomplete Component ───────────────────────────
+const AddressAutocomplete = ({ value, onChange, onPlaceSelect, className, placeholder }) => {
+  const inputRef = useRef(null)
+  const autocompleteRef = useRef(null)
+
+  useEffect(() => {
+    // Wait for Google Maps to load
+    const initAutocomplete = () => {
+      if (!window.google?.maps?.places || !inputRef.current) return
+      if (autocompleteRef.current) return // already initialized
+
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+        fields: ['address_components', 'formatted_address'],
+      })
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current.getPlace()
+        if (!place.address_components) return
+
+        let streetNumber = ''
+        let streetName = ''
+        let city = ''
+        let state = ''
+        let zip = ''
+
+        for (const component of place.address_components) {
+          const types = component.types
+          if (types.includes('street_number')) streetNumber = component.long_name
+          if (types.includes('route')) streetName = component.long_name
+          if (types.includes('locality')) city = component.long_name
+          if (types.includes('sublocality_level_1') && !city) city = component.long_name
+          if (types.includes('administrative_area_level_1')) state = component.short_name
+          if (types.includes('postal_code')) zip = component.long_name
+        }
+
+        const streetAddress = streetNumber ? `${streetNumber} ${streetName}` : streetName
+        onPlaceSelect({ address: streetAddress, city, state, zip })
+      })
+    }
+
+    // Google Maps may already be loaded or still loading
+    if (window.google?.maps?.places) {
+      initAutocomplete()
+    } else {
+      // Poll until Google Maps is ready
+      const interval = setInterval(() => {
+        if (window.google?.maps?.places) {
+          clearInterval(interval)
+          initAutocomplete()
+        }
+      }, 200)
+      return () => clearInterval(interval)
+    }
+  }, [])
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder || 'Start typing your address...'}
+      className={className}
+      autoComplete="off"
+    />
+  )
+}
+
 // ─── Main CheckoutPage ────────────────────────────────────────────────────────
 const CheckoutPage = ({ user }) => {
   const { cart, updateQuantity, removeFromCart, clearCart, cartTotal, deliveryFee, orderTotal, getEffectivePrice } = useCart()
@@ -578,6 +648,17 @@ const CheckoutPage = ({ user }) => {
       return
     }
     setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  // Handle Google Places address selection — auto-fill city, state, zip
+  const handlePlaceSelect = ({ address, city, state, zip }) => {
+    setForm(prev => ({
+      ...prev,
+      delivery_address: address,
+      delivery_city: city || prev.delivery_city,
+      delivery_state: state || prev.delivery_state,
+      delivery_zip: zip || prev.delivery_zip,
+    }))
   }
 
   const handlePhoneBlur = () => {
@@ -755,17 +836,48 @@ const CheckoutPage = ({ user }) => {
                 {[
                   { name: 'delivery_name', label: t.contactName, required: true },
                   { name: 'delivery_company', label: t.company, required: false },
-                  { name: 'delivery_address', label: t.address, required: true, full: true },
-                  { name: 'delivery_city', label: t.city, required: true },
-                  { name: 'delivery_state', label: t.state, required: true },
-                  { name: 'delivery_zip', label: t.zip, required: true },
                 ].map(field => (
-                  <div key={field.name} className={field.full ? 'sm:col-span-2' : ''}>
+                  <div key={field.name}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {field.label} {field.required && <span className="text-red-500">*</span>}
                     </label>
                     <input
-                      type={field.type || 'text'}
+                      type="text"
+                      name={field.name}
+                      value={form[field.name]}
+                      onChange={handleFormChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                ))}
+
+                {/* Street Address with Google Places Autocomplete */}
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t.address} <span className="text-red-500">*</span>
+                  </label>
+                  <AddressAutocomplete
+                    value={form.delivery_address}
+                    onChange={(e) => setForm(prev => ({ ...prev, delivery_address: e.target.value }))}
+                    onPlaceSelect={handlePlaceSelect}
+                    placeholder="Start typing your street address..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">📍 Select from suggestions to auto-fill city, state &amp; ZIP</p>
+                </div>
+
+                {/* City, State, ZIP */}
+                {[
+                  { name: 'delivery_city', label: t.city, required: true },
+                  { name: 'delivery_state', label: t.state, required: true },
+                  { name: 'delivery_zip', label: t.zip, required: true },
+                ].map(field => (
+                  <div key={field.name}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {field.label} {field.required && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
                       name={field.name}
                       value={form[field.name]}
                       onChange={handleFormChange}
