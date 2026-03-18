@@ -40,13 +40,27 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 # CORS: allow lldrestaurantsupply.com and Railway URL, plus wildcard for local dev
 _allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*')
 if _allowed_origins == '*':
-    CORS(app, supports_credentials=True, origins=[
-        'https://lldrestaurantsupply.com',
-        'https://www.lldrestaurantsupply.com',
-        'https://rs-lld-website-production.up.railway.app',
-        'http://localhost:5173',
-        'http://localhost:7777',
-    ])
+    import re as _re
+    def _cors_origin_check(origin):
+        """Allow lldrestaurantsupply.com, Railway, Cloudflare Pages, and localhost."""
+        if not origin:
+            return False
+        _whitelist = [
+            'https://lldrestaurantsupply.com',
+            'https://www.lldrestaurantsupply.com',
+            'https://rs-lld-website-production.up.railway.app',
+            'http://localhost:5173',
+            'http://localhost:7777',
+        ]
+        if origin in _whitelist:
+            return True
+        # Allow any Cloudflare Pages subdomain (*.pages.dev)
+        if _re.match(r'https://[a-z0-9-]+\.lld-restaurant-supply\.pages\.dev$', origin):
+            return True
+        if origin == 'https://lld-restaurant-supply.pages.dev':
+            return True
+        return False
+    CORS(app, supports_credentials=True, origins=_cors_origin_check)
 else:
     CORS(app, supports_credentials=True, origins=_allowed_origins.split(','))
 
