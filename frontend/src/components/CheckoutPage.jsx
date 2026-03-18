@@ -745,7 +745,7 @@ const CheckoutPage = ({ user }) => {
         {/* ── STEP 1: CART ── */}
         {step === 1 && (
           <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-3">
+            <div className="lg:col-span-2 space-y-3 min-w-0">
               {cart.length === 0 ? (
                 <div className="bg-white rounded-xl p-12 text-center border border-gray-100">
                   <ShoppingCart className="w-14 h-14 text-gray-200 mx-auto mb-3" />
@@ -759,37 +759,46 @@ const CheckoutPage = ({ user }) => {
                   const price = getEffectivePrice(item)
                   const isBulk = item.bulk_price && item.bulk_quantity && item.quantity >= item.bulk_quantity
                   return (
-                    <div key={item.product_id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-4">
-                      <div className="w-14 h-14 bg-gray-50 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                        {categoryIcons[item.category_name] || '📦'}
+                    <div key={item.product_id} className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4">
+                      {/* Mobile: stacked layout */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-50 rounded-lg flex items-center justify-center text-xl sm:text-2xl flex-shrink-0">
+                          {categoryIcons[item.category_name] || '📦'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 text-sm leading-tight truncate pr-1">{item.product_name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{item.product_brand} · {item.product_unit_size}</p>
+                          {isBulk && (
+                            <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium mt-0.5">
+                              <Tag className="w-3 h-3" /> {t.bulkSavings}
+                            </span>
+                          )}
+                          {/* Price shown on mobile below name */}
+                          <p className="font-bold text-gray-900 text-sm mt-1 sm:hidden">{formatPrice(price * item.quantity)} <span className="font-normal text-xs text-gray-400">({formatPrice(price)} ea.)</span></p>
+                        </div>
+                        {/* Price shown on desktop to the right */}
+                        <div className="hidden sm:block text-right w-20 flex-shrink-0">
+                          <p className="font-bold text-gray-900 text-sm">{formatPrice(price * item.quantity)}</p>
+                          <p className="text-xs text-gray-400">{formatPrice(price)} ea.</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm truncate">{item.product_name}</p>
-                        <p className="text-xs text-gray-500">{item.product_brand} · {item.product_unit_size}</p>
-                        {isBulk && (
-                          <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                            <Tag className="w-3 h-3" /> {t.bulkSavings}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
-                          className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
-                          <Minus className="w-3 h-3" />
+                      {/* Quantity controls + remove button in a row below */}
+                      <div className="flex items-center justify-between mt-2.5">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
+                            className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
+                            className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <button onClick={() => removeFromCart(item.product_id)} className="text-gray-300 hover:text-red-500 transition-colors p-1">
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                        <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                          className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
-                          <Plus className="w-3 h-3" />
-                        </button>
                       </div>
-                      <div className="text-right w-20 flex-shrink-0">
-                        <p className="font-bold text-gray-900 text-sm">{formatPrice(price * item.quantity)}</p>
-                        <p className="text-xs text-gray-400">{formatPrice(price)} ea.</p>
-                      </div>
-                      <button onClick={() => removeFromCart(item.product_id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   )
                 })

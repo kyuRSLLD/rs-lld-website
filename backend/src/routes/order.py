@@ -170,10 +170,12 @@ def create_order():
         deduct_stock(items_data)
         db.session.commit()
 
-        # Send order confirmation email (non-blocking)
+        # Send order confirmation email in background thread (truly non-blocking)
         try:
+            import threading
             from src.utils.email import send_order_confirmation
-            send_order_confirmation(order)
+            _o = order
+            threading.Thread(target=send_order_confirmation, args=(_o,), daemon=True).start()
         except Exception as _email_err:
             print(f"[EMAIL] Order confirmation failed: {_email_err}")
 

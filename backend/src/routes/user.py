@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request, session
+import threading
 from src.models.user import User, db
 from functools import wraps
 
@@ -36,10 +37,11 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        # Send welcome email (non-blocking)
+        # Send welcome email in background thread (truly non-blocking)
         try:
             from src.utils.email import send_welcome_email
-            send_welcome_email(user)
+            _u = user
+            threading.Thread(target=send_welcome_email, args=(_u,), daemon=True).start()
         except Exception as _email_err:
             print(f"[EMAIL] Welcome email failed: {_email_err}")
 
