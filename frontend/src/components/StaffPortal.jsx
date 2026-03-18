@@ -1370,7 +1370,7 @@ const StaffPortal = () => {
     if (activeTab === 'inventory') fetchInventory()
     if (activeTab === 'products') { fetchProducts(); fetchProductCategories() }
     // invoices tab fetches its own data internally via InvoicesTab component
-  }, [staff, activeTab, fetchOrders, fetchStats, fetchCustomers, fetchInventory, fetchProducts, fetchProductCategories])
+  }, [staff, activeTab, fetchOrders, fetchStats, fetchCustomers, fetchInventory, fetchProducts, fetchProductCategories, inventoryRefreshKey])
 
   useEffect(() => {
     if (activeTab === 'products') fetchProducts()
@@ -1457,22 +1457,23 @@ const StaffPortal = () => {
 
   const [inventoryStockEdits, setInventoryStockEdits] = useState({})
   const [inventoryStockSaving, setInventoryStockSaving] = useState(false)
+  const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0)
   const handleSaveAllInventory = async () => {
     const edits = Object.entries(inventoryStockEdits)
     if (edits.length === 0) return
     setInventoryStockSaving(true)
     try {
-      await Promise.all(edits.map(([productId, qty]) =>
+      const results = await Promise.all(edits.map(([productId, qty]) =>
         staffFetch(`/api/staff/inventory/${productId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ stock_quantity: parseInt(qty, 10) || 0 }),
-        })
+        }).then(r => r.json())
       ))
       setInventoryStockEdits({})
-      fetchInventory()
-      fetchProducts()
-    } catch {}
+      // Force a fresh fetch by incrementing the refresh key
+      setInventoryRefreshKey(k => k + 1)
+    } catch (e) { console.error('Inventory save error', e) }
     setInventoryStockSaving(false)
   }
 
@@ -1979,7 +1980,7 @@ const StaffPortal = () => {
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
               <h2 className="text-xl font-bold text-stone-900">{t.products.title}</h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 <button onClick={handleCsvExport} className="flex items-center gap-2 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50">
                   <Download className="w-4 h-4" /> {t.products.exportCsv}
                 </button>
@@ -2000,39 +2001,23 @@ const StaffPortal = () => {
                 <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium">
                   <Plus className="w-4 h-4" /> {t.products.addProduct}
                 </button>
+                {/* ── Save All Changes Button (always visible, greyed when no pending edits) ── */}
+                <button
+                  onClick={handleSaveAllProducts}
+                  disabled={savingAllProducts || Object.keys(pendingProductEdits).length === 0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    Object.keys(pendingProductEdits).length > 0
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                      : 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                  }`}
+                >
+                  {savingAllProducts
+                    ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {lang === 'zh' ? '保存中...' : 'Saving...'}</>
+                    : <><Save className="w-3.5 h-3.5" /> {lang === 'zh' ? `保存所有更改${Object.keys(pendingProductEdits).length > 0 ? ` (${Object.keys(pendingProductEdits).length})` : ''}` : `Save All Changes${Object.keys(pendingProductEdits).length > 0 ? ` (${Object.keys(pendingProductEdits).length})` : ''}`}</>
+                  }
+                </button>
               </div>
             </div>
-
-            {/* ── Save All Changes Banner ── */}
-            {Object.keys(pendingProductEdits).length > 0 && (
-              <div className="mb-4 p-3 bg-blue-600 text-white rounded-xl flex items-center justify-between gap-3 shadow-md">
-                <span className="text-sm font-medium">
-                  {lang === 'zh'
-                    ? `您有 ${Object.keys(pendingProductEdits).length} 个产品有未保存的更改。`
-                    : `You have unsaved changes on ${Object.keys(pendingProductEdits).length} product${Object.keys(pendingProductEdits).length !== 1 ? 's' : ''}.`
-                  }
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setPendingProductEdits({}); fetchProducts() }}
-                    className="px-3 py-1.5 text-xs bg-white/20 hover:bg-white/30 rounded-lg transition-all"
-                  >
-                    {lang === 'zh' ? '放弃' : 'Discard'}
-                  </button>
-                  <button
-                    onClick={handleSaveAllProducts}
-                    disabled={savingAllProducts}
-                    className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold bg-white text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
-                  >
-                    {savingAllProducts ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    {savingAllProducts
-                      ? (lang === 'zh' ? '保存中...' : 'Saving...')
-                      : (lang === 'zh' ? '保存所有更改' : 'Save All Changes')
-                    }
-                  </button>
-                </div>
-              </div>
-            )}
 
             {saveAllResult && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${saveAllResult.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
