@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 
 // Import images
 import kitchenBusyImg from '../assets/TSE7WO1LwpLe.jpg'
-import kitchenCleanImg from '../assets/restaurant-kitchen-clean.jpg'
+import kitchenCleanImg from '../assets/hero-new.jpg'
 import stressedOwnerImg from '../assets/CPfEaWblUhir.jpg'
 import suppliesImg from '../assets/YivSFuYpWCgX.jpg'
 import storageImg from '../assets/8marOgxRClM1.jpg'

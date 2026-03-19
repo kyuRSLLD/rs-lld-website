@@ -639,7 +639,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
 }
 
 // ─── Product Row (inline editable) ──────────────────────────────────────────
-const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, onMarkDirty, onStockEdit, stockEditValue, lang, t, isAdmin }) => {
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, onMarkDirty, onStockEdit, stockEditValue, isSelected, onSelect, lang, t, isAdmin }) => {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
@@ -959,7 +959,15 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
   }
 
   return (
-    <tr className={`hover:bg-stone-50 transition-colors ${!product.in_stock ? 'opacity-60' : ''}`}>
+    <tr className={`hover:bg-stone-50 transition-colors ${isSelected ? 'bg-blue-50' : ''} ${!product.in_stock ? 'opacity-60' : ''}`}>
+      <td className="px-3 py-2.5 w-8">
+        <input
+          type="checkbox"
+          className="w-3.5 h-3.5 rounded cursor-pointer"
+          checked={!!isSelected}
+          onChange={() => onSelect && onSelect(product.id)}
+        />
+      </td>
       {/* Image cell — shows primary image with gallery count badge */}
       <td className="px-3 py-2.5">
         <div className="flex flex-col items-center gap-1" style={{minWidth: 64}}>
@@ -1275,6 +1283,7 @@ const StaffPortal = () => {
   const [inventorySortDir, setInventorySortDir] = useState('asc')
   const [productSortBy, setProductSortBy] = useState('name')
   const [productSortDir, setProductSortDir] = useState('asc')
+  const [selectedProducts, setSelectedProducts] = useState(new Set())
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -1557,6 +1566,28 @@ const StaffPortal = () => {
       }
       if (data.success) fetchProducts()
     } catch {}
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedProducts.size === 0) return
+    const count = selectedProducts.size
+    if (!window.confirm(lang === 'zh' ? `确定要删除选中的 ${count} 个产品吗？此操作无法撤销。` : `Delete ${count} selected product${count > 1 ? 's' : ''}? This cannot be undone.`)) return
+    const ids = Array.from(selectedProducts)
+    let blocked = []
+    await Promise.all(ids.map(async id => {
+      try {
+        const res = await staffFetch(`/api/staff/products/${id}`, { method: 'DELETE' })
+        const data = await res.json()
+        if (data.blocked) blocked.push(data)
+      } catch {}
+    }))
+    setSelectedProducts(new Set())
+    fetchProducts()
+    if (blocked.length > 0) {
+      alert(lang === 'zh'
+        ? `${blocked.length} 个产品因库存不为零无法删除，请先将库存调整为 0。`
+        : `${blocked.length} product(s) could not be deleted because they still have inventory. Set stock to 0 first.`)
+    }
   }
 
   // Called by ProductRow whenever a field changes
@@ -2037,6 +2068,16 @@ const StaffPortal = () => {
                 <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium">
                   <Plus className="w-4 h-4" /> {t.products.addProduct}
                 </button>
+                {/* ── Bulk Delete Button ── */}
+                {selectedProducts.size > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {lang === 'zh' ? `删除选中 (${selectedProducts.size})` : `Delete Selected (${selectedProducts.size})`}
+                  </button>
+                )}
                 {/* ── Update Inventory Button ── */}
                 <button
                   onClick={handleSaveAllInventory}
@@ -2121,6 +2162,18 @@ const StaffPortal = () => {
               <table className="w-full text-sm min-w-[900px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
+                    <th className="px-3 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        className="w-3.5 h-3.5 rounded cursor-pointer"
+                        checked={sortedProducts.length > 0 && sortedProducts.every(p => selectedProducts.has(p.id))}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedProducts(new Set(sortedProducts.map(p => p.id)))
+                          else setSelectedProducts(new Set())
+                        }}
+                        title={lang === 'zh' ? '全选/取消' : 'Select / Deselect All'}
+                      />
+                    </th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{lang === 'zh' ? '图片' : 'Image'}</th>
                     {[['name', t.products.name], ['sku', t.products.sku], ['brand', t.products.brand]].map(([col, label]) => (
                       <th key={col} className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-stone-800 select-none" onClick={() => handleProductSort(col)}>
@@ -2144,10 +2197,15 @@ const StaffPortal = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {sortedProducts.length === 0 ? (
-                    <tr><td colSpan={11} className="text-center py-12 text-stone-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
+                    <tr><td colSpan={12} className="text-center py-12 text-stone-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
                   ) : sortedProducts.map(p => (
+                    <>
+                    <tr key={`sel-${p.id}`} style={{display:'none'}} />
+                    {/* checkbox cell prepended inline via wrapper */}
                     <ProductRow
                       key={p.id}
+                      isSelected={selectedProducts.has(p.id)}
+                      onSelect={id => setSelectedProducts(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; })}
                       product={{...p, stock_quantity: inventoryStockEdits[p.id] !== undefined ? parseInt(inventoryStockEdits[p.id]) : (p.stock_quantity ?? 0)}}
                       categories={productCategories}
                       onSave={handleProductSave}
@@ -2161,6 +2219,7 @@ const StaffPortal = () => {
                       t={t}
                       isAdmin={isAdmin}
                     />
+                    </>
                   ))}
                 </tbody>
               </table>
