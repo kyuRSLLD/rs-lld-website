@@ -1262,6 +1262,7 @@ const StaffPortal = () => {
   const [pendingProductEdits, setPendingProductEdits] = useState({}) // { productId: formData }
   const [savingAllProducts, setSavingAllProducts] = useState(false)
   const [saveAllResult, setSaveAllResult] = useState(null)
+  const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0)
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -1457,7 +1458,6 @@ const StaffPortal = () => {
 
   const [inventoryStockEdits, setInventoryStockEdits] = useState({})
   const [inventoryStockSaving, setInventoryStockSaving] = useState(false)
-  const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0)
   const handleSaveAllInventory = async () => {
     const edits = Object.entries(inventoryStockEdits)
     if (edits.length === 0) return
