@@ -639,7 +639,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
 }
 
 // ─── Product Row (inline editable) ──────────────────────────────────────────
-const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, onMarkDirty, lang, t, isAdmin }) => {
+const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onImageUpdate, onMarkDirty, onStockEdit, stockEditValue, lang, t, isAdmin }) => {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
@@ -1009,12 +1009,20 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
       <td className="px-3 py-2.5 text-green-700 text-sm">{product.bulk_price ? formatPrice(product.bulk_price) : '—'}</td>
       <td className="px-3 py-2.5 text-stone-500 text-sm">{product.bulk_quantity ? `${product.bulk_quantity}+` : '—'}</td>
       <td className="px-3 py-2.5">
-        <div className="flex flex-col items-start gap-0.5">
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-            product.stock_quantity > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}>
-            {product.stock_quantity > 0 ? `${product.stock_quantity} ${lang === 'zh' ? '件' : 'units'}` : (lang === 'zh' ? '无库存' : 'Out of stock')}
-          </span>
+        <div className="flex items-center gap-1" style={{minWidth: 90}}>
+          <input
+            type="number"
+            min="0"
+            value={stockEditValue !== undefined ? stockEditValue : (product.stock_quantity ?? 0)}
+            onChange={e => onStockEdit && onStockEdit(product.id, e.target.value)}
+            className="w-16 border border-stone-200 rounded px-1.5 py-0.5 text-xs text-center focus:ring-1 focus:ring-blue-400 focus:border-transparent"
+          />
+          {stockEditValue !== undefined && (
+            <span className="text-xs text-blue-500 font-medium">✎</span>
+          )}
+          {(product.stock_quantity !== null && product.stock_quantity !== undefined && product.stock_quantity <= 5 && product.stock_quantity > 0) && stockEditValue === undefined && (
+            <span className="text-xs text-orange-500 font-medium">{lang === 'zh' ? '库存低' : 'Low'}</span>
+          )}
         </div>
       </td>
       <td className="px-3 py-2.5">
@@ -1263,6 +1271,10 @@ const StaffPortal = () => {
   const [savingAllProducts, setSavingAllProducts] = useState(false)
   const [saveAllResult, setSaveAllResult] = useState(null)
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0)
+  const [inventorySortBy, setInventorySortBy] = useState('name')
+  const [inventorySortDir, setInventorySortDir] = useState('asc')
+  const [productSortBy, setProductSortBy] = useState('name')
+  const [productSortDir, setProductSortDir] = useState('asc')
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -1368,8 +1380,7 @@ const StaffPortal = () => {
     fetchStats()
     if (activeTab === 'orders') fetchOrders()
     if (activeTab === 'customers') fetchCustomers()
-    if (activeTab === 'inventory') fetchInventory()
-    if (activeTab === 'products') { fetchProducts(); fetchProductCategories() }
+    if (activeTab === 'products') { fetchProducts(); fetchProductCategories(); fetchInventory() }
     // invoices tab fetches its own data internally via InvoicesTab component
   }, [staff, activeTab, fetchOrders, fetchStats, fetchCustomers, fetchInventory, fetchProducts, fetchProductCategories, inventoryRefreshKey])
 
@@ -1726,11 +1737,36 @@ const StaffPortal = () => {
 
   const isAdmin = staff?.role === 'admin'
 
+  // ── Sorted products for the Products tab ──────────────────────────────────
+  const sortedProducts = [...products].sort((a, b) => {
+    let aVal, bVal
+    switch (productSortBy) {
+      case 'sku':       aVal = (a.sku || '').toLowerCase(); bVal = (b.sku || '').toLowerCase(); break
+      case 'brand':     aVal = (a.brand || '').toLowerCase(); bVal = (b.brand || '').toLowerCase(); break
+      case 'category':  aVal = (a.category_name || '').toLowerCase(); bVal = (b.category_name || '').toLowerCase(); break
+      case 'unit_price': aVal = parseFloat(a.unit_price) || 0; bVal = parseFloat(b.unit_price) || 0; break
+      case 'stock':     aVal = inventoryStockEdits[a.id] !== undefined ? parseInt(inventoryStockEdits[a.id]) : (a.stock_quantity ?? 0); bVal = inventoryStockEdits[b.id] !== undefined ? parseInt(inventoryStockEdits[b.id]) : (b.stock_quantity ?? 0); break
+      default:          aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase()
+    }
+    if (aVal < bVal) return productSortDir === 'asc' ? -1 : 1
+    if (aVal > bVal) return productSortDir === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const handleProductSort = (col) => {
+    if (productSortBy === col) setProductSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setProductSortBy(col); setProductSortDir('asc') }
+  }
+
+  const SortIcon = ({ col }) => {
+    if (productSortBy !== col) return <span className="ml-0.5 text-stone-300">↕</span>
+    return <span className="ml-0.5 text-blue-500">{productSortDir === 'asc' ? '↑' : '↓'}</span>
+  }
+
   const tabs = [
     { id: 'orders', label: t.tabs.orders, icon: ClipboardList },
     { id: 'customers', label: t.tabs.customers, icon: Users },
     { id: 'products', label: t.tabs.products, icon: Tag },
-    { id: 'inventory', label: t.tabs.inventory, icon: ShoppingBag },
     { id: 'invoices', label: t.tabs.invoices, icon: FileText },
     { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
     ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
@@ -2001,6 +2037,21 @@ const StaffPortal = () => {
                 <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium">
                   <Plus className="w-4 h-4" /> {t.products.addProduct}
                 </button>
+                {/* ── Update Inventory Button ── */}
+                <button
+                  onClick={handleSaveAllInventory}
+                  disabled={inventoryStockSaving || Object.keys(inventoryStockEdits).length === 0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    Object.keys(inventoryStockEdits).length > 0
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                      : 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                  }`}
+                >
+                  {inventoryStockSaving
+                    ? <><div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" /> {lang === 'zh' ? '保存中...' : 'Saving...'}</>
+                    : <>{lang === 'zh' ? `更新库存${Object.keys(inventoryStockEdits).length > 0 ? ` (${Object.keys(inventoryStockEdits).length})` : ''}` : `Update Inventory${Object.keys(inventoryStockEdits).length > 0 ? ` (${Object.keys(inventoryStockEdits).length})` : ''}`}</>
+                  }
+                </button>
                 {/* ── Save All Changes Button (always visible, greyed when no pending edits) ── */}
                 <button
                   onClick={handleSaveAllProducts}
@@ -2070,24 +2121,42 @@ const StaffPortal = () => {
               <table className="w-full text-sm min-w-[900px]">
                 <thead className="bg-stone-50 border-b border-stone-100">
                   <tr>
-                    {[lang === 'zh' ? '图片' : 'Image', t.products.name, t.products.sku, t.products.brand, t.products.size, t.products.category, t.products.unitPrice, t.products.bulkPrice, t.products.bulkQty, lang === 'zh' ? '库存数量' : 'Inventory', t.products.actions].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{lang === 'zh' ? '图片' : 'Image'}</th>
+                    {[['name', t.products.name], ['sku', t.products.sku], ['brand', t.products.brand]].map(([col, label]) => (
+                      <th key={col} className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-stone-800 select-none" onClick={() => handleProductSort(col)}>
+                        {label}<SortIcon col={col} />
+                      </th>
                     ))}
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{t.products.size}</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-stone-800 select-none" onClick={() => handleProductSort('category')}>
+                      {t.products.category}<SortIcon col="category" />
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-stone-800 select-none" onClick={() => handleProductSort('unit_price')}>
+                      {t.products.unitPrice}<SortIcon col="unit_price" />
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{t.products.bulkPrice}</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{t.products.bulkQty}</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-stone-800 select-none" onClick={() => handleProductSort('stock')}>
+                      {lang === 'zh' ? '库存数量' : 'Stock'}<SortIcon col="stock" />
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{t.products.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {products.length === 0 ? (
+                  {sortedProducts.length === 0 ? (
                     <tr><td colSpan={11} className="text-center py-12 text-stone-400">{lang === 'zh' ? '未找到产品' : 'No products found'}</td></tr>
-                  ) : products.map(p => (
+                  ) : sortedProducts.map(p => (
                     <ProductRow
                       key={p.id}
-                      product={p}
+                      product={{...p, stock_quantity: inventoryStockEdits[p.id] !== undefined ? parseInt(inventoryStockEdits[p.id]) : (p.stock_quantity ?? 0)}}
                       categories={productCategories}
                       onSave={handleProductSave}
                       onDelete={handleProductDelete}
                       onToggleStock={handleProductToggleStock}
                       onImageUpdate={(id, url) => { setProducts(prev => prev.map(pr => pr.id === id ? {...pr, image_url: url} : pr)); fetchInventory() }}
                       onMarkDirty={handleMarkProductDirty}
+                      onStockEdit={(id, val) => setInventoryStockEdits(s => ({ ...s, [id]: val }))}
+                      stockEditValue={inventoryStockEdits[p.id]}
                       lang={lang}
                       t={t}
                       isAdmin={isAdmin}
@@ -2096,7 +2165,7 @@ const StaffPortal = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-stone-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击 ✏️ 图标内联编辑，编辑后点击《保存所有更改》同步到库存和产品目录。' : 'products shown. Click the ✏️ edit icon to edit inline. When done, click "Save All Changes" to sync updates across the product catalog and inventory.'}</p>
+            <p className="text-xs text-stone-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击列标题排序。直接编辑库存数量后点击《更新库存》，或点击 ✏️ 编辑产品详情后点击《保存所有更改》。' : 'products shown. Click column headers to sort. Edit stock quantities inline and click "Update Inventory", or click ✏️ to edit product details and click "Save All Changes".'}</p>
 
             {showAddProduct && (
               <AddProductForm
@@ -2109,8 +2178,8 @@ const StaffPortal = () => {
           </div>
         )}
 
-        {/* ── INVENTORY TAB ── */}
-        {activeTab === 'inventory' && (
+        {/* INVENTORY TAB REMOVED - merged into Products tab */}
+        {activeTab === 'inventory_disabled' && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-stone-900">{t.inventory.title}</h2>
