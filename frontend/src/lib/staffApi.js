@@ -12,7 +12,10 @@ export const STAFF_TOKEN_KEY = 'staff_jwt_token'
 
 /** Get the stored JWT token */
 export function getStaffToken() {
-  return localStorage.getItem(STAFF_TOKEN_KEY)
+  const val = localStorage.getItem(STAFF_TOKEN_KEY)
+  // Guard against the string "null" being stored (e.g. from JSON.stringify(null))
+  if (!val || val === 'null' || val === 'undefined') return null
+  return val
 }
 
 /** Save the JWT token after login */

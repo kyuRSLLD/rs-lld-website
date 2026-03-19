@@ -720,8 +720,12 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
         setGallery(data.product.images || [])
         setCurrentImageUrl(data.product.image_url)
         if (onImageUpdate) onImageUpdate(product.id, data.product.image_url)
+      } else if (data.error) {
+        setError(data.error)
       }
-    } catch {}
+    } catch (e) {
+      setError(lang === 'zh' ? '上传失败，请重试' : 'Upload failed, please try again')
+    }
     finally { setGalleryLoading(false) }
   }
 

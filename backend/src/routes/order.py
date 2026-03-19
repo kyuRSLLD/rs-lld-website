@@ -240,13 +240,16 @@ def staff_required(f):
         auth_header = request.headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
             token = auth_header[7:]
-            staff_id = _verify_staff_jwt(token)
-            if staff_id:
-                # Inject staff_id into session-like context via g
-                from flask import g
-                g.staff_id = staff_id
-                return f(*args, **kwargs)
-            return jsonify({'error': 'Invalid or expired token'}), 401
+            # Skip obviously invalid tokens (e.g. 'null', 'undefined')
+            if token and token not in ('null', 'undefined', 'false'):
+                staff_id = _verify_staff_jwt(token)
+                if staff_id:
+                    # Inject staff_id into session-like context via g
+                    from flask import g
+                    g.staff_id = staff_id
+                    return f(*args, **kwargs)
+                # JWT present but invalid — do NOT fall through; return 401
+                return jsonify({'error': 'Invalid or expired token'}), 401
         # Fall back to session cookie
         if 'staff_id' not in session:
             return jsonify({'error': 'Staff authentication required'}), 401
