@@ -850,6 +850,19 @@ const ProductRow = ({ product, categories, onSave, onDelete, onToggleStock, onIm
         {/* Description + Image Gallery expansion row */}
         <tr className="bg-blue-50 border-l-4 border-blue-400">
           <td colSpan={colCount} className="px-4 pb-4 pt-1">
+            {/* Product Name — always visible regardless of horizontal scroll */}
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-stone-600 mb-1">
+                {lang === 'zh' ? '产品名称 *' : 'Product Name *'}
+              </label>
+              <input
+                className="border border-stone-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 w-full font-medium"
+                value={form.name}
+                onChange={e => updateForm({name: e.target.value})}
+                placeholder={t.products.productName}
+                required
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Description */}
