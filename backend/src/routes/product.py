@@ -63,7 +63,7 @@ def get_products():
         'current_page': page,
         'per_page': per_page,
     }))
-    return _cache(resp, seconds=30)
+    return _cache(resp, seconds=300)  # 5 min — products rarely change
 
 
 @product_bp.route('/products/<int:product_id>', methods=['GET'])
@@ -94,31 +94,43 @@ def get_featured_products():
 @product_bp.route('/products/<int:product_id>/thumbnail', methods=['GET'])
 def get_product_thumbnail(product_id):
     """
-    Serve the primary product image as a proper image response.
-    Used by the product list cards so they can lazy-load images
-    without the full base64 blob being embedded in the list JSON.
+    Serve the primary product image as a compressed, resized JPEG thumbnail.
+    Images are resized to max 400x400 at quality=75 — reducing typical 1 MB
+    images down to ~20-40 KB for fast product card loading.
     """
     product = Product.query.get_or_404(product_id)
     raw = product.image_url or ''
 
-    # Allow any origin to load this image (needed for mobile cross-origin img tags)
     from flask import request as _req
     origin = _req.headers.get('Origin', '*')
 
     if raw.startswith('data:'):
         try:
+            import base64, io
+            from PIL import Image
+
             header, b64data = raw.split(',', 1)
-            mime = header.split(':')[1].split(';')[0]
-            import base64
             img_bytes = base64.b64decode(b64data)
-            resp = make_response(img_bytes)
-            resp.headers['Content-Type'] = mime
-            resp.headers['Cache-Control'] = 'public, max-age=60'  # 60 s — short so updated images appear quickly
+
+            # Open, resize to max 400x400 preserving aspect ratio, convert to JPEG
+            img = Image.open(io.BytesIO(img_bytes))
+            img = img.convert('RGB')  # ensure no alpha channel issues with JPEG
+            img.thumbnail((400, 400), Image.LANCZOS)
+
+            out = io.BytesIO()
+            img.save(out, format='JPEG', quality=75, optimize=True)
+            out.seek(0)
+            jpeg_bytes = out.read()
+
+            resp = make_response(jpeg_bytes)
+            resp.headers['Content-Type'] = 'image/jpeg'
+            # Cache for 5 minutes in browser; Cloudflare CDN can cache for 1 hour
+            resp.headers['Cache-Control'] = 'public, max-age=300, s-maxage=3600'
             resp.headers['Access-Control-Allow-Origin'] = origin
             resp.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
             resp.headers['Vary'] = 'Origin'
             return resp
-        except Exception:
+        except Exception as e:
             return '', 404
     elif raw.startswith('http'):
         from flask import redirect
