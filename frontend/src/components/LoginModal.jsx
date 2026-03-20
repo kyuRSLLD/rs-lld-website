@@ -58,8 +58,19 @@ const LoginModal = ({ onClose, onLogin }) => {
     }
   }, [])
 
+  // Auto-format phone number as (xxx)xxx-xxxx while user types digits
+  const formatPhone = (raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 10)
+    if (digits.length === 0) return ''
+    if (digits.length <= 3) return `(${digits}`
+    if (digits.length <= 6) return `(${digits.slice(0, 3)})${digits.slice(3)}`
+    return `(${digits.slice(0, 3)})${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    const formatted = name === 'phone' ? formatPhone(value) : value
+    setFormData({ ...formData, [name]: formatted })
     setError('')
   }
 
@@ -285,7 +296,7 @@ const LoginModal = ({ onClose, onLogin }) => {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange}
-                      className={inputClass} placeholder={isZh ? '您的电话号码' : 'Your phone number'} />
+                      className={inputClass} placeholder={isZh ? '(xxx)xxx-xxxx' : '(xxx)xxx-xxxx'} maxLength={13} />
                   </div>
                 </div>
                 <div>

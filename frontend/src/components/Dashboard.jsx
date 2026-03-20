@@ -218,11 +218,21 @@ const Dashboard = ({ user: initialUser, onUserUpdate }) => {
     setShowEditModal(true)
   }
 
+  // Auto-format phone number as (xxx)xxx-xxxx while user types digits
+  const formatPhone = (raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 10)
+    if (digits.length === 0) return ''
+    if (digits.length <= 3) return `(${digits}`
+    if (digits.length <= 6) return `(${digits.slice(0, 3)})${digits.slice(3)}`
+    return `(${digits.slice(0, 3)})${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+
   const handleEditChange = (field, value) => {
+    const formatted = field === 'phone' ? formatPhone(value) : value
     setEditForm(prev => {
-      const updated = { ...prev, [field]: value }
+      const updated = { ...prev, [field]: formatted }
       if (field === 'shipping_address' && sameAsShipping) {
-        updated.billing_address = value
+        updated.billing_address = formatted
       }
       return updated
     })
@@ -586,6 +596,7 @@ const Dashboard = ({ user: initialUser, onUserUpdate }) => {
                   value={editForm.phone}
                   onChange={e => handleEditChange('phone', e.target.value)}
                   placeholder="(xxx)xxx-xxxx"
+                  maxLength={13}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

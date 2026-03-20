@@ -113,7 +113,7 @@ def get_product_thumbnail(product_id):
             img_bytes = base64.b64decode(b64data)
             resp = make_response(img_bytes)
             resp.headers['Content-Type'] = mime
-            resp.headers['Cache-Control'] = 'public, max-age=86400'  # 24 h
+            resp.headers['Cache-Control'] = 'public, max-age=60'  # 60 s — short so updated images appear quickly
             resp.headers['Access-Control-Allow-Origin'] = origin
             resp.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
             resp.headers['Vary'] = 'Origin'
