@@ -8,7 +8,7 @@ import { useCart } from '../contexts/CartContext'
 
 // Simple in-memory cache shared across mounts (survives tab navigation)
 const _cache = { products: null, categories: null, ts: 0 }
-const CACHE_TTL = 30_000 // 30 s
+const CACHE_TTL = 300_000 // 5 min
 const FETCH_TIMEOUT = 20_000 // 20 s abort timeout
 
 const ProductsPage = () => {
@@ -415,7 +415,11 @@ const ProductsPage = () => {
                       <img
                         src={product.image_url.startsWith('data:') || product.image_url.startsWith('http') ? product.image_url : `${API_BASE}${product.image_url}`}
                         alt={product.name}
-                        className={`w-full h-full object-contain p-2 transition-all duration-200 ${!product.in_stock ? 'grayscale opacity-50' : ''}`}
+                        loading="lazy"
+                        decoding="async"
+                        className={`w-full h-full object-contain p-2 transition-opacity duration-300 ${!product.in_stock ? 'grayscale opacity-50' : ''}`}
+                        style={{ opacity: 0 }}
+                        onLoad={(e) => { e.target.style.opacity = '1' }}
                         onError={(e) => {
                           e.target.style.display = 'none'
                           e.target.parentElement.innerHTML = `<span class="text-4xl">${categoryIcons[product.category_name] || '📦'}</span>`
