@@ -27,7 +27,9 @@ from src.routes.seed_products import seed_bp
 from src.routes.db_backup import db_backup_bp
 from src.routes.customer_admin import customer_admin_bp
 from src.routes.voice_api import voice_api_bp
+from src.routes.sourcing import sourcing_bp
 from src.models.api_key import APIKey
+from src.models.sourcing import Supplier, RFQ, RFQQuote, Shipment, ShipmentEvent, QCInspection
 from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
@@ -68,6 +70,7 @@ app.register_blueprint(seed_bp, url_prefix='/api')
 app.register_blueprint(db_backup_bp, url_prefix='/api')
 app.register_blueprint(customer_admin_bp, url_prefix='/api')
 app.register_blueprint(voice_api_bp, url_prefix='/api')
+app.register_blueprint(sourcing_bp, url_prefix='/api')
 
 # Database configuration: use PostgreSQL (DATABASE_URL) if available, else fall back to SQLite
 _database_url = os.environ.get('DATABASE_URL', '')
