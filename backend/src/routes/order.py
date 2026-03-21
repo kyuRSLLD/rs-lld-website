@@ -179,6 +179,13 @@ def create_order():
         except Exception as _email_err:
             print(f"[EMAIL] Order confirmation failed: {_email_err}")
 
+        # Fire n8n Order Notifications webhook (non-blocking)
+        try:
+            from src.utils.n8n_notify import notify_order_placed
+            notify_order_placed(order, order_type='web')
+        except Exception as _n8n_err:
+            print(f"[N8N] Order notification failed: {_n8n_err}")
+
         return jsonify({
             'success': True,
             'message': 'Order placed successfully',
