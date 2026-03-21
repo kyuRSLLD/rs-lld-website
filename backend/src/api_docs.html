@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLD Restaurant Supply — API Reference</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --sidebar-bg: #161b22;
+      --card-bg: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #f0a500;
+      --accent2: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --orange: #d29922;
+      --purple: #bc8cff;
+      --cyan: #39d353;
+      --get: #238636;
+      --post: #1f6feb;
+      --put: #9e6a03;
+      --delete: #b62324;
+      --patch: #6e40c9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 260px; min-width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border);
+      position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 0 0 40px;
+    }
+    .sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .sidebar-logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; color: #000; }
+    .sidebar-title { font-weight: 700; font-size: 15px; }
+    .sidebar-version { font-size: 11px; color: var(--muted); background: var(--card-bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; display: inline-block; margin-top: 4px; }
+    .sidebar-base { font-size: 11px; color: var(--muted); margin-top: 6px; word-break: break-all; }
+    .sidebar-base span { color: var(--accent2); }
+    .sidebar-section { padding: 16px 16px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .sidebar-link { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: 13px; color: var(--muted); text-decoration: none; cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+    .sidebar-link:hover, .sidebar-link.active { color: var(--text); background: rgba(255,255,255,0.04); border-left-color: var(--accent); }
+    .method-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; min-width: 36px; text-align: center; }
+    .badge-GET { background: var(--get); color: #fff; }
+    .badge-POST { background: var(--post); color: #fff; }
+    .badge-PUT { background: var(--put); color: #fff; }
+    .badge-DELETE { background: var(--delete); color: #fff; }
+    .badge-PATCH { background: var(--patch); color: #fff; }
+
+    /* Main content */
+    #main { flex: 1; overflow-y: auto; padding: 40px 48px; max-width: 900px; }
+    .page-header { margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .page-header h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+    .page-header p { color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .base-url-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-top: 16px; font-family: monospace; font-size: 13px; }
+    .base-url-box .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .base-url-box .url { color: var(--accent2); }
+
+    /* Section */
+    .section { margin-bottom: 48px; }
+    .section-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; padding-top: 8px; }
+    .section-desc { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+    /* Endpoint card */
+    .endpoint { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+    .endpoint-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; user-select: none; }
+    .endpoint-header:hover { background: rgba(255,255,255,0.03); }
+    .method-tag { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 5px; min-width: 56px; text-align: center; letter-spacing: 0.04em; }
+    .tag-GET { background: rgba(35,134,54,0.2); color: #3fb950; border: 1px solid rgba(35,134,54,0.4); }
+    .tag-POST { background: rgba(31,111,235,0.2); color: #58a6ff; border: 1px solid rgba(31,111,235,0.4); }
+    .tag-PUT { background: rgba(158,106,3,0.2); color: #d29922; border: 1px solid rgba(158,106,3,0.4); }
+    .tag-DELETE { background: rgba(182,35,36,0.2); color: #f85149; border: 1px solid rgba(182,35,36,0.4); }
+    .tag-PATCH { background: rgba(110,64,201,0.2); color: #bc8cff; border: 1px solid rgba(110,64,201,0.4); }
+    .endpoint-path { font-family: monospace; font-size: 14px; font-weight: 600; flex: 1; }
+    .endpoint-summary { font-size: 13px; color: var(--muted); margin-left: auto; }
+    .auth-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: rgba(240,165,0,0.15); color: var(--accent); border: 1px solid rgba(240,165,0,0.3); white-space: nowrap; }
+    .endpoint-body { padding: 0 18px 18px; border-top: 1px solid var(--border); }
+    .endpoint-desc { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 12px 0; }
+
+    /* Params table */
+    .params-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 14px 0 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 10px; background: rgba(255,255,255,0.04); color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 10px; border-bottom: 1px solid rgba(48,54,61,0.6); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .param-name { font-family: monospace; color: var(--accent2); }
+    .param-type { font-family: monospace; color: var(--purple); font-size: 12px; }
+    .required { color: var(--red); font-size: 10px; font-weight: 700; margin-left: 4px; }
+    .optional { color: var(--muted); font-size: 10px; margin-left: 4px; }
+
+    /* Code block */
+    .code-block { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; font-family: monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; margin-top: 8px; }
+    .code-label { font-size: 11px; color: var(--muted); margin-top: 14px; margin-bottom: 4px; font-weight: 600; }
+    .s { color: #a5d6ff; } /* string */
+    .n { color: #79c0ff; } /* number/key */
+    .b { color: var(--green); } /* bool */
+    .c { color: var(--muted); } /* comment */
+
+    /* Chevron */
+    .chevron { color: var(--muted); font-size: 12px; transition: transform 0.2s; }
+    .endpoint.open .chevron { transform: rotate(90deg); }
+    .endpoint-body { display: none; }
+    .endpoint.open .endpoint-body { display: block; }
+
+    /* Auth section */
+    .auth-box { background: rgba(240,165,0,0.08); border: 1px solid rgba(240,165,0,0.25); border-radius: 8px; padding: 16px 18px; margin-bottom: 24px; }
+    .auth-box h3 { color: var(--accent); font-size: 14px; margin-bottom: 8px; }
+    .auth-box p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      #sidebar { display: none; }
+      #main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">LLD</div>
+      <div class="sidebar-title">API Reference</div>
+    </div>
+    <div class="sidebar-version">v1.0</div>
+    <div class="sidebar-base">Base URL: <span>https://rs-lld-website-production.up.railway.app/api</span></div>
+  </div>
+
+  <div class="sidebar-section">Authentication</div>
+  <a class="sidebar-link" onclick="scrollTo('auth')">Auth Overview</a>
+  <a class="sidebar-link" onclick="scrollTo('s-user')"><span class="method-badge badge-POST">POST</span> /register</a>
+  <a class="sidebar-link" onclick="scrollTo('s-user')"><span class="method-badge badge-POST">POST</span> /login</a>
+
+  <div class="sidebar-section">Orders</div>
+  <a class="sidebar-link" onclick="scrollTo('s-orders')"><span class="method-badge badge-GET">GET</span> /orders</a>
+  <a class="sidebar-link" onclick="scrollTo('s-orders')"><span class="method-badge badge-POST">POST</span> /orders</a>
+  <a class="sidebar-link" onclick="scrollTo('s-orders')"><span class="method-badge badge-PUT">PUT</span> /orders/:id/status</a>
+
+  <div class="sidebar-section">Products</div>
+  <a class="sidebar-link" onclick="scrollTo('s-products')"><span class="method-badge badge-GET">GET</span> /products</a>
+  <a class="sidebar-link" onclick="scrollTo('s-products')"><span class="method-badge badge-GET">GET</span> /products/:id</a>
+
+  <div class="sidebar-section">Voice AI</div>
+  <a class="sidebar-link" onclick="scrollTo('s-voice')"><span class="method-badge badge-POST">POST</span> /voice/get_customer</a>
+  <a class="sidebar-link" onclick="scrollTo('s-voice')"><span class="method-badge badge-POST">POST</span> /voice/place_order</a>
+  <a class="sidebar-link" onclick="scrollTo('s-voice')"><span class="method-badge badge-POST">POST</span> /voice/check_order_status</a>
+
+  <div class="sidebar-section">Invoices</div>
+  <a class="sidebar-link" onclick="scrollTo('s-invoices')"><span class="method-badge badge-GET">GET</span> /invoices</a>
+  <a class="sidebar-link" onclick="scrollTo('s-invoices')"><span class="method-badge badge-POST">POST</span> /invoices</a>
+
+  <div class="sidebar-section">Customers (Staff)</div>
+  <a class="sidebar-link" onclick="scrollTo('s-customers')"><span class="method-badge badge-GET">GET</span> /staff/customers</a>
+  <a class="sidebar-link" onclick="scrollTo('s-customers')"><span class="method-badge badge-PUT">PUT</span> /staff/customers/:id</a>
+
+  <div class="sidebar-section">Inventory</div>
+  <a class="sidebar-link" onclick="scrollTo('s-inventory')"><span class="method-badge badge-GET">GET</span> /inventory</a>
+  <a class="sidebar-link" onclick="scrollTo('s-inventory')"><span class="method-badge badge-PUT">PUT</span> /inventory/:id</a>
+
+  <div class="sidebar-section">Payment Links</div>
+  <a class="sidebar-link" onclick="scrollTo('s-payment')"><span class="method-badge badge-POST">POST</span> /payment-links/create</a>
+
+  <div class="sidebar-section">Sourcing</div>
+  <a class="sidebar-link" onclick="scrollTo('s-sourcing')"><span class="method-badge badge-GET">GET</span> /sourcing/suppliers</a>
+  <a class="sidebar-link" onclick="scrollTo('s-sourcing')"><span class="method-badge badge-POST">POST</span> /sourcing/rfqs</a>
+
+  <div class="sidebar-section">Voice Analytics</div>
+  <a class="sidebar-link" onclick="scrollTo('s-analytics')"><span class="method-badge badge-GET">GET</span> /staff/voice/performance</a>
+  <a class="sidebar-link" onclick="scrollTo('s-analytics')"><span class="method-badge badge-GET">GET</span> /staff/voice/review-queue</a>
+
+  <div class="sidebar-section">Utilities</div>
+  <a class="sidebar-link" onclick="scrollTo('s-utils')"><span class="method-badge badge-GET">GET</span> /ping</a>
+  <a class="sidebar-link" onclick="scrollTo('s-utils')"><span class="method-badge badge-POST">POST</span> /save-me-money</a>
+</nav>
+
+<!-- MAIN -->
+<main id="main">
+  <div class="page-header">
+    <h1>LLD Restaurant Supply API</h1>
+    <p>Complete REST API reference for the LLD Restaurant Supply platform. Supports web ordering, voice AI integration, inventory management, invoicing, and staff operations.</p>
+    <div class="base-url-box">
+      <div class="label">Base URL</div>
+      <div class="url">https://rs-lld-website-production.up.railway.app/api</div>
+    </div>
+  </div>
+
+  <!-- AUTH OVERVIEW -->
+  <div class="section" id="auth">
+    <div class="section-title">Authentication</div>
+    <div class="section-desc">The API supports two authentication methods depending on the client type.</div>
+
+    <div class="auth-box">
+      <h3>🔐 Session-based Auth (Web / Staff Portal)</h3>
+      <p>Use <code>POST /api/login</code> to authenticate. A session cookie is set automatically. Include credentials in all subsequent requests (<code>credentials: 'include'</code> in fetch).</p>
+    </div>
+    <div class="auth-box" style="background:rgba(88,166,255,0.06);border-color:rgba(88,166,255,0.25);">
+      <h3 style="color:var(--accent2);">🔑 API Key Auth (Voice AI / External Integrations)</h3>
+      <p>Pass your API key in the <code>X-API-Key</code> header or as the <code>api_key</code> query parameter. Keys are prefixed <code>sk_live_</code> (production) or <code>sk_test_</code> (sandbox). Generate keys in the Staff Portal → API Keys tab.</p>
+    </div>
+  </div>
+
+  <!-- USER / AUTH -->
+  <div class="section" id="s-user">
+    <div class="section-title">👤 User & Authentication</div>
+    <div class="section-desc">Register, login, and manage user accounts.</div>
+
+    <!-- POST /register -->
+    <div class="endpoint" id="ep-register">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/register</span>
+        <span class="endpoint-summary">Register a new customer account</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a new customer account. Returns the user object and sets a session cookie.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">username<span class="required">*</span></td><td class="param-type">string</td><td>Unique display name</td></tr>
+          <tr><td class="param-name">email<span class="required">*</span></td><td class="param-type">string</td><td>Email address</td></tr>
+          <tr><td class="param-name">password<span class="required">*</span></td><td class="param-type">string</td><td>Min 8 characters</td></tr>
+          <tr><td class="param-name">company_name<span class="optional">opt</span></td><td class="param-type">string</td><td>Restaurant / business name</td></tr>
+          <tr><td class="param-name">phone<span class="optional">opt</span></td><td class="param-type">string</td><td>Phone number (used for voice AI lookup)</td></tr>
+        </table>
+        <div class="code-label">Example Response 201</div>
+        <div class="code-block">{ <span class="n">"id"</span>: <span class="b">42</span>, <span class="n">"username"</span>: <span class="s">"mario_kitchen"</span>, <span class="n">"email"</span>: <span class="s">"mario@example.com"</span>, <span class="n">"company_name"</span>: <span class="s">"Mario's Italian Kitchen"</span> }</div>
+      </div>
+    </div>
+
+    <!-- POST /login -->
+    <div class="endpoint" id="ep-login">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/login</span>
+        <span class="endpoint-summary">Authenticate and start a session</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Authenticates a user and sets a session cookie. Works for both customer and staff accounts.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">email<span class="required">*</span></td><td class="param-type">string</td><td>Registered email address</td></tr>
+          <tr><td class="param-name">password<span class="required">*</span></td><td class="param-type">string</td><td>Account password</td></tr>
+        </table>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"message"</span>: <span class="s">"Login successful"</span>, <span class="n">"user"</span>: { <span class="n">"id"</span>: <span class="b">42</span>, <span class="n">"username"</span>: <span class="s">"mario_kitchen"</span>, <span class="n">"role"</span>: <span class="s">"customer"</span> } }</div>
+      </div>
+    </div>
+
+    <!-- GET /me -->
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/me</span>
+        <span class="endpoint-summary">Get current authenticated user</span>
+        <span class="auth-badge">🔐 Auth required</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns the profile of the currently authenticated user based on session cookie.</p>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"id"</span>: <span class="b">42</span>, <span class="n">"username"</span>: <span class="s">"mario_kitchen"</span>, <span class="n">"email"</span>: <span class="s">"mario@example.com"</span>, <span class="n">"company_name"</span>: <span class="s">"Mario's Italian Kitchen"</span>, <span class="n">"phone"</span>: <span class="s">"702-555-0100"</span> }</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="section" id="s-orders">
+    <div class="section-title">📦 Orders</div>
+    <div class="section-desc">Create and manage customer orders. Supports web, voice, and staff-entered orders.</div>
+
+    <!-- GET /orders -->
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/orders</span>
+        <span class="endpoint-summary">List orders</span>
+        <span class="auth-badge">🔐 Auth required</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns orders for the current user. Staff/admin accounts see all orders with optional filters.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">status</td><td class="param-type">string</td><td>Filter by status: pending, confirmed, packed, shipped, delivered, cancelled</td></tr>
+          <tr><td class="param-name">page</td><td class="param-type">integer</td><td>Page number (default: 1)</td></tr>
+          <tr><td class="param-name">per_page</td><td class="param-type">integer</td><td>Results per page (default: 20)</td></tr>
+          <tr><td class="param-name">search</td><td class="param-type">string</td><td>Search by order number, customer name, or city</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- POST /orders -->
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/orders</span>
+        <span class="endpoint-summary">Create a new order</span>
+        <span class="auth-badge">🔐 Auth required</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a new order for the authenticated customer. Triggers n8n order notification webhook automatically.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">items<span class="required">*</span></td><td class="param-type">array</td><td>Array of order items (see below)</td></tr>
+          <tr><td class="param-name">delivery_address<span class="required">*</span></td><td class="param-type">string</td><td>Street address for delivery</td></tr>
+          <tr><td class="param-name">delivery_city<span class="required">*</span></td><td class="param-type">string</td><td>City</td></tr>
+          <tr><td class="param-name">delivery_state<span class="optional">opt</span></td><td class="param-type">string</td><td>State (default: NV)</td></tr>
+          <tr><td class="param-name">delivery_zip<span class="optional">opt</span></td><td class="param-type">string</td><td>ZIP code</td></tr>
+          <tr><td class="param-name">payment_method<span class="optional">opt</span></td><td class="param-type">string</td><td>net_30, net_15, cod, credit_card (default: net_30)</td></tr>
+          <tr><td class="param-name">special_notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Delivery or order notes</td></tr>
+        </table>
+        <div class="params-title">Item Object</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">product_id<span class="required">*</span></td><td class="param-type">integer</td><td>Product ID from /api/products</td></tr>
+          <tr><td class="param-name">quantity<span class="required">*</span></td><td class="param-type">integer</td><td>Quantity to order</td></tr>
+        </table>
+        <div class="code-label">Example Response 201</div>
+        <div class="code-block">{ <span class="n">"order_id"</span>: <span class="b">1234</span>, <span class="n">"order_number"</span>: <span class="s">"LLD-2026-1234"</span>, <span class="n">"status"</span>: <span class="s">"pending"</span>, <span class="n">"total"</span>: <span class="b">285.50</span> }</div>
+      </div>
+    </div>
+
+    <!-- PUT /orders/:id/status -->
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/orders/&lt;order_id&gt;/status</span>
+        <span class="endpoint-summary">Update order status</span>
+        <span class="auth-badge">🔐 Staff only</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Updates the status of an order. Staff and admin only.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">status<span class="required">*</span></td><td class="param-type">string</td><td>pending | confirmed | packed | shipped | delivered | cancelled</td></tr>
+          <tr><td class="param-name">staff_notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Internal notes visible to staff</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="section" id="s-products">
+    <div class="section-title">🛒 Products</div>
+    <div class="section-desc">Browse and search the product catalog. No authentication required for read operations.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/products</span>
+        <span class="endpoint-summary">List all products</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns paginated product catalog with optional filtering by category or search term.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">category_id</td><td class="param-type">integer</td><td>Filter by category ID</td></tr>
+          <tr><td class="param-name">category</td><td class="param-type">string</td><td>Filter by category name (partial match)</td></tr>
+          <tr><td class="param-name">search</td><td class="param-type">string</td><td>Full-text search on name, SKU, brand</td></tr>
+          <tr><td class="param-name">page</td><td class="param-type">integer</td><td>Page number (default: 1)</td></tr>
+          <tr><td class="param-name">per_page</td><td class="param-type">integer</td><td>Results per page (default: 100, max: 500)</td></tr>
+        </table>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"products"</span>: [{ <span class="n">"id"</span>: <span class="b">1</span>, <span class="n">"name"</span>: <span class="s">"Cambro 6-Pan Container"</span>, <span class="n">"sku"</span>: <span class="s">"CAM-6PAN"</span>, <span class="n">"unit_price"</span>: <span class="b">42.50</span>, <span class="n">"bulk_price"</span>: <span class="b">38.00</span>, <span class="n">"in_stock"</span>: <span class="b">true</span> }], <span class="n">"total"</span>: <span class="b">142</span>, <span class="n">"page"</span>: <span class="b">1</span> }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/products/&lt;product_id&gt;</span>
+        <span class="endpoint-summary">Get a single product</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns full details for a single product including images, pricing tiers, and stock status.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VOICE AI -->
+  <div class="section" id="s-voice">
+    <div class="section-title">🎙️ Voice AI</div>
+    <div class="section-desc">Endpoints used by the ElevenLabs voice agent for phone-based ordering. Requires API key authentication.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/voice/get_customer</span>
+        <span class="endpoint-summary">Look up customer by phone number</span>
+        <span class="auth-badge">🔑 API Key</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Called by the voice agent at the start of a call to identify the caller and retrieve their order history.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">phone<span class="required">*</span></td><td class="param-type">string</td><td>Caller's phone number (E.164 or local format)</td></tr>
+        </table>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"found"</span>: <span class="b">true</span>, <span class="n">"customer_name"</span>: <span class="s">"Mario Rossi"</span>, <span class="n">"company"</span>: <span class="s">"Mario's Italian Kitchen"</span>, <span class="n">"last_order"</span>: <span class="s">"LLD-2026-1198"</span>, <span class="n">"credit_status"</span>: <span class="s">"good"</span> }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/voice/get_products</span>
+        <span class="endpoint-summary">Search products for voice agent</span>
+        <span class="auth-badge">🔑 API Key</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns matching products for a spoken product query. Optimized for voice — returns concise, speakable results.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">query<span class="required">*</span></td><td class="param-type">string</td><td>Natural language product search (e.g. "cambro containers")</td></tr>
+          <tr><td class="param-name">limit<span class="optional">opt</span></td><td class="param-type">integer</td><td>Max results (default: 5)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/voice/place_order</span>
+        <span class="endpoint-summary">Place an order via voice</span>
+        <span class="auth-badge">🔑 API Key</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Places an order on behalf of a customer identified by phone number. Supports both existing customers and guest orders. Triggers SMS payment link and n8n notification automatically.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">phone<span class="required">*</span></td><td class="param-type">string</td><td>Customer phone number</td></tr>
+          <tr><td class="param-name">items<span class="required">*</span></td><td class="param-type">array</td><td>Array of {product_id, quantity}</td></tr>
+          <tr><td class="param-name">delivery_address<span class="optional">opt</span></td><td class="param-type">string</td><td>Required for guest orders</td></tr>
+          <tr><td class="param-name">payment_method<span class="optional">opt</span></td><td class="param-type">string</td><td>net_30 (default), cod, credit_card</td></tr>
+          <tr><td class="param-name">special_notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Any special delivery instructions</td></tr>
+        </table>
+        <div class="code-label">Example Response 201</div>
+        <div class="code-block">{ <span class="n">"order_number"</span>: <span class="s">"LLD-2026-1235"</span>, <span class="n">"total"</span>: <span class="b">185.00</span>, <span class="n">"sms_sent"</span>: <span class="b">true</span>, <span class="n">"payment_link"</span>: <span class="s">"https://buy.stripe.com/..."</span> }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/voice/check_order_status</span>
+        <span class="endpoint-summary">Check order status by phone</span>
+        <span class="auth-badge">🔑 API Key</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns the most recent order status for a customer identified by phone number.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">phone<span class="required">*</span></td><td class="param-type">string</td><td>Customer phone number</td></tr>
+          <tr><td class="param-name">order_number<span class="optional">opt</span></td><td class="param-type">string</td><td>Specific order number to check</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/voice/cancel_order</span>
+        <span class="endpoint-summary">Cancel an order via voice</span>
+        <span class="auth-badge">🔑 API Key + Admin</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Cancels an order. Only orders in <code>pending</code> or <code>confirmed</code> status can be cancelled. Admin authorization required.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">order_number<span class="required">*</span></td><td class="param-type">string</td><td>Order number to cancel</td></tr>
+          <tr><td class="param-name">phone<span class="required">*</span></td><td class="param-type">string</td><td>Customer phone for verification</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVOICES -->
+  <div class="section" id="s-invoices">
+    <div class="section-title">🧾 Invoices</div>
+    <div class="section-desc">Create, retrieve, and manage invoices. Staff authentication required.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/invoices</span>
+        <span class="endpoint-summary">List invoices</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns all invoices with optional filtering by customer, status, or date range.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">customer_id</td><td class="param-type">integer</td><td>Filter by customer</td></tr>
+          <tr><td class="param-name">status</td><td class="param-type">string</td><td>draft | sent | paid | overdue</td></tr>
+          <tr><td class="param-name">page</td><td class="param-type">integer</td><td>Page number</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/invoices</span>
+        <span class="endpoint-summary">Create an invoice</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a new invoice for a customer, optionally linked to an existing order.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">customer_id<span class="required">*</span></td><td class="param-type">integer</td><td>Customer to invoice</td></tr>
+          <tr><td class="param-name">order_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Link to an existing order</td></tr>
+          <tr><td class="param-name">items<span class="required">*</span></td><td class="param-type">array</td><td>Line items with description, qty, unit_price</td></tr>
+          <tr><td class="param-name">due_date<span class="optional">opt</span></td><td class="param-type">string</td><td>ISO date (YYYY-MM-DD)</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Invoice notes</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOMERS (STAFF) -->
+  <div class="section" id="s-customers">
+    <div class="section-title">👥 Customers (Staff)</div>
+    <div class="section-desc">Staff-only endpoints for managing customer accounts and credit terms.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/staff/customers</span>
+        <span class="endpoint-summary">List all customers</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns all registered customers with order counts and credit status.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">search</td><td class="param-type">string</td><td>Search by name, email, company, or phone</td></tr>
+          <tr><td class="param-name">page</td><td class="param-type">integer</td><td>Page number</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/staff/customers/&lt;customer_id&gt;</span>
+        <span class="endpoint-summary">Update customer record</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Updates customer details including credit terms, notes, and contact information.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="section" id="s-inventory">
+    <div class="section-title">📊 Inventory</div>
+    <div class="section-desc">Track and update product stock levels. Staff authentication required.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/inventory</span>
+        <span class="endpoint-summary">Get inventory levels</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns current stock levels for all products, including low-stock alerts.</p>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/inventory/&lt;product_id&gt;</span>
+        <span class="endpoint-summary">Update stock level</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Updates the stock quantity and reorder threshold for a product.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">quantity<span class="required">*</span></td><td class="param-type">integer</td><td>Current stock quantity</td></tr>
+          <tr><td class="param-name">reorder_point<span class="optional">opt</span></td><td class="param-type">integer</td><td>Trigger reorder alert below this level</td></tr>
+          <tr><td class="param-name">in_stock<span class="optional">opt</span></td><td class="param-type">boolean</td><td>Override in-stock flag</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT LINKS -->
+  <div class="section" id="s-payment">
+    <div class="section-title">💳 Payment Links</div>
+    <div class="section-desc">Generate Stripe payment links and send them via SMS to customers.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/payment-links/create</span>
+        <span class="endpoint-summary">Create and send a payment link</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a Stripe payment link for an order and sends it to the customer via SMS (Twilio).</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">order_id<span class="required">*</span></td><td class="param-type">integer</td><td>Order to generate payment link for</td></tr>
+          <tr><td class="param-name">phone<span class="optional">opt</span></td><td class="param-type">string</td><td>Override phone number for SMS delivery</td></tr>
+        </table>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"payment_url"</span>: <span class="s">"https://buy.stripe.com/test_abc123"</span>, <span class="n">"sms_sent"</span>: <span class="b">true</span>, <span class="n">"phone"</span>: <span class="s">"+17025550100"</span> }</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOURCING -->
+  <div class="section" id="s-sourcing">
+    <div class="section-title">🌐 Sourcing</div>
+    <div class="section-desc">Manage suppliers, request-for-quotes (RFQs), shipments, and QC inspections.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/suppliers</span>
+        <span class="endpoint-summary">List suppliers</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns all registered suppliers with contact info and performance metrics.</p>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/rfqs</span>
+        <span class="endpoint-summary">Create a Request for Quote</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Sends an RFQ to one or more suppliers for specified products.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">supplier_ids<span class="required">*</span></td><td class="param-type">array</td><td>List of supplier IDs to send RFQ to</td></tr>
+          <tr><td class="param-name">items<span class="required">*</span></td><td class="param-type">array</td><td>Products and quantities needed</td></tr>
+          <tr><td class="param-name">deadline<span class="optional">opt</span></td><td class="param-type">string</td><td>ISO date for quote deadline</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/orchestrate</span>
+        <span class="endpoint-summary">AI-powered sourcing orchestration</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Uses AI to analyze inventory needs, identify best suppliers, and recommend optimal sourcing actions.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VOICE ANALYTICS -->
+  <div class="section" id="s-analytics">
+    <div class="section-title">📈 Voice Analytics</div>
+    <div class="section-desc">Monitor voice agent performance and manage call review queues.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/staff/voice/performance</span>
+        <span class="endpoint-summary">Get voice agent performance metrics</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns aggregated performance metrics for the voice AI agent: call volume, order conversion rate, average call duration, and revenue generated.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">days</td><td class="param-type">integer</td><td>Lookback period in days (default: 7)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/staff/voice/review-queue</span>
+        <span class="endpoint-summary">Get calls pending review</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns calls that have been flagged for human review — low confidence orders, complaints, or escalations.</p>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/staff/voice/review-queue/&lt;call_id&gt;/approve</span>
+        <span class="endpoint-summary">Approve a flagged call</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Approves a flagged call, confirming the order and removing it from the review queue.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- UTILITIES -->
+  <div class="section" id="s-utils">
+    <div class="section-title">⚙️ Utilities</div>
+    <div class="section-desc">Health check and AI-powered utility endpoints.</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/ping</span>
+        <span class="endpoint-summary">Health check</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Lightweight keep-alive endpoint. Returns 200 OK with a status message. Used to prevent Railway cold starts.</p>
+        <div class="code-label">Response</div>
+        <div class="code-block">{ <span class="n">"status"</span>: <span class="s">"ok"</span> }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/save-me-money</span>
+        <span class="endpoint-summary">AI cost optimization analysis</span>
+        <span class="auth-badge">🔐 Auth required</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Analyzes a customer's order history and identifies opportunities to save money through bulk pricing, product substitutions, or ordering pattern optimization.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">customer_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Customer to analyze (defaults to current user)</td></tr>
+          <tr><td class="param-name">months<span class="optional">opt</span></td><td class="param-type">integer</td><td>Lookback period in months (default: 3)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/chat</span>
+        <span class="endpoint-summary">AI chat assistant</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Conversational AI assistant for product questions, order help, and general inquiries. Powers the website chatbot.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">message<span class="required">*</span></td><td class="param-type">string</td><td>User's message</td></tr>
+          <tr><td class="param-name">language<span class="optional">opt</span></td><td class="param-type">string</td><td>en or zh (default: en)</td></tr>
+          <tr><td class="param-name">history<span class="optional">opt</span></td><td class="param-type">array</td><td>Previous messages for context</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  function toggle(header) {
+    const ep = header.closest('.endpoint');
+    ep.classList.toggle('open');
+  }
+  function scrollTo(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+    event.target.closest('.sidebar-link')?.classList.add('active');
+  }
+  // Auto-open first endpoint in each section
+  document.querySelectorAll('.section').forEach(s => {
+    const first = s.querySelector('.endpoint');
+    if (first) first.classList.add('open');
+  });
+</script>
+</body>
+</html>

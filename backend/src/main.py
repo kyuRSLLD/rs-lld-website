@@ -233,6 +233,13 @@ with app.app_context():
         db.session.commit()
 
 
+@app.route('/api-docs')
+def api_docs():
+    """Serve the LLD API documentation page."""
+    import os as _os
+    docs_path = _os.path.join(_os.path.dirname(__file__), 'api_docs.html')
+    return send_from_directory(_os.path.dirname(docs_path), 'api_docs.html')
+
 @app.route('/api/ping')
 def ping():
     """Lightweight keep-alive endpoint to prevent Railway cold starts."""
