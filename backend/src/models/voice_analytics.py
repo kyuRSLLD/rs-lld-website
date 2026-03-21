@@ -13,8 +13,10 @@ class CallLog(db.Model):
     __tablename__ = 'call_log'
 
     id = db.Column(db.Integer, primary_key=True)
-    vapi_call_id = db.Column(db.String(100), unique=True, index=True)
+    vapi_call_id = db.Column(db.String(100), unique=True, index=True, nullable=True)
+    conversation_id = db.Column(db.String(100), index=True, nullable=True)  # ElevenLabs conversation_id
     sub_agent_id = db.Column(db.Integer, nullable=True)   # references voice_sub_agent.id (no FK constraint)
+    sub_agent_name = db.Column(db.String(200), nullable=True)  # human-readable agent name
 
     # ── Call metadata ──────────────────────────────────────────────────────────
     direction = db.Column(db.String(10))          # inbound | outbound
@@ -45,6 +47,7 @@ class CallLog(db.Model):
     order_placed = db.Column(db.Boolean, default=False)
     order_number = db.Column(db.String(20), nullable=True)
     order_total = db.Column(db.Float, nullable=True)
+    payment_method = db.Column(db.String(50), nullable=True)  # net30 | credit_card | check
 
     # ── Cost tracking ──────────────────────────────────────────────────────────
     llm_tokens_used = db.Column(db.Integer)
@@ -57,7 +60,9 @@ class CallLog(db.Model):
         d = {
             'id': self.id,
             'vapi_call_id': self.vapi_call_id,
+            'conversation_id': self.conversation_id,
             'sub_agent_id': self.sub_agent_id,
+            'sub_agent_name': self.sub_agent_name,
             'direction': self.direction,
             'caller_phone': self.caller_phone,
             'customer_id': self.customer_id,
@@ -81,6 +86,7 @@ class CallLog(db.Model):
             'order_placed': self.order_placed,
             'order_number': self.order_number,
             'order_total': self.order_total,
+            'payment_method': self.payment_method,
             # Cost
             'llm_tokens_used': self.llm_tokens_used,
             'elevenlabs_characters': self.elevenlabs_characters,

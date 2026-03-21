@@ -140,6 +140,11 @@ with app.app_context():
     _add_column_if_missing('user', 'credit_notes', 'TEXT')
     # Order stripe payment link field
     _add_column_if_missing('order', 'stripe_payment_link', 'VARCHAR(500)')
+    # CallLog new columns (voice analytics — ElevenLabs webhook fields)
+    _add_column_if_missing('call_log', 'conversation_id', 'VARCHAR(100)')
+    _add_column_if_missing('call_log', 'sub_agent_name', 'VARCHAR(200)')
+    _add_column_if_missing('call_log', 'payment_method', 'VARCHAR(50)')
+    # vapi_call_id: make nullable (was NOT NULL unique, now optional)
     # product_image table: created by db.create_all() above (new table, no ALTER needed)
     # ─────────────────────────────────────────────────────────────────────────
 

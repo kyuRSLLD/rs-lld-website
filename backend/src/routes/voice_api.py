@@ -115,9 +115,9 @@ def get_customer():
     if not user:
         return jsonify({
             'success': False,
-            'error': f'No customer found with phone number {phone}',
+            'error': 'No customer found with that phone number.',
             'found': False
-        }), 404
+        })  # 200 OK — not-found is a normal agent flow, not an error
 
     # Get their last 5 orders for context
     recent_orders = (
@@ -305,7 +305,8 @@ def place_order():
 
     for item in items:
         sku = item.get('sku', '').strip().upper()
-        qty = int(item.get('qty', 1))
+        # Accept both 'quantity' (spec) and 'qty' (legacy) keys
+        qty = int(item.get('quantity', item.get('qty', 1)))
 
         if not sku or qty < 1:
             errors.append(f'Invalid item: {item}')
