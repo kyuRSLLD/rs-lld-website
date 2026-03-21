@@ -133,6 +133,13 @@ with app.app_context():
     _add_column_if_missing('user', 'shipping_address', 'TEXT')
     _add_column_if_missing('user', 'billing_address', 'TEXT')
     _add_column_if_missing('order', 'check_back_image_filename', 'VARCHAR(300)')
+    # User credit/terms fields (added for account standing + voice agent)
+    _add_column_if_missing('user', 'approved_for_terms', 'BOOLEAN DEFAULT FALSE')
+    _add_column_if_missing('user', 'credit_limit', 'FLOAT DEFAULT 0.0')
+    _add_column_if_missing('user', 'payment_terms', 'VARCHAR(20)')
+    _add_column_if_missing('user', 'credit_notes', 'TEXT')
+    # Order stripe payment link field
+    _add_column_if_missing('order', 'stripe_payment_link', 'VARCHAR(500)')
     # product_image table: created by db.create_all() above (new table, no ALTER needed)
     # ─────────────────────────────────────────────────────────────────────────
 
