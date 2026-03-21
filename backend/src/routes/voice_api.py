@@ -245,27 +245,48 @@ def get_products():
 def place_order():
     """
     Place a new order on behalf of a customer identified by phone number.
+    Supports both registered customers and guest callers.
     Only call this AFTER the customer has verbally confirmed the order.
 
     Request body:
         {
           "phone_number": "+17735551234",
           "items": [
-            { "sku": "GLV-MED-BLK", "qty": 3 },
-            { "sku": "FOIL-HH-200", "qty": 1 }
+            { "sku": "GLV-MED-BLK", "quantity": 3 },
+            { "sku": "FOIL-HH-200", "quantity": 1 }
           ],
           "confirmed": true,
           "special_notes": "Please deliver before noon",
-          "payment_method": "net30"   // optional, defaults to net30
+          "payment_method": "net30",   // optional, defaults to net30 for registered; credit_card for guests
+
+          // Required for GUEST callers (when get_customer returned found=false):
+          "delivery_name":    "Mario Rossi",
+          "delivery_company": "Mario's Italian Kitchen",
+          "delivery_address": "1234 W Randolph St",
+          "delivery_city":    "Chicago",
+          "delivery_state":   "IL",
+          "delivery_zip":     "60607"
         }
 
-    Response:
+    Response (registered customer):
         {
           "success": true,
           "order_number": "RS-2026-AB1C",
           "total": 54.97,
           "items_placed": 2,
-          "message": "Order RS-2026-AB1C placed successfully"
+          "customer_type": "registered",
+          "message": "Order RS-2026-AB1C placed for Mario Rossi. Total: $54.97"
+        }
+
+    Response (guest caller):
+        {
+          "success": true,
+          "order_number": "RS-2026-AB1C",
+          "total": 54.97,
+          "items_placed": 2,
+          "customer_type": "guest",
+          "payment_required": true,
+          "message": "Guest order RS-2026-AB1C placed. Payment required — send Stripe link or check upload URL via SMS."
         }
     """
     if not _check_secret():
@@ -276,7 +297,7 @@ def place_order():
     items = data.get('items', [])
     confirmed = data.get('confirmed', False)
     special_notes = data.get('special_notes', '')
-    payment_method = data.get('payment_method', 'net30')
+    payment_method = data.get('payment_method', '')
 
     if not confirmed:
         return jsonify({
@@ -290,13 +311,28 @@ def place_order():
     if not items:
         return jsonify({'success': False, 'error': 'items list is required and cannot be empty'}), 400
 
+    # Try to find a registered customer
     user = _find_user_by_phone(phone)
-    if not user:
-        return jsonify({
-            'success': False,
-            'error': f'No customer found with phone number {phone}. '
-                     'Customer must be registered before placing a voice order.'
-        }), 404
+    is_guest = user is None
+
+    # For guest callers, delivery_address is required (no profile on file)
+    if is_guest:
+        delivery_address = data.get('delivery_address', '').strip()
+        if not delivery_address:
+            return jsonify({
+                'success': False,
+                'error': (
+                    'No registered account found for this phone number. '
+                    'For guest orders, delivery_address, delivery_city, delivery_state, '
+                    'and delivery_zip are required. Please collect the delivery address '
+                    'from the caller and retry.'
+                ),
+                'guest_order': True,
+                'missing_fields': ['delivery_name', 'delivery_address', 'delivery_city', 'delivery_state', 'delivery_zip']
+            }), 400
+        # Guests must pay upfront — default to credit_card
+        if not payment_method:
+            payment_method = 'credit_card'
 
     # Resolve products and calculate totals
     order_items_data = []
@@ -357,22 +393,46 @@ def place_order():
     year = datetime.utcnow().year
     order_number = f'RS-{year}-{suffix}'
 
-    # Delivery info from user profile
     delivery_fee = 0.0
     total = round(subtotal + delivery_fee, 2)
 
+    # Build delivery info — use profile for registered customers, form data for guests
+    if is_guest:
+        d_name    = data.get('delivery_name', '').strip() or 'Guest Caller'
+        d_company = data.get('delivery_company', '').strip()
+        d_address = data.get('delivery_address', '').strip()
+        d_city    = data.get('delivery_city', '').strip()
+        d_state   = data.get('delivery_state', '').strip()
+        d_zip     = data.get('delivery_zip', '').strip()
+        d_phone   = _normalize_phone(phone)
+        user_id   = None
+        # Guests must pay upfront — override net30 if somehow passed
+        if payment_method == 'net30':
+            payment_method = 'credit_card'
+    else:
+        d_name    = user.username
+        d_company = user.company_name or ''
+        d_address = ''
+        d_city    = ''
+        d_state   = ''
+        d_zip     = ''
+        d_phone   = user.phone
+        user_id   = user.id
+        if not payment_method:
+            payment_method = 'net30'
+
     order = Order(
         order_number=order_number,
-        user_id=user.id,
+        user_id=user_id,
         status='pending',
-        delivery_name=user.username,
-        delivery_company=user.company_name or '',
-        delivery_address='',
-        delivery_city='',
-        delivery_state='',
-        delivery_zip='',
-        delivery_phone=user.phone,
-        special_notes=f'[VOICE ORDER] {special_notes}'.strip(),
+        delivery_name=d_name,
+        delivery_company=d_company,
+        delivery_address=d_address,
+        delivery_city=d_city,
+        delivery_state=d_state,
+        delivery_zip=d_zip,
+        delivery_phone=d_phone,
+        special_notes=f'[VOICE ORDER{" - GUEST" if is_guest else ""}] {special_notes}'.strip(),
         payment_method=payment_method,
         subtotal=round(subtotal, 2),
         discount_amount=0.0,
@@ -400,14 +460,34 @@ def place_order():
 
     db.session.commit()
 
-    return jsonify({
-        'success': True,
-        'order_number': order_number,
-        'total': total,
-        'subtotal': round(subtotal, 2),
-        'items_placed': len(order_items_data),
-        'message': f'Order {order_number} placed successfully for {user.username}. Total: ${total:.2f}',
-    })
+    caller_name = d_name if is_guest else user.username
+
+    if is_guest:
+        return jsonify({
+            'success': True,
+            'order_number': order_number,
+            'total': total,
+            'subtotal': round(subtotal, 2),
+            'items_placed': len(order_items_data),
+            'customer_type': 'guest',
+            'payment_required': True,
+            'message': (
+                f'Guest order {order_number} placed for {caller_name}. '
+                f'Total: ${total:.2f}. '
+                f'Payment required \u2014 send a Stripe link or check upload URL via SMS to {phone}.'
+            ),
+        })
+    else:
+        return jsonify({
+            'success': True,
+            'order_number': order_number,
+            'total': total,
+            'subtotal': round(subtotal, 2),
+            'items_placed': len(order_items_data),
+            'customer_type': 'registered',
+            'payment_required': payment_method not in ('net30', 'check'),
+            'message': f'Order {order_number} placed for {caller_name}. Total: ${total:.2f}.',
+        })
 
 
 # ── 4. check_order_status ─────────────────────────────────────────────────────
