@@ -21,6 +21,12 @@ class User(db.Model):
     shipping_address = db.Column(db.Text, nullable=True)  # most recent shipping address used
     billing_address = db.Column(db.Text, nullable=True)   # most recent billing address used
 
+    # Account standing / credit terms (set by staff)
+    approved_for_terms = db.Column(db.Boolean, default=False)   # Net-30 / Net-60 approved
+    credit_limit = db.Column(db.Float, default=0.0)             # Max outstanding balance allowed
+    payment_terms = db.Column(db.String(20), nullable=True)     # 'net30', 'net60', 'cod', etc.
+    credit_notes = db.Column(db.Text, nullable=True)            # Internal staff notes on credit
+
     # Social OAuth fields
     oauth_provider = db.Column(db.String(20), nullable=True)   # 'google' | 'facebook' | 'twitter'
     oauth_id = db.Column(db.String(255), nullable=True)         # provider's user ID
@@ -51,4 +57,7 @@ class User(db.Model):
             'billing_address': self.billing_address,
             'oauth_provider': self.oauth_provider,
             'avatar_url': self.avatar_url,
+            'approved_for_terms': self.approved_for_terms,
+            'credit_limit': self.credit_limit,
+            'payment_terms': self.payment_terms,
         }
