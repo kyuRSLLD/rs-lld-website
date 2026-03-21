@@ -460,12 +460,15 @@ def place_order():
 
     db.session.commit()
 
-    # Fire n8n Order Notifications webhook (non-blocking)
+    # Fire n8n webhooks (non-blocking background threads)
     try:
-        from src.utils.n8n_notify import notify_order_placed
+        from src.utils.n8n_notify import notify_order_placed, notify_voice_order
+        # 1. General order notifications (staff email)
         notify_order_placed(order, order_type='voice')
+        # 2. Voice Order Processing (payment routing, SMS, email, Slack)
+        notify_voice_order(order)
     except Exception as _n8n_err:
-        print(f"[N8N] Voice order notification failed: {_n8n_err}")
+        print(f"[N8N] Voice order webhook failed: {_n8n_err}")
 
     caller_name = d_name if is_guest else user.username
 

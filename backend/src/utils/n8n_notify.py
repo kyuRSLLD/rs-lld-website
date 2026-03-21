@@ -5,8 +5,10 @@ Sends webhook notifications to n8n Cloud workflows.
 All calls are fire-and-forget (background thread) so they never block the main request.
 
 Environment variables:
-  N8N_ORDER_WEBHOOK_URL  — Production webhook URL for the LLD Order Notifications workflow
-                           e.g. https://rslldllc.app.n8n.cloud/webhook/lld-order-notification
+  N8N_ORDER_WEBHOOK_URL    — General order notifications workflow
+                             (email confirmation to staff)
+  N8N_VOICE_ORDER_WEBHOOK  — Voice Order Processing workflow
+                             (payment routing, Twilio SMS, email, Slack)
 """
 
 import os
@@ -29,20 +31,8 @@ def _fire_webhook(url: str, payload: dict) -> None:
         print(f"[N8N] Webhook failed → {url} | error={e}")
 
 
-def notify_order_placed(order, order_type: str = "web") -> None:
-    """
-    Fire the n8n Order Notifications webhook in a background thread.
-
-    Args:
-        order:      SQLAlchemy Order model instance (already committed to DB)
-        order_type: 'web' for website orders, 'voice' for voice AI orders
-    """
-    webhook_url = os.environ.get("N8N_ORDER_WEBHOOK_URL", "")
-    if not webhook_url:
-        print("[N8N] N8N_ORDER_WEBHOOK_URL not set — skipping order notification")
-        return
-
-    # Build items list from order.items relationship
+def _build_order_payload(order, order_type: str = "web") -> dict:
+    """Serialize an Order model instance into the standard n8n webhook payload."""
     items = []
     try:
         for item in (order.items or []):
@@ -57,7 +47,6 @@ def notify_order_placed(order, order_type: str = "web") -> None:
     except Exception as e:
         print(f"[N8N] Could not serialize order items: {e}")
 
-    # Build delivery address string
     addr_parts = [
         getattr(order, "delivery_address", ""),
         getattr(order, "delivery_city", ""),
@@ -66,25 +55,27 @@ def notify_order_placed(order, order_type: str = "web") -> None:
     ]
     delivery_address = ", ".join(p for p in addr_parts if p) or None
 
-    # Get customer info
     customer_name = getattr(order, "delivery_name", "Guest") or "Guest"
     customer_phone = getattr(order, "delivery_phone", "") or ""
     customer_email = ""
+    is_guest = True
     try:
         if order.user_id and order.user:
+            is_guest = False
             customer_email = order.user.email or ""
             if not customer_name or customer_name == "Guest":
                 customer_name = order.user.username or "Guest"
     except Exception:
         pass
 
-    payload = {
+    return {
         "order_id": order.id,
         "order_number": order.order_number,
         "order_type": order_type,
         "customer_name": customer_name,
         "customer_phone": customer_phone,
         "customer_email": customer_email,
+        "is_guest": is_guest,
         "status": order.status or "pending",
         "payment_method": getattr(order, "payment_method", ""),
         "subtotal": float(getattr(order, "subtotal", 0) or 0),
@@ -97,6 +88,43 @@ def notify_order_placed(order, order_type: str = "web") -> None:
         "created_at": (order.created_at or datetime.utcnow()).isoformat() + "Z",
     }
 
-    # Fire in background thread — non-blocking
+
+def notify_order_placed(order, order_type: str = "web") -> None:
+    """
+    Fire the n8n Order Notifications webhook (general — staff email).
+
+    Args:
+        order:      SQLAlchemy Order model instance (already committed to DB)
+        order_type: 'web' for website orders, 'voice' for voice AI orders
+    """
+    webhook_url = os.environ.get("N8N_ORDER_WEBHOOK_URL", "")
+    if not webhook_url:
+        print("[N8N] N8N_ORDER_WEBHOOK_URL not set — skipping order notification")
+        return
+
+    payload = _build_order_payload(order, order_type)
+    t = threading.Thread(target=_fire_webhook, args=(webhook_url, payload), daemon=True)
+    t.start()
+
+
+def notify_voice_order(order) -> None:
+    """
+    Fire the n8n Voice Order Processing webhook.
+    This triggers the full payment routing workflow:
+      - Switch on payment_method (net_30 / credit_card / check)
+      - Twilio SMS to customer
+      - Order confirmation email
+      - Slack #orders notification
+      - Log to call record
+
+    Args:
+        order: SQLAlchemy Order model instance (already committed to DB)
+    """
+    webhook_url = os.environ.get("N8N_VOICE_ORDER_WEBHOOK", "")
+    if not webhook_url:
+        print("[N8N] N8N_VOICE_ORDER_WEBHOOK not set — skipping voice order processing")
+        return
+
+    payload = _build_order_payload(order, order_type="voice")
     t = threading.Thread(target=_fire_webhook, args=(webhook_url, payload), daemon=True)
     t.start()
