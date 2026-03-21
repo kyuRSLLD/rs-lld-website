@@ -14,12 +14,12 @@ class CallLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     vapi_call_id = db.Column(db.String(100), unique=True, index=True)
-    sub_agent_id = db.Column(db.Integer, db.ForeignKey('voice_sub_agent.id'), nullable=True)
+    sub_agent_id = db.Column(db.Integer, nullable=True)   # references voice_sub_agent.id (no FK constraint)
 
     # ── Call metadata ──────────────────────────────────────────────────────────
     direction = db.Column(db.String(10))          # inbound | outbound
     caller_phone = db.Column(db.String(20))
-    customer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    customer_id = db.Column(db.Integer, nullable=True)   # references user.id (no FK constraint)
     duration_seconds = db.Column(db.Integer)
     started_at = db.Column(db.DateTime)
     ended_at = db.Column(db.DateTime)
@@ -97,7 +97,7 @@ class AgentPerformance(db.Model):
     __tablename__ = 'agent_performance'
 
     id = db.Column(db.Integer, primary_key=True)
-    sub_agent_id = db.Column(db.Integer, db.ForeignKey('voice_sub_agent.id'), nullable=True)
+    sub_agent_id = db.Column(db.Integer, nullable=True)   # references voice_sub_agent.id (no FK constraint)
     date = db.Column(db.Date, index=True)
 
     total_calls = db.Column(db.Integer, default=0)
