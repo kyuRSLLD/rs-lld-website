@@ -1,61 +1,55 @@
 """
 Sourcing API Routes
 ====================
-Endpoints for the sourcing sub-agent system:
+All endpoints require staff authentication (JWT Bearer or session cookie).
 
   Supplier Management
-    POST   /api/sourcing/suppliers              Add a new supplier
-    GET    /api/sourcing/suppliers              List all suppliers
-    GET    /api/sourcing/suppliers/<id>         Supplier detail
-    PUT    /api/sourcing/suppliers/<id>         Update supplier info
+    POST   /api/sourcing/suppliers
+    GET    /api/sourcing/suppliers
+    GET    /api/sourcing/suppliers/<id>
+    PUT    /api/sourcing/suppliers/<id>
 
   RFQ Management
-    POST   /api/sourcing/rfqs                   Create new RFQ
-    GET    /api/sourcing/rfqs                   List RFQs
-    PUT    /api/sourcing/rfqs/<id>/quotes       Add a supplier quote response
+    POST   /api/sourcing/rfqs
+    GET    /api/sourcing/rfqs
+    PUT    /api/sourcing/rfqs/<id>/quotes       Add a supplier quote to the quotes JSON array
     POST   /api/sourcing/rfqs/<id>/award        Award RFQ to a supplier
 
   Shipment Tracking
-    POST   /api/sourcing/shipments              Log a new shipment
-    GET    /api/sourcing/shipments              List shipments
-    PUT    /api/sourcing/shipments/<id>/status  Update tracking status
-    GET    /api/sourcing/shipments/<id>/timeline Full shipment timeline
+    POST   /api/sourcing/shipments
+    GET    /api/sourcing/shipments
+    PUT    /api/sourcing/shipments/<id>/status  Update status + append to timeline JSON array
+    GET    /api/sourcing/shipments/<id>/timeline
 
   QC Inspections
-    POST   /api/sourcing/qc/inspections         Create QC inspection record
-    PUT    /api/sourcing/qc/inspections/<id>     Update with results/photos
+    POST   /api/sourcing/qc/inspections
+    GET    /api/sourcing/qc/inspections
+    PUT    /api/sourcing/qc/inspections/<id>
 
   Inventory Needs
-    GET    /api/sourcing/inventory-needs         Products low on stock → triggers sourcing
+    GET    /api/sourcing/inventory-needs
 
-All endpoints require staff authentication (JWT Bearer or session cookie).
-Sub-agents authenticate using the same staff JWT mechanism.
+  Sourcing Orchestrator (AI)
+    POST   /api/sourcing/orchestrate            Generate sub-agent config for a sourcing requirement
 """
 
-import re
+import os
+import json
 from datetime import datetime
 from flask import Blueprint, request, jsonify, session
 
 from src.models.user import db
 from src.models.product import Product
-from src.models.sourcing import (
-    Supplier, RFQ, RFQQuote, Shipment, ShipmentEvent, QCInspection
-)
+from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection
 
 sourcing_bp = Blueprint('sourcing', __name__)
 
-# ── Auth helper (reuse the same staff_required logic) ─────────────────────────
+# ── Auth helpers ──────────────────────────────────────────────────────────────
 
 def _get_staff_id():
-    """Return the current staff ID from session or JWT, or None if not authenticated."""
     import jwt as _jwt
-    import os
-
-    # 1. Check session cookie
     if session.get('staff_id'):
         return session['staff_id']
-
-    # 2. Check JWT Bearer token
     auth = request.headers.get('Authorization', '')
     if auth.startswith('Bearer '):
         token = auth[7:].strip()
@@ -79,8 +73,7 @@ def staff_required(f):
     return decorated
 
 
-def _get_staff_username():
-    """Return the staff username for audit logging."""
+def _staff_username():
     staff_id = _get_staff_id()
     if not staff_id:
         return 'agent'
@@ -89,39 +82,15 @@ def _get_staff_username():
     return staff.username if staff else 'agent'
 
 
-# ── Sequence number generators ────────────────────────────────────────────────
+# ── Auto-numbering ────────────────────────────────────────────────────────────
 
-def _next_rfq_number():
+def _next_number(model, field, prefix):
     year = datetime.utcnow().year
-    last = RFQ.query.filter(RFQ.rfq_number.like(f'RFQ-{year}-%')) \
-                    .order_by(RFQ.id.desc()).first()
-    if last:
-        seq = int(last.rfq_number.split('-')[-1]) + 1
-    else:
-        seq = 1
-    return f'RFQ-{year}-{seq:04d}'
-
-
-def _next_shipment_number():
-    year = datetime.utcnow().year
-    last = Shipment.query.filter(Shipment.shipment_number.like(f'SHP-{year}-%')) \
-                         .order_by(Shipment.id.desc()).first()
-    if last:
-        seq = int(last.shipment_number.split('-')[-1]) + 1
-    else:
-        seq = 1
-    return f'SHP-{year}-{seq:04d}'
-
-
-def _next_qc_number():
-    year = datetime.utcnow().year
-    last = QCInspection.query.filter(QCInspection.inspection_number.like(f'QC-{year}-%')) \
-                              .order_by(QCInspection.id.desc()).first()
-    if last:
-        seq = int(last.inspection_number.split('-')[-1]) + 1
-    else:
-        seq = 1
-    return f'QC-{year}-{seq:04d}'
+    pattern = f'{prefix}-{year}-%'
+    last = model.query.filter(getattr(model, field).like(pattern)) \
+                      .order_by(model.id.desc()).first()
+    seq = (int(getattr(last, field).split('-')[-1]) + 1) if last else 1
+    return f'{prefix}-{year}-{seq:04d}'
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -131,113 +100,82 @@ def _next_qc_number():
 @sourcing_bp.route('/sourcing/suppliers', methods=['POST'])
 @staff_required
 def create_supplier():
-    """
-    Add a new supplier.
-
-    Body fields (all optional except `name`):
-      name, name_zh, contact_name, contact_name_zh, email, phone, wechat_id,
-      country, city, address, website, platform_url, platform, categories,
-      notes, notes_zh, rating
-    """
     data = request.json or {}
     if not data.get('name'):
-        return jsonify({'error': 'Supplier name is required'}), 400
-
-    supplier = Supplier(
+        return jsonify({'error': 'name is required'}), 400
+    s = Supplier(
         name=data['name'],
-        name_zh=data.get('name_zh'),
-        contact_name=data.get('contact_name'),
-        contact_name_zh=data.get('contact_name_zh'),
-        email=data.get('email'),
-        phone=data.get('phone'),
-        wechat_id=data.get('wechat_id'),
-        country=data.get('country', 'China'),
-        city=data.get('city'),
-        address=data.get('address'),
-        website=data.get('website'),
-        platform_url=data.get('platform_url'),
+        name_cn=data.get('name_cn'),
         platform=data.get('platform'),
-        categories=data.get('categories'),
+        location=data.get('location'),
+        contact_name=data.get('contact_name'),
+        contact_wechat=data.get('contact_wechat'),
+        contact_email=data.get('contact_email'),
+        contact_phone=data.get('contact_phone'),
+        product_categories=data.get('product_categories', []),
+        rating=data.get('rating', 0),
+        lead_time_days=data.get('lead_time_days'),
+        moq_notes=data.get('moq_notes'),
+        payment_terms=data.get('payment_terms'),
+        is_active=data.get('is_active', True),
         notes=data.get('notes'),
-        notes_zh=data.get('notes_zh'),
-        rating=data.get('rating'),
-        created_by=_get_staff_username(),
+        created_by=_staff_username(),
     )
-    db.session.add(supplier)
+    db.session.add(s)
     db.session.commit()
-    return jsonify({'success': True, 'supplier': supplier.to_dict()}), 201
+    return jsonify({'success': True, 'supplier': s.to_dict()}), 201
 
 
 @sourcing_bp.route('/sourcing/suppliers', methods=['GET'])
 @staff_required
 def list_suppliers():
-    """
-    List all suppliers.
-
-    Query params:
-      - active (bool): Filter by active status (default: true)
-      - search (str): Search by name, contact, or categories
-      - platform (str): Filter by platform ('1688', 'alibaba', etc.)
-    """
-    active_filter = request.args.get('active', 'true').lower()
+    active = request.args.get('active', 'true').lower()
     search = request.args.get('search', '').strip()
     platform = request.args.get('platform', '').strip()
 
-    query = Supplier.query
-    if active_filter == 'true':
-        query = query.filter_by(is_active=True)
-    elif active_filter == 'false':
-        query = query.filter_by(is_active=False)
+    q = Supplier.query
+    if active == 'true':
+        q = q.filter_by(is_active=True)
+    elif active == 'false':
+        q = q.filter_by(is_active=False)
     if search:
-        query = query.filter(
-            db.or_(
-                Supplier.name.ilike(f'%{search}%'),
-                Supplier.name_zh.ilike(f'%{search}%'),
-                Supplier.contact_name.ilike(f'%{search}%'),
-                Supplier.categories.ilike(f'%{search}%'),
-            )
-        )
+        q = q.filter(db.or_(
+            Supplier.name.ilike(f'%{search}%'),
+            Supplier.name_cn.ilike(f'%{search}%'),
+            Supplier.location.ilike(f'%{search}%'),
+            Supplier.contact_name.ilike(f'%{search}%'),
+        ))
     if platform:
-        query = query.filter_by(platform=platform)
-
-    suppliers = query.order_by(Supplier.name).all()
-    return jsonify([s.to_dict() for s in suppliers])
+        q = q.filter_by(platform=platform)
+    return jsonify([s.to_dict() for s in q.order_by(Supplier.name).all()])
 
 
-@sourcing_bp.route('/sourcing/suppliers/<int:supplier_id>', methods=['GET'])
+@sourcing_bp.route('/sourcing/suppliers/<int:sid>', methods=['GET'])
 @staff_required
-def get_supplier(supplier_id):
-    """Get a supplier by ID, including their RFQ and shipment counts."""
-    supplier = Supplier.query.get_or_404(supplier_id)
-    data = supplier.to_dict()
-    data['rfq_count'] = RFQ.query.filter_by(supplier_id=supplier_id).count()
-    data['shipment_count'] = Shipment.query.filter_by(supplier_id=supplier_id).count()
-    data['active_shipments'] = Shipment.query.filter_by(
-        supplier_id=supplier_id
-    ).filter(
-        Shipment.status.in_(['pending', 'in_transit', 'customs'])
+def get_supplier(sid):
+    s = Supplier.query.get_or_404(sid)
+    data = s.to_dict()
+    data['rfq_count'] = RFQ.query.filter_by(awarded_supplier_id=sid).count()
+    data['shipment_count'] = Shipment.query.filter_by(supplier_id=sid).count()
+    data['active_shipments'] = Shipment.query.filter_by(supplier_id=sid).filter(
+        Shipment.status.notin_(['delivered'])
     ).count()
     return jsonify(data)
 
 
-@sourcing_bp.route('/sourcing/suppliers/<int:supplier_id>', methods=['PUT'])
+@sourcing_bp.route('/sourcing/suppliers/<int:sid>', methods=['PUT'])
 @staff_required
-def update_supplier(supplier_id):
-    """Update a supplier's information."""
-    supplier = Supplier.query.get_or_404(supplier_id)
+def update_supplier(sid):
+    s = Supplier.query.get_or_404(sid)
     data = request.json or {}
-
-    updatable = [
-        'name', 'name_zh', 'contact_name', 'contact_name_zh', 'email', 'phone',
-        'wechat_id', 'country', 'city', 'address', 'website', 'platform_url',
-        'platform', 'categories', 'notes', 'notes_zh', 'rating', 'is_active',
-    ]
-    for field in updatable:
-        if field in data:
-            setattr(supplier, field, data[field])
-
+    fields = ['name', 'name_cn', 'platform', 'location', 'contact_name', 'contact_wechat',
+              'contact_email', 'contact_phone', 'product_categories', 'rating',
+              'lead_time_days', 'moq_notes', 'payment_terms', 'is_active', 'notes']
+    for f in fields:
+        if f in data:
+            setattr(s, f, data[f])
     db.session.commit()
-    return jsonify({'success': True, 'supplier': supplier.to_dict()})
+    return jsonify({'success': True, 'supplier': s.to_dict()})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -247,137 +185,84 @@ def update_supplier(supplier_id):
 @sourcing_bp.route('/sourcing/rfqs', methods=['POST'])
 @staff_required
 def create_rfq():
-    """
-    Create a new Request for Quote.
-
-    Required: product_name, quantity_needed
-    Optional: supplier_id, product_id, product_sku, target_unit_price, currency,
-              description, description_zh, deadline, notes
-    """
     data = request.json or {}
-    if not data.get('product_name'):
-        return jsonify({'error': 'product_name is required'}), 400
-    if not data.get('quantity_needed'):
-        return jsonify({'error': 'quantity_needed is required'}), 400
-
-    # Auto-populate description_zh if description provided but no zh translation
-    description_zh = data.get('description_zh')
-
     rfq = RFQ(
-        rfq_number=_next_rfq_number(),
-        supplier_id=data.get('supplier_id'),
+        rfq_number=_next_number(RFQ, 'rfq_number', 'RFQ'),
         product_id=data.get('product_id'),
-        product_name=data['product_name'],
-        product_sku=data.get('product_sku'),
-        quantity_needed=int(data['quantity_needed']),
-        target_unit_price=data.get('target_unit_price'),
-        currency=data.get('currency', 'USD'),
         description=data.get('description'),
-        description_zh=description_zh,
+        target_unit_price=data.get('target_unit_price'),
+        quantity=data.get('quantity'),
         status=data.get('status', 'draft'),
-        deadline=datetime.fromisoformat(data['deadline']) if data.get('deadline') else None,
-        notes=data.get('notes'),
-        created_by=_get_staff_username(),
+        quotes=[],
+        created_by=_staff_username(),
     )
     db.session.add(rfq)
     db.session.commit()
-    return jsonify({'success': True, 'rfq': rfq.to_dict(include_quotes=True)}), 201
+    return jsonify({'success': True, 'rfq': rfq.to_dict()}), 201
 
 
 @sourcing_bp.route('/sourcing/rfqs', methods=['GET'])
 @staff_required
 def list_rfqs():
-    """
-    List all RFQs.
-
-    Query params:
-      - status (str): Filter by status (draft, sent, quoted, awarded, cancelled)
-      - supplier_id (int): Filter by supplier
-      - product_id (int): Filter by product
-    """
     status = request.args.get('status', '').strip()
-    supplier_id = request.args.get('supplier_id', type=int)
     product_id = request.args.get('product_id', type=int)
-
-    query = RFQ.query
+    q = RFQ.query
     if status:
-        query = query.filter_by(status=status)
-    if supplier_id:
-        query = query.filter_by(supplier_id=supplier_id)
+        q = q.filter_by(status=status)
     if product_id:
-        query = query.filter_by(product_id=product_id)
-
-    rfqs = query.order_by(RFQ.created_at.desc()).all()
-    return jsonify([r.to_dict(include_quotes=True) for r in rfqs])
+        q = q.filter_by(product_id=product_id)
+    return jsonify([r.to_dict() for r in q.order_by(RFQ.created_at.desc()).all()])
 
 
 @sourcing_bp.route('/sourcing/rfqs/<int:rfq_id>/quotes', methods=['PUT'])
 @staff_required
 def add_rfq_quote(rfq_id):
-    """
-    Add a supplier quote response to an RFQ.
-
-    Required: unit_price
-    Optional: supplier_id, currency, moq, lead_time_days, sample_available,
-              sample_price, payment_terms, notes, notes_zh
-    """
+    """Append a supplier quote to the RFQ's quotes JSON array."""
     rfq = RFQ.query.get_or_404(rfq_id)
     data = request.json or {}
+    if data.get('price') is None:
+        return jsonify({'error': 'price is required'}), 400
 
-    if data.get('unit_price') is None:
-        return jsonify({'error': 'unit_price is required'}), 400
+    supplier_id = data.get('supplier_id')
+    supplier_name = None
+    if supplier_id:
+        s = Supplier.query.get(supplier_id)
+        supplier_name = s.name if s else None
 
-    quote = RFQQuote(
-        rfq_id=rfq_id,
-        supplier_id=data.get('supplier_id', rfq.supplier_id),
-        unit_price=float(data['unit_price']),
-        currency=data.get('currency', rfq.currency),
-        moq=data.get('moq'),
-        lead_time_days=data.get('lead_time_days'),
-        sample_available=data.get('sample_available', False),
-        sample_price=data.get('sample_price'),
-        payment_terms=data.get('payment_terms'),
-        notes=data.get('notes'),
-        notes_zh=data.get('notes_zh'),
-    )
-    db.session.add(quote)
+    quote_entry = {
+        'supplier_id': supplier_id,
+        'supplier_name': supplier_name,
+        'price': float(data['price']),
+        'moq': data.get('moq'),
+        'lead_time': data.get('lead_time'),
+        'notes': data.get('notes'),
+        'received_at': datetime.utcnow().isoformat(),
+    }
 
-    # Auto-advance RFQ status to 'quoted' if it was 'sent'
+    current_quotes = list(rfq.quotes or [])
+    current_quotes.append(quote_entry)
+    rfq.quotes = current_quotes
+
     if rfq.status == 'sent':
         rfq.status = 'quoted'
 
     db.session.commit()
-    return jsonify({'success': True, 'quote': quote.to_dict(), 'rfq': rfq.to_dict(include_quotes=True)})
+    return jsonify({'success': True, 'rfq': rfq.to_dict()})
 
 
 @sourcing_bp.route('/sourcing/rfqs/<int:rfq_id>/award', methods=['POST'])
 @staff_required
 def award_rfq(rfq_id):
-    """
-    Award an RFQ to a specific quote/supplier.
-
-    Required: quote_id
-    """
+    """Award an RFQ to a specific supplier."""
     rfq = RFQ.query.get_or_404(rfq_id)
     data = request.json or {}
-    quote_id = data.get('quote_id')
-
-    if not quote_id:
-        return jsonify({'error': 'quote_id is required'}), 400
-
-    quote = RFQQuote.query.get_or_404(quote_id)
-    if quote.rfq_id != rfq_id:
-        return jsonify({'error': 'Quote does not belong to this RFQ'}), 400
-
-    # Clear any previous award
-    RFQQuote.query.filter_by(rfq_id=rfq_id).update({'is_awarded': False})
-
-    quote.is_awarded = True
-    rfq.awarded_quote_id = quote_id
+    supplier_id = data.get('supplier_id')
+    if not supplier_id:
+        return jsonify({'error': 'supplier_id is required'}), 400
+    rfq.awarded_supplier_id = supplier_id
     rfq.status = 'awarded'
     db.session.commit()
-
-    return jsonify({'success': True, 'rfq': rfq.to_dict(include_quotes=True)})
+    return jsonify({'success': True, 'rfq': rfq.to_dict()})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -387,130 +272,99 @@ def award_rfq(rfq_id):
 @sourcing_bp.route('/sourcing/shipments', methods=['POST'])
 @staff_required
 def create_shipment():
-    """
-    Log a new inbound shipment.
-
-    Required: (none — all fields optional but supplier_id or product_name recommended)
-    """
     data = request.json or {}
-    staff = _get_staff_username()
-
+    staff = _staff_username()
     shipment = Shipment(
-        shipment_number=_next_shipment_number(),
+        shipment_number=_next_number(Shipment, 'shipment_number', 'SHP'),
         supplier_id=data.get('supplier_id'),
         rfq_id=data.get('rfq_id'),
-        product_id=data.get('product_id'),
-        product_name=data.get('product_name'),
-        quantity=data.get('quantity'),
         tracking_number=data.get('tracking_number'),
         carrier=data.get('carrier'),
-        shipping_method=data.get('shipping_method'),
-        origin_country=data.get('origin_country', 'China'),
-        destination=data.get('destination'),
-        status=data.get('status', 'pending'),
-        estimated_arrival=datetime.fromisoformat(data['estimated_arrival']) if data.get('estimated_arrival') else None,
+        status=data.get('status', 'production'),
+        origin=data.get('origin'),
+        destination=data.get('destination', 'Chicago warehouse'),
+        eta=datetime.fromisoformat(data['eta']) if data.get('eta') else None,
+        items=data.get('items', []),
+        documents=data.get('documents', []),
+        timeline=[{
+            'date': datetime.utcnow().isoformat(),
+            'event': 'Shipment created',
+            'notes': data.get('notes', ''),
+            'recorded_by': staff,
+        }],
         total_cost=data.get('total_cost'),
         currency=data.get('currency', 'USD'),
         notes=data.get('notes'),
         created_by=staff,
     )
     db.session.add(shipment)
-    db.session.flush()  # get shipment.id before adding event
-
-    # Log the initial creation event
-    event = ShipmentEvent(
-        shipment_id=shipment.id,
-        status='pending',
-        description='Shipment created',
-        recorded_by=staff,
-    )
-    db.session.add(event)
     db.session.commit()
-
-    return jsonify({'success': True, 'shipment': shipment.to_dict(include_timeline=True)}), 201
+    return jsonify({'success': True, 'shipment': shipment.to_dict()}), 201
 
 
 @sourcing_bp.route('/sourcing/shipments', methods=['GET'])
 @staff_required
 def list_shipments():
-    """
-    List all shipments.
-
-    Query params:
-      - status (str): Filter by status
-      - supplier_id (int): Filter by supplier
-      - active (bool): If true, only show non-delivered/non-received shipments
-    """
     status = request.args.get('status', '').strip()
     supplier_id = request.args.get('supplier_id', type=int)
     active = request.args.get('active', '').lower()
-
-    query = Shipment.query
+    q = Shipment.query
     if status:
-        query = query.filter_by(status=status)
+        q = q.filter_by(status=status)
     if supplier_id:
-        query = query.filter_by(supplier_id=supplier_id)
+        q = q.filter_by(supplier_id=supplier_id)
     if active == 'true':
-        query = query.filter(Shipment.status.notin_(['received', 'lost']))
-
-    shipments = query.order_by(Shipment.created_at.desc()).all()
-    return jsonify([s.to_dict() for s in shipments])
+        q = q.filter(Shipment.status != 'delivered')
+    return jsonify([s.to_dict() for s in q.order_by(Shipment.created_at.desc()).all()])
 
 
-@sourcing_bp.route('/sourcing/shipments/<int:shipment_id>/status', methods=['PUT'])
+@sourcing_bp.route('/sourcing/shipments/<int:sid>/status', methods=['PUT'])
 @staff_required
-def update_shipment_status(shipment_id):
-    """
-    Update a shipment's tracking status and log a timeline event.
-
-    Required: status
-    Optional: location, description, description_zh, tracking_number,
-              estimated_arrival, customs_status, actual_arrival
-    """
-    shipment = Shipment.query.get_or_404(shipment_id)
+def update_shipment_status(sid):
+    """Update shipment status and append an event to the timeline JSON array."""
+    shipment = Shipment.query.get_or_404(sid)
     data = request.json or {}
-    staff = _get_staff_username()
+    staff = _staff_username()
 
+    valid = ['production', 'qc', 'shipped', 'in_transit', 'customs', 'delivered']
     new_status = data.get('status')
-    valid_statuses = ['pending', 'in_transit', 'customs', 'arrived', 'received', 'delayed', 'lost']
-    if new_status and new_status not in valid_statuses:
-        return jsonify({'error': f'Invalid status. Must be one of: {valid_statuses}'}), 400
+    if new_status and new_status not in valid:
+        return jsonify({'error': f'status must be one of: {valid}'}), 400
 
     if new_status:
         shipment.status = new_status
-
     if data.get('tracking_number'):
         shipment.tracking_number = data['tracking_number']
-    if data.get('estimated_arrival'):
-        shipment.estimated_arrival = datetime.fromisoformat(data['estimated_arrival'])
-    if data.get('customs_status'):
-        shipment.customs_status = data['customs_status']
-    if new_status == 'received' and not shipment.actual_arrival:
+    if data.get('eta'):
+        shipment.eta = datetime.fromisoformat(data['eta'])
+    if new_status == 'delivered' and not shipment.actual_arrival:
         shipment.actual_arrival = datetime.utcnow()
-    if data.get('actual_arrival'):
-        shipment.actual_arrival = datetime.fromisoformat(data['actual_arrival'])
 
-    # Log the timeline event
-    event = ShipmentEvent(
-        shipment_id=shipment_id,
-        status=new_status or shipment.status,
-        location=data.get('location'),
-        description=data.get('description'),
-        description_zh=data.get('description_zh'),
-        recorded_by=data.get('recorded_by', staff),
-    )
-    db.session.add(event)
+    # Append to timeline
+    event = {
+        'date': datetime.utcnow().isoformat(),
+        'event': data.get('event', new_status or shipment.status),
+        'notes': data.get('notes', ''),
+        'location': data.get('location', ''),
+        'recorded_by': data.get('recorded_by', staff),
+    }
+    current_timeline = list(shipment.timeline or [])
+    current_timeline.append(event)
+    shipment.timeline = current_timeline
+
     db.session.commit()
+    return jsonify({'success': True, 'shipment': shipment.to_dict()})
 
-    return jsonify({'success': True, 'shipment': shipment.to_dict(include_timeline=True)})
 
-
-@sourcing_bp.route('/sourcing/shipments/<int:shipment_id>/timeline', methods=['GET'])
+@sourcing_bp.route('/sourcing/shipments/<int:sid>/timeline', methods=['GET'])
 @staff_required
-def get_shipment_timeline(shipment_id):
-    """Get the full timeline of events for a shipment."""
-    shipment = Shipment.query.get_or_404(shipment_id)
-    return jsonify(shipment.to_dict(include_timeline=True))
+def get_shipment_timeline(sid):
+    shipment = Shipment.query.get_or_404(sid)
+    return jsonify({
+        'shipment_number': shipment.shipment_number,
+        'status': shipment.status,
+        'timeline': shipment.timeline or [],
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -520,17 +374,9 @@ def get_shipment_timeline(shipment_id):
 @sourcing_bp.route('/sourcing/qc/inspections', methods=['POST'])
 @staff_required
 def create_qc_inspection():
-    """
-    Create a new QC inspection record.
-
-    Optional: shipment_id, supplier_id, product_id, product_name,
-              quantity_inspected, inspector_name, inspection_date, checklist,
-              notes, notes_zh
-    """
     data = request.json or {}
-
-    inspection = QCInspection(
-        inspection_number=_next_qc_number(),
+    insp = QCInspection(
+        inspection_number=_next_number(QCInspection, 'inspection_number', 'QC'),
         shipment_id=data.get('shipment_id'),
         supplier_id=data.get('supplier_id'),
         product_id=data.get('product_id'),
@@ -540,154 +386,233 @@ def create_qc_inspection():
         inspection_date=datetime.fromisoformat(data['inspection_date']) if data.get('inspection_date') else None,
         checklist=data.get('checklist'),
         notes=data.get('notes'),
-        notes_zh=data.get('notes_zh'),
         status='pending',
-        created_by=_get_staff_username(),
+        created_by=_staff_username(),
     )
-    db.session.add(inspection)
+    db.session.add(insp)
     db.session.commit()
-    return jsonify({'success': True, 'inspection': inspection.to_dict()}), 201
-
-
-@sourcing_bp.route('/sourcing/qc/inspections/<int:inspection_id>', methods=['PUT'])
-@staff_required
-def update_qc_inspection(inspection_id):
-    """
-    Update a QC inspection with results, photos, and pass/fail data.
-
-    Optional: quantity_passed, quantity_failed, result, checklist,
-              defects_found, defects_found_zh, photos, notes, notes_zh,
-              inspector_name, inspection_date, status
-    """
-    inspection = QCInspection.query.get_or_404(inspection_id)
-    data = request.json or {}
-
-    updatable = [
-        'quantity_inspected', 'quantity_passed', 'quantity_failed', 'result',
-        'checklist', 'defects_found', 'defects_found_zh', 'photos',
-        'inspector_name', 'notes', 'notes_zh', 'status',
-    ]
-    for field in updatable:
-        if field in data:
-            setattr(inspection, field, data[field])
-
-    if data.get('inspection_date'):
-        inspection.inspection_date = datetime.fromisoformat(data['inspection_date'])
-
-    # Auto-set status to 'complete' if a result is provided
-    if data.get('result') and inspection.status != 'complete':
-        inspection.status = 'complete'
-
-    db.session.commit()
-    return jsonify({'success': True, 'inspection': inspection.to_dict()})
+    return jsonify({'success': True, 'inspection': insp.to_dict()}), 201
 
 
 @sourcing_bp.route('/sourcing/qc/inspections', methods=['GET'])
 @staff_required
 def list_qc_inspections():
-    """
-    List all QC inspections.
-
-    Query params:
-      - status (str): pending, in_progress, complete
-      - result (str): pass, fail, conditional
-      - shipment_id (int): Filter by shipment
-      - supplier_id (int): Filter by supplier
-    """
     status = request.args.get('status', '').strip()
     result = request.args.get('result', '').strip()
     shipment_id = request.args.get('shipment_id', type=int)
     supplier_id = request.args.get('supplier_id', type=int)
-
-    query = QCInspection.query
+    q = QCInspection.query
     if status:
-        query = query.filter_by(status=status)
+        q = q.filter_by(status=status)
     if result:
-        query = query.filter_by(result=result)
+        q = q.filter_by(result=result)
     if shipment_id:
-        query = query.filter_by(shipment_id=shipment_id)
+        q = q.filter_by(shipment_id=shipment_id)
     if supplier_id:
-        query = query.filter_by(supplier_id=supplier_id)
+        q = q.filter_by(supplier_id=supplier_id)
+    return jsonify([i.to_dict() for i in q.order_by(QCInspection.created_at.desc()).all()])
 
-    inspections = query.order_by(QCInspection.created_at.desc()).all()
-    return jsonify([i.to_dict() for i in inspections])
+
+@sourcing_bp.route('/sourcing/qc/inspections/<int:iid>', methods=['PUT'])
+@staff_required
+def update_qc_inspection(iid):
+    insp = QCInspection.query.get_or_404(iid)
+    data = request.json or {}
+    fields = ['quantity_inspected', 'quantity_passed', 'quantity_failed', 'result',
+              'checklist', 'defects_found', 'photos', 'inspector_name', 'notes', 'status']
+    for f in fields:
+        if f in data:
+            setattr(insp, f, data[f])
+    if data.get('inspection_date'):
+        insp.inspection_date = datetime.fromisoformat(data['inspection_date'])
+    if data.get('result') and insp.status != 'complete':
+        insp.status = 'complete'
+    db.session.commit()
+    return jsonify({'success': True, 'inspection': insp.to_dict()})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# INVENTORY NEEDS (connects to existing product catalog)
+# INVENTORY NEEDS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @sourcing_bp.route('/sourcing/inventory-needs', methods=['GET'])
 @staff_required
 def inventory_needs():
-    """
-    Returns products that are low on stock and may need sourcing.
-
-    A product is flagged as needing sourcing when:
-      - stock_quantity <= reorder_threshold (default: 20 units)
-      - OR in_stock is False
-
-    Query params:
-      - threshold (int): Override the default low-stock threshold (default: 20)
-      - include_out_of_stock (bool): Include products with in_stock=False (default: true)
-
-    Each product in the response includes:
-      - product details
-      - open_rfqs: count of active RFQs for this product
-      - active_shipments: count of in-transit shipments for this product
-      - last_supplier: most recently used supplier for this product
-    """
+    """Products low on stock that may need sourcing. Used by the orchestrator."""
     threshold = request.args.get('threshold', 20, type=int)
     include_oos = request.args.get('include_out_of_stock', 'true').lower() == 'true'
 
-    query = Product.query.filter(
-        db.or_(
-            Product.stock_quantity <= threshold,
-            Product.in_stock == False if include_oos else False,
-        )
-    ).order_by(Product.stock_quantity.asc())
+    conditions = [Product.stock_quantity <= threshold]
+    if include_oos:
+        conditions.append(Product.in_stock == False)
 
-    products = query.all()
+    products = Product.query.filter(db.or_(*conditions)) \
+                            .order_by(Product.stock_quantity.asc()).all()
+
     result = []
     for p in products:
         data = p.list_dict()
-        data['description'] = p.description  # include description for sourcing context
-
-        # Count open RFQs for this product
         open_rfqs = RFQ.query.filter_by(product_id=p.id).filter(
             RFQ.status.in_(['draft', 'sent', 'quoted'])
         ).count()
-        data['open_rfqs'] = open_rfqs
+        active_shipments = Shipment.query.filter(
+            Shipment.items.contains([{'product_id': p.id}])
+        ).filter(Shipment.status != 'delivered').count()
+        last_ship = Shipment.query.filter_by(supplier_id=None).first()  # fallback
+        # Try to find last supplier via awarded RFQ
+        last_rfq = RFQ.query.filter_by(product_id=p.id, status='awarded') \
+                             .order_by(RFQ.created_at.desc()).first()
+        last_supplier = None
+        if last_rfq and last_rfq.awarded_supplier_id:
+            sup = Supplier.query.get(last_rfq.awarded_supplier_id)
+            if sup:
+                last_supplier = {'id': sup.id, 'name': sup.name}
 
-        # Count active inbound shipments for this product
-        active_shipments = Shipment.query.filter_by(product_id=p.id).filter(
-            Shipment.status.in_(['pending', 'in_transit', 'customs', 'arrived'])
-        ).count()
-        data['active_shipments'] = active_shipments
-
-        # Most recently used supplier for this product
-        last_shipment = Shipment.query.filter_by(product_id=p.id) \
-                                      .order_by(Shipment.created_at.desc()).first()
-        if last_shipment and last_shipment.supplier:
-            data['last_supplier'] = {
-                'id': last_shipment.supplier.id,
-                'name': last_shipment.supplier.name,
-            }
-        else:
-            data['last_supplier'] = None
-
-        # Urgency flag
         if p.stock_quantity == 0 or not p.in_stock:
-            data['urgency'] = 'critical'
+            urgency = 'critical'
         elif p.stock_quantity <= threshold // 2:
-            data['urgency'] = 'high'
+            urgency = 'high'
         else:
-            data['urgency'] = 'medium'
+            urgency = 'medium'
 
+        data.update({
+            'open_rfqs': open_rfqs,
+            'active_shipments': active_shipments,
+            'last_supplier': last_supplier,
+            'urgency': urgency,
+        })
         result.append(data)
 
-    return jsonify({
-        'total': len(result),
-        'threshold': threshold,
-        'products': result,
-    })
+    return jsonify({'total': len(result), 'threshold': threshold, 'products': result})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SOURCING ORCHESTRATOR  (AI-powered sub-agent generator)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+SOURCING_ORCHESTRATOR_PROMPT = """You are a supply chain architect for LLD Restaurant Supply,
+a Chicago-based wholesale distributor that sources non-perishable restaurant supplies from
+manufacturers in China (primarily Guangzhou and Shenzhen).
+
+Given a sourcing requirement, generate a JSON sub-agent configuration. Sub-agent types:
+- supplier_discovery: finds and evaluates new suppliers
+- rfq_manager: creates and manages requests for quotes
+- qc_coordinator: manages quality control inspections
+- shipment_tracker: monitors logistics from China to Chicago
+- supplier_comms: handles bilingual (English/Mandarin) supplier communication
+
+Each sub-agent config needs:
+- name, agent_type, system_prompt
+- tools_enabled: which sourcing API endpoints it can call
+- language_capabilities: [en, zh]
+- communication_channels: [email, wechat, platform_message]
+- escalation_triggers: when to alert Kyu directly
+
+For supplier communication agents, the system prompt MUST include:
+- Bilingual capability (English + Mandarin)
+- LLD's standard payment terms and shipping preferences
+- Quality standards for restaurant-grade supplies
+- Negotiation guidelines (target margins, MOQ flexibility)
+
+Output valid JSON only."""
+
+
+def _get_low_stock_products():
+    """Helper: return serializable low-stock product list for the orchestrator."""
+    threshold = 20
+    products = Product.query.filter(
+        db.or_(Product.stock_quantity <= threshold, Product.in_stock == False)
+    ).order_by(Product.stock_quantity.asc()).limit(20).all()
+    return [
+        {
+            'id': p.id,
+            'name': p.name,
+            'sku': p.sku,
+            'stock_quantity': p.stock_quantity,
+            'in_stock': p.in_stock,
+            'category': p.category.name if p.category else None,
+        }
+        for p in products
+    ]
+
+
+def _get_active_suppliers():
+    """Helper: return serializable active supplier list for the orchestrator."""
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.rating.desc()).all()
+    return [
+        {
+            'id': s.id,
+            'name': s.name,
+            'name_cn': s.name_cn,
+            'platform': s.platform,
+            'location': s.location,
+            'product_categories': s.product_categories,
+            'rating': s.rating,
+            'lead_time_days': s.lead_time_days,
+            'payment_terms': s.payment_terms,
+        }
+        for s in suppliers
+    ]
+
+
+@sourcing_bp.route('/sourcing/orchestrate', methods=['POST'])
+@staff_required
+def orchestrate():
+    """
+    Generate a sourcing sub-agent configuration using an LLM.
+
+    Body:
+      requirement (str): Natural language description of the sourcing need
+                         e.g. "We need 50,000 vinyl gloves, medium size, under $0.05/unit"
+
+    Returns:
+      agent_config (dict): Full sub-agent configuration JSON from the LLM
+      context (dict): The inventory needs and supplier data used as context
+    """
+    data = request.json or {}
+    requirement = data.get('requirement', '').strip()
+    if not requirement:
+        return jsonify({'error': 'requirement is required'}), 400
+
+    low_stock = _get_low_stock_products()
+    active_suppliers = _get_active_suppliers()
+
+    # Use OpenAI-compatible client (OPENAI_API_KEY is set in Railway env)
+    try:
+        from openai import OpenAI
+        client = OpenAI()  # uses OPENAI_API_KEY + OPENAI_BASE_URL from env
+
+        user_message = f"""Sourcing Requirement: {requirement}
+
+Current Inventory Needs (low stock):
+{json.dumps(low_stock, indent=2)}
+
+Active Suppliers:
+{json.dumps(active_suppliers, indent=2)}
+
+Generate the sourcing sub-agent configuration."""
+
+        response = client.chat.completions.create(
+            model='gpt-4.1-mini',
+            max_tokens=4000,
+            messages=[
+                {'role': 'system', 'content': SOURCING_ORCHESTRATOR_PROMPT},
+                {'role': 'user', 'content': user_message},
+            ],
+            response_format={'type': 'json_object'},
+        )
+
+        agent_config = json.loads(response.choices[0].message.content)
+
+        return jsonify({
+            'success': True,
+            'requirement': requirement,
+            'agent_config': agent_config,
+            'context': {
+                'low_stock_products': low_stock,
+                'active_suppliers': active_suppliers,
+            },
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Orchestrator failed: {str(e)}'}), 500
