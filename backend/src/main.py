@@ -32,7 +32,7 @@ from src.routes.voice_analytics import voice_analytics_bp
 from src.routes.payment_links import payment_links_bp
 from src.models.api_key import APIKey
 from src.models.voice_analytics import CallLog, AgentPerformance
-from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection
+from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection, SupplierPayment
 from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))

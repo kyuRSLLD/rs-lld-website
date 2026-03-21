@@ -161,6 +161,53 @@ class Shipment(db.Model):
         }
 
 
+class SupplierPayment(db.Model):
+    """
+    Supplier payment record — tracks money sent to suppliers for shipments/RFQs.
+    """
+    __tablename__ = 'supplier_payment'
+
+    id = db.Column(db.Integer, primary_key=True)
+    payment_number = db.Column(db.String(30), unique=True, nullable=False)  # PAY-2026-0001
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=False)
+    shipment_id = db.Column(db.Integer, db.ForeignKey('shipment.id'), nullable=True)
+    rfq_id = db.Column(db.Integer, db.ForeignKey('rfq.id'), nullable=True)
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), default='USD')
+    payment_method = db.Column(db.String(50), nullable=True)   # wire, paypal, alipay, etc.
+    reference_number = db.Column(db.String(100), nullable=True) # bank ref / transaction ID
+    payment_date = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(30), default='pending')        # pending, sent, confirmed, failed
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(100), nullable=True)
+
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], lazy='joined')
+    shipment = db.relationship('Shipment', foreign_keys=[shipment_id], lazy='joined')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'payment_number': self.payment_number,
+            'supplier_id': self.supplier_id,
+            'supplier_name': self.supplier.name if self.supplier else None,
+            'shipment_id': self.shipment_id,
+            'shipment_number': self.shipment.shipment_number if self.shipment else None,
+            'rfq_id': self.rfq_id,
+            'amount': self.amount,
+            'currency': self.currency,
+            'payment_method': self.payment_method,
+            'reference_number': self.reference_number,
+            'payment_date': self.payment_date.isoformat() if self.payment_date else None,
+            'status': self.status,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_by': self.created_by,
+        }
+
+
 class QCInspection(db.Model):
     """Quality-control inspection record — standalone, linked to a shipment or supplier."""
     __tablename__ = 'qc_inspection'

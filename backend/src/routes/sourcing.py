@@ -40,7 +40,7 @@ from flask import Blueprint, request, jsonify, session
 
 from src.models.user import db
 from src.models.product import Product
-from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection
+from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection, SupplierPayment
 
 sourcing_bp = Blueprint('sourcing', __name__)
 
@@ -616,3 +616,246 @@ Generate the sourcing sub-agent configuration."""
 
     except Exception as e:
         return jsonify({'error': f'Orchestrator failed: {str(e)}'}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RFQ DETAIL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@sourcing_bp.route('/sourcing/rfqs/<int:rfq_id>', methods=['GET'])
+@staff_required
+def get_rfq(rfq_id):
+    """Return full RFQ detail including all quotes and awarded supplier info."""
+    rfq = RFQ.query.get_or_404(rfq_id)
+    data = rfq.to_dict()
+    # Enrich each quote with full supplier contact details
+    enriched_quotes = []
+    for q in (rfq.quotes or []):
+        qdata = dict(q)
+        if q.get('supplier_id'):
+            s = Supplier.query.get(q['supplier_id'])
+            if s:
+                qdata['supplier_contact'] = s.contact_name
+                qdata['supplier_email'] = s.contact_email
+                qdata['supplier_wechat'] = s.contact_wechat
+                qdata['supplier_lead_time_days'] = s.lead_time_days
+        enriched_quotes.append(qdata)
+    data['quotes'] = enriched_quotes
+    # Attach product details
+    if rfq.product:
+        data['product_sku'] = rfq.product.sku
+        data['product_category'] = rfq.product.category.name if rfq.product.category else None
+        data['current_unit_price'] = rfq.product.unit_price
+    return jsonify(data)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI QUOTE COMPARISON
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@sourcing_bp.route('/sourcing/rfqs/<int:rfq_id>/compare', methods=['GET'])
+@staff_required
+def compare_rfq_quotes(rfq_id):
+    """AI-powered side-by-side comparison of all quotes for an RFQ."""
+    rfq = RFQ.query.get_or_404(rfq_id)
+    quotes = rfq.quotes or []
+    if not quotes:
+        return jsonify({'error': 'No quotes to compare for this RFQ'}), 400
+
+    product_name = rfq.product.name if rfq.product else rfq.description or 'Unknown product'
+    target_price = rfq.target_unit_price
+    quantity = rfq.quantity
+
+    quotes_text = '\n'.join([
+        '- Supplier: {} | Price: ${:.4f}/unit | MOQ: {} | Lead time: {} | Notes: {}'.format(
+            q.get('supplier_name', 'Unknown'),
+            float(q.get('price', 0)),
+            q.get('moq', 'N/A'),
+            q.get('lead_time', 'N/A'),
+            q.get('notes', '')
+        )
+        for q in quotes
+    ])
+
+    prompt = (
+        'You are a procurement analyst for LLD Restaurant Supply, a Chicago-based wholesale '
+        'distributor sourcing from Chinese manufacturers.\n\n'
+        'Product: {}\nQuantity needed: {}\nTarget unit price: ${}\n\n'
+        'Supplier Quotes:\n{}\n\n'
+        'Provide a concise comparison analysis in JSON format with these fields:\n'
+        '- recommendation: which supplier to award and why (1-2 sentences)\n'
+        '- best_price_supplier: name of cheapest supplier\n'
+        '- best_value_supplier: name of best overall value (considering lead time, MOQ, notes)\n'
+        '- savings_vs_target: estimated savings or overage vs target price per unit\n'
+        '- risk_flags: list of any concerns (e.g. very long lead time, high MOQ, missing info)\n'
+        '- quote_summary: array of objects with supplier_name, price, total_cost (price * quantity), '
+        'verdict (recommended/acceptable/avoid)'
+    ).format(product_name, quantity, target_price if target_price else 'Not set', quotes_text)
+
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        response = client.chat.completions.create(
+            model='gpt-4.1-mini',
+            max_tokens=1500,
+            messages=[{'role': 'user', 'content': prompt}],
+            response_format={'type': 'json_object'},
+        )
+        analysis = json.loads(response.choices[0].message.content)
+        return jsonify({
+            'rfq_number': rfq.rfq_number,
+            'product': product_name,
+            'quote_count': len(quotes),
+            'analysis': analysis,
+        })
+    except Exception as e:
+        return jsonify({'error': 'AI comparison failed: {}'.format(str(e))}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI BILINGUAL RFQ MESSAGE DRAFTER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@sourcing_bp.route('/sourcing/draft-rfq-message', methods=['POST'])
+@staff_required
+def draft_rfq_message():
+    """
+    Generate a bilingual (English + Mandarin) RFQ outreach message for a supplier.
+
+    Body:
+      supplier_id (int, optional): Supplier to address (personalises the message)
+      product_name (str): Product being requested
+      quantity (int): Quantity needed
+      target_price (float, optional): Target unit price
+      notes (str, optional): Any special requirements (certifications, packaging, etc.)
+      tone (str, optional): formal (default) | friendly
+    """
+    data = request.json or {}
+    product_name = data.get('product_name', '').strip()
+    if not product_name:
+        return jsonify({'error': 'product_name is required'}), 400
+
+    quantity = data.get('quantity')
+    target_price = data.get('target_price')
+    notes = data.get('notes', '')
+    tone = data.get('tone', 'formal')
+
+    supplier_context = ''
+    if data.get('supplier_id'):
+        s = Supplier.query.get(data['supplier_id'])
+        if s:
+            supplier_context = 'Supplier name: {} ({})\nContact: {}\nPlatform: {}'.format(
+                s.name, s.name_cn or '', s.contact_name or 'N/A', s.platform or 'N/A'
+            )
+
+    prompt = (
+        'You are a bilingual procurement specialist for LLD Restaurant Supply, a Chicago-based '
+        'wholesale distributor that sources restaurant supplies from Chinese manufacturers.\n\n'
+        'Draft a {} RFQ outreach message in BOTH English and Mandarin Chinese.\n\n'
+        'Details:\n'
+        '- Product: {}\n'
+        '- Quantity: {}\n'
+        '- Target unit price: {}\n'
+        '- Special requirements: {}\n'
+        '{}\n\n'
+        'LLD standard terms: Net 30 payment, FOB Guangzhou/Shenzhen, quality must meet US FDA/NSF '
+        'standards for food-service equipment.\n\n'
+        'Return JSON with fields:\n'
+        '- subject_en: email subject in English\n'
+        '- subject_cn: email subject in Chinese\n'
+        '- body_en: full message body in English\n'
+        '- body_cn: full message body in Chinese\n'
+        '- key_points: list of 3-5 key negotiation points to emphasize'
+    ).format(
+        tone,
+        product_name,
+        '{:,}'.format(quantity) if quantity else 'TBD',
+        '${:.4f}/unit'.format(float(target_price)) if target_price else 'Open to quotes',
+        notes or 'Standard restaurant-grade quality',
+        supplier_context
+    )
+
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        response = client.chat.completions.create(
+            model='gpt-4.1-mini',
+            max_tokens=2000,
+            messages=[{'role': 'user', 'content': prompt}],
+            response_format={'type': 'json_object'},
+        )
+        message = json.loads(response.choices[0].message.content)
+        return jsonify({'success': True, 'message': message})
+    except Exception as e:
+        return jsonify({'error': 'AI draft failed: {}'.format(str(e))}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SUPPLIER PAYMENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@sourcing_bp.route('/sourcing/payments', methods=['POST'])
+@staff_required
+def create_payment():
+    """Record a supplier payment."""
+    data = request.json or {}
+    if not data.get('supplier_id'):
+        return jsonify({'error': 'supplier_id is required'}), 400
+    if data.get('amount') is None:
+        return jsonify({'error': 'amount is required'}), 400
+
+    payment = SupplierPayment(
+        payment_number=_next_number(SupplierPayment, 'payment_number', 'PAY'),
+        supplier_id=data['supplier_id'],
+        shipment_id=data.get('shipment_id'),
+        rfq_id=data.get('rfq_id'),
+        amount=float(data['amount']),
+        currency=data.get('currency', 'USD'),
+        payment_method=data.get('payment_method'),
+        reference_number=data.get('reference_number'),
+        payment_date=datetime.fromisoformat(data['payment_date']) if data.get('payment_date') else datetime.utcnow(),
+        status=data.get('status', 'sent'),
+        notes=data.get('notes'),
+        created_by=_staff_username(),
+    )
+    db.session.add(payment)
+    db.session.commit()
+    return jsonify({'success': True, 'payment': payment.to_dict()}), 201
+
+
+@sourcing_bp.route('/sourcing/payments', methods=['GET'])
+@staff_required
+def list_payments():
+    """List supplier payments with optional filters."""
+    supplier_id = request.args.get('supplier_id', type=int)
+    shipment_id = request.args.get('shipment_id', type=int)
+    rfq_id = request.args.get('rfq_id', type=int)
+    status = request.args.get('status', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+
+    q = SupplierPayment.query
+    if supplier_id:
+        q = q.filter_by(supplier_id=supplier_id)
+    if shipment_id:
+        q = q.filter_by(shipment_id=shipment_id)
+    if rfq_id:
+        q = q.filter_by(rfq_id=rfq_id)
+    if status:
+        q = q.filter_by(status=status)
+
+    paginated = q.order_by(SupplierPayment.payment_date.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    total_amount = db.session.query(db.func.sum(SupplierPayment.amount)).filter(
+        *([SupplierPayment.supplier_id == supplier_id] if supplier_id else [])
+    ).scalar() or 0.0
+
+    return jsonify({
+        'payments': [p.to_dict() for p in paginated.items],
+        'total': paginated.total,
+        'page': page,
+        'per_page': per_page,
+        'total_amount_usd': round(total_amount, 2),
+    })

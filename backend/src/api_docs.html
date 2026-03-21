@@ -658,18 +658,124 @@
   <!-- SOURCING -->
   <div class="section" id="s-sourcing">
     <div class="section-title">🌐 Sourcing</div>
-    <div class="section-desc">Manage suppliers, request-for-quotes (RFQs), shipments, and QC inspections.</div>
+    <div class="section-desc">Full supply chain management: suppliers, RFQs, AI quote comparison, bilingual messaging, shipments, QC inspections, and supplier payments. All endpoints require Staff authentication.</div>
+
+    <!-- SUPPLIERS -->
+    <div class="params-title" style="margin:0 0 10px;font-size:13px;color:var(--accent)">Supplier Management</div>
 
     <div class="endpoint">
       <div class="endpoint-header" onclick="toggle(this)">
         <span class="method-tag tag-GET">GET</span>
         <span class="endpoint-path">/api/sourcing/suppliers</span>
-        <span class="endpoint-summary">List suppliers</span>
+        <span class="endpoint-summary">List all suppliers</span>
         <span class="auth-badge">🔐 Staff</span>
         <span class="chevron">▶</span>
       </div>
       <div class="endpoint-body">
-        <p class="endpoint-desc">Returns all registered suppliers with contact info and performance metrics.</p>
+        <p class="endpoint-desc">Returns all suppliers with contact info, ratings, and platform details.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">active</td><td class="param-type">string</td><td>true (default) | false | all</td></tr>
+          <tr><td class="param-name">search</td><td class="param-type">string</td><td>Search by name, location, or contact</td></tr>
+          <tr><td class="param-name">platform</td><td class="param-type">string</td><td>Filter by platform: alibaba, 1688, direct</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/suppliers/&lt;id&gt;</span>
+        <span class="endpoint-summary">Get supplier detail</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns full supplier profile plus aggregated stats: total RFQs awarded, total shipments, and active (in-transit) shipments.</p>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"id"</span>: <span class="b">3</span>, <span class="n">"name"</span>: <span class="s">"Guangzhou Kitchenware Co."</span>, <span class="n">"rating"</span>: <span class="b">4.5</span>, <span class="n">"rfq_count"</span>: <span class="b">12</span>, <span class="n">"shipment_count"</span>: <span class="b">8</span>, <span class="n">"active_shipments"</span>: <span class="b">2</span> }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/suppliers</span>
+        <span class="endpoint-summary">Add a new supplier</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a new supplier record. Supports bilingual names (English + Chinese).</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">name<span class="required">*</span></td><td class="param-type">string</td><td>Supplier name in English</td></tr>
+          <tr><td class="param-name">name_cn<span class="optional">opt</span></td><td class="param-type">string</td><td>Supplier name in Chinese (供应商中文名)</td></tr>
+          <tr><td class="param-name">platform<span class="optional">opt</span></td><td class="param-type">string</td><td>alibaba | 1688 | direct</td></tr>
+          <tr><td class="param-name">location<span class="optional">opt</span></td><td class="param-type">string</td><td>City/region (e.g. Guangzhou, Shenzhen)</td></tr>
+          <tr><td class="param-name">contact_name<span class="optional">opt</span></td><td class="param-type">string</td><td>Primary contact person</td></tr>
+          <tr><td class="param-name">contact_wechat<span class="optional">opt</span></td><td class="param-type">string</td><td>WeChat ID</td></tr>
+          <tr><td class="param-name">contact_email<span class="optional">opt</span></td><td class="param-type">string</td><td>Email address</td></tr>
+          <tr><td class="param-name">contact_phone<span class="optional">opt</span></td><td class="param-type">string</td><td>Phone number</td></tr>
+          <tr><td class="param-name">product_categories<span class="optional">opt</span></td><td class="param-type">array</td><td>List of product category strings</td></tr>
+          <tr><td class="param-name">rating<span class="optional">opt</span></td><td class="param-type">float</td><td>Internal quality score 0–5</td></tr>
+          <tr><td class="param-name">lead_time_days<span class="optional">opt</span></td><td class="param-type">integer</td><td>Typical lead time in days</td></tr>
+          <tr><td class="param-name">payment_terms<span class="optional">opt</span></td><td class="param-type">string</td><td>T/T, L/C, etc.</td></tr>
+          <tr><td class="param-name">moq_notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Minimum order quantity notes</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Internal notes</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/sourcing/suppliers/&lt;id&gt;</span>
+        <span class="endpoint-summary">Update supplier</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Updates any fields on a supplier record. Only provided fields are updated (partial update).</p>
+      </div>
+    </div>
+
+    <!-- RFQs -->
+    <div class="params-title" style="margin:20px 0 10px;font-size:13px;color:var(--accent)">RFQ Management</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/rfqs</span>
+        <span class="endpoint-summary">List RFQs</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns all RFQs with optional status and product filters. Ordered by most recent first.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">status</td><td class="param-type">string</td><td>draft | sent | quoted | awarded | closed</td></tr>
+          <tr><td class="param-name">product_id</td><td class="param-type">integer</td><td>Filter by product</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/rfqs/&lt;id&gt;</span>
+        <span class="endpoint-summary">Get RFQ detail with quotes</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns full RFQ detail including all supplier quotes enriched with contact info, plus linked product details (SKU, category, current price).</p>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"rfq_number"</span>: <span class="s">"RFQ-2026-0042"</span>, <span class="n">"status"</span>: <span class="s">"quoted"</span>, <span class="n">"product_sku"</span>: <span class="s">"CAM-6PAN"</span>, <span class="n">"current_unit_price"</span>: <span class="b">42.50</span>, <span class="n">"quotes"</span>: [{ <span class="n">"supplier_name"</span>: <span class="s">"GZ Kitchenware"</span>, <span class="n">"price"</span>: <span class="b">18.50</span>, <span class="n">"supplier_email"</span>: <span class="s">"sales@gzkw.cn"</span> }] }</div>
       </div>
     </div>
 
@@ -677,18 +783,42 @@
       <div class="endpoint-header" onclick="toggle(this)">
         <span class="method-tag tag-POST">POST</span>
         <span class="endpoint-path">/api/sourcing/rfqs</span>
-        <span class="endpoint-summary">Create a Request for Quote</span>
+        <span class="endpoint-summary">Create an RFQ</span>
         <span class="auth-badge">🔐 Staff</span>
         <span class="chevron">▶</span>
       </div>
       <div class="endpoint-body">
-        <p class="endpoint-desc">Sends an RFQ to one or more suppliers for specified products.</p>
+        <p class="endpoint-desc">Creates a new RFQ. Auto-assigns an RFQ number (RFQ-YYYY-NNNN). Status lifecycle: draft → sent → quoted → awarded → closed.</p>
         <div class="params-title">Request Body (JSON)</div>
         <table>
           <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-          <tr><td class="param-name">supplier_ids<span class="required">*</span></td><td class="param-type">array</td><td>List of supplier IDs to send RFQ to</td></tr>
-          <tr><td class="param-name">items<span class="required">*</span></td><td class="param-type">array</td><td>Products and quantities needed</td></tr>
-          <tr><td class="param-name">deadline<span class="optional">opt</span></td><td class="param-type">string</td><td>ISO date for quote deadline</td></tr>
+          <tr><td class="param-name">product_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Link to a catalog product</td></tr>
+          <tr><td class="param-name">description<span class="optional">opt</span></td><td class="param-type">string</td><td>Free-text product description (if no product_id)</td></tr>
+          <tr><td class="param-name">quantity<span class="optional">opt</span></td><td class="param-type">integer</td><td>Units needed</td></tr>
+          <tr><td class="param-name">target_unit_price<span class="optional">opt</span></td><td class="param-type">float</td><td>Target price per unit in USD</td></tr>
+          <tr><td class="param-name">status<span class="optional">opt</span></td><td class="param-type">string</td><td>Initial status (default: draft)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/sourcing/rfqs/&lt;id&gt;/quotes</span>
+        <span class="endpoint-summary">Add supplier quote to RFQ</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Appends a supplier quote to the RFQ's quotes array. Automatically advances status from <code>sent</code> to <code>quoted</code>.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">price<span class="required">*</span></td><td class="param-type">float</td><td>Unit price quoted by supplier</td></tr>
+          <tr><td class="param-name">supplier_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Supplier ID (auto-fills name)</td></tr>
+          <tr><td class="param-name">moq<span class="optional">opt</span></td><td class="param-type">integer</td><td>Minimum order quantity</td></tr>
+          <tr><td class="param-name">lead_time<span class="optional">opt</span></td><td class="param-type">string</td><td>Lead time (e.g. "30 days")</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Any supplier notes or conditions</td></tr>
         </table>
       </div>
     </div>
@@ -696,13 +826,281 @@
     <div class="endpoint">
       <div class="endpoint-header" onclick="toggle(this)">
         <span class="method-tag tag-POST">POST</span>
-        <span class="endpoint-path">/api/sourcing/orchestrate</span>
-        <span class="endpoint-summary">AI-powered sourcing orchestration</span>
+        <span class="endpoint-path">/api/sourcing/rfqs/&lt;id&gt;/award</span>
+        <span class="endpoint-summary">Award RFQ to a supplier</span>
         <span class="auth-badge">🔐 Staff</span>
         <span class="chevron">▶</span>
       </div>
       <div class="endpoint-body">
-        <p class="endpoint-desc">Uses AI to analyze inventory needs, identify best suppliers, and recommend optimal sourcing actions.</p>
+        <p class="endpoint-desc">Awards the RFQ to a specific supplier. Sets status to <code>awarded</code> and records the winning supplier ID.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">supplier_id<span class="required">*</span></td><td class="param-type">integer</td><td>Supplier to award the RFQ to</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/rfqs/&lt;id&gt;/compare</span>
+        <span class="endpoint-summary">AI quote comparison</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Uses GPT-4.1 to analyze all quotes on an RFQ and return a structured recommendation: best price, best value, risk flags, and a verdict for each supplier.</p>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"rfq_number"</span>: <span class="s">"RFQ-2026-0042"</span>, <span class="n">"quote_count"</span>: <span class="b">3</span>, <span class="n">"analysis"</span>: { <span class="n">"recommendation"</span>: <span class="s">"Award to GZ Kitchenware — lowest price and 30-day lead time."</span>, <span class="n">"best_price_supplier"</span>: <span class="s">"GZ Kitchenware"</span>, <span class="n">"risk_flags"</span>: [<span class="s">"Supplier B has no MOQ listed"</span>] } }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/draft-rfq-message</span>
+        <span class="endpoint-summary">AI bilingual RFQ message drafter</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Generates a professional RFQ outreach message in both English and Mandarin Chinese. Includes subject lines, full body text, and key negotiation points. Personalises the message if a <code>supplier_id</code> is provided.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">product_name<span class="required">*</span></td><td class="param-type">string</td><td>Product being requested</td></tr>
+          <tr><td class="param-name">quantity<span class="optional">opt</span></td><td class="param-type">integer</td><td>Quantity needed</td></tr>
+          <tr><td class="param-name">target_price<span class="optional">opt</span></td><td class="param-type">float</td><td>Target unit price in USD</td></tr>
+          <tr><td class="param-name">supplier_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Personalise message for this supplier</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Special requirements (certifications, packaging, etc.)</td></tr>
+          <tr><td class="param-name">tone<span class="optional">opt</span></td><td class="param-type">string</td><td>formal (default) | friendly</td></tr>
+        </table>
+        <div class="code-label">Example Response 200</div>
+        <div class="code-block">{ <span class="n">"message"</span>: { <span class="n">"subject_en"</span>: <span class="s">"RFQ: Cambro Food Storage Containers"</span>, <span class="n">"subject_cn"</span>: <span class="s">"询价：食品储存容器"</span>, <span class="n">"body_en"</span>: <span class="s">"Dear..."</span>, <span class="n">"body_cn"</span>: <span class="s">"尊敬的..."</span>, <span class="n">"key_points"</span>: [<span class="s">"Net 30 payment"</span>, <span class="s">"FOB Guangzhou"</span>] } }</div>
+      </div>
+    </div>
+
+    <!-- INVENTORY NEEDS -->
+    <div class="params-title" style="margin:20px 0 10px;font-size:13px;color:var(--accent)">Inventory Needs</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/inventory-needs</span>
+        <span class="endpoint-summary">Get low-stock products needing sourcing</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns products below the stock threshold with urgency ratings (critical / high / medium), open RFQ counts, active shipment counts, and last known supplier.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">threshold</td><td class="param-type">integer</td><td>Stock level threshold (default: 20)</td></tr>
+          <tr><td class="param-name">include_out_of_stock</td><td class="param-type">boolean</td><td>Include out-of-stock items (default: true)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- SHIPMENTS -->
+    <div class="params-title" style="margin:20px 0 10px;font-size:13px;color:var(--accent)">Shipment Tracking</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/shipments</span>
+        <span class="endpoint-summary">List shipments</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns all inbound shipments. Status lifecycle: production → qc → shipped → in_transit → customs → delivered.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">status</td><td class="param-type">string</td><td>Filter by status</td></tr>
+          <tr><td class="param-name">supplier_id</td><td class="param-type">integer</td><td>Filter by supplier</td></tr>
+          <tr><td class="param-name">active</td><td class="param-type">boolean</td><td>true = exclude delivered shipments</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/shipments</span>
+        <span class="endpoint-summary">Create a shipment</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a new inbound shipment record. Auto-assigns a shipment number (SHP-YYYY-NNNN). Initialises the timeline with a creation event.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">supplier_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Supplier sending the shipment</td></tr>
+          <tr><td class="param-name">rfq_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Linked RFQ</td></tr>
+          <tr><td class="param-name">tracking_number<span class="optional">opt</span></td><td class="param-type">string</td><td>Carrier tracking number</td></tr>
+          <tr><td class="param-name">carrier<span class="optional">opt</span></td><td class="param-type">string</td><td>Shipping carrier name</td></tr>
+          <tr><td class="param-name">origin<span class="optional">opt</span></td><td class="param-type">string</td><td>Origin port/city</td></tr>
+          <tr><td class="param-name">eta<span class="optional">opt</span></td><td class="param-type">string</td><td>ISO datetime estimated arrival</td></tr>
+          <tr><td class="param-name">items<span class="optional">opt</span></td><td class="param-type">array</td><td>Array of {product_id, product_name, quantity, unit_cost}</td></tr>
+          <tr><td class="param-name">total_cost<span class="optional">opt</span></td><td class="param-type">float</td><td>Total shipment cost</td></tr>
+          <tr><td class="param-name">currency<span class="optional">opt</span></td><td class="param-type">string</td><td>Currency code (default: USD)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/sourcing/shipments/&lt;id&gt;/status</span>
+        <span class="endpoint-summary">Update shipment status</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Updates the shipment status and appends a timestamped event to the timeline. Automatically sets <code>actual_arrival</code> when status is set to <code>delivered</code>.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">status<span class="optional">opt</span></td><td class="param-type">string</td><td>production | qc | shipped | in_transit | customs | delivered</td></tr>
+          <tr><td class="param-name">event<span class="optional">opt</span></td><td class="param-type">string</td><td>Human-readable event description for timeline</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Additional notes for this event</td></tr>
+          <tr><td class="param-name">location<span class="optional">opt</span></td><td class="param-type">string</td><td>Current location (e.g. "Port of Long Beach")</td></tr>
+          <tr><td class="param-name">tracking_number<span class="optional">opt</span></td><td class="param-type">string</td><td>Update tracking number</td></tr>
+          <tr><td class="param-name">eta<span class="optional">opt</span></td><td class="param-type">string</td><td>Update estimated arrival (ISO datetime)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- QC -->
+    <div class="params-title" style="margin:20px 0 10px;font-size:13px;color:var(--accent)">QC Inspections</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/qc/inspections</span>
+        <span class="endpoint-summary">Create QC inspection</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Creates a quality control inspection record. Auto-assigns an inspection number (QC-YYYY-NNNN). Initial status is <code>pending</code>.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">shipment_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Linked shipment</td></tr>
+          <tr><td class="param-name">supplier_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Supplier being inspected</td></tr>
+          <tr><td class="param-name">product_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Product being inspected</td></tr>
+          <tr><td class="param-name">product_name<span class="optional">opt</span></td><td class="param-type">string</td><td>Product name (if no product_id)</td></tr>
+          <tr><td class="param-name">quantity_inspected<span class="optional">opt</span></td><td class="param-type">integer</td><td>Number of units inspected</td></tr>
+          <tr><td class="param-name">inspector_name<span class="optional">opt</span></td><td class="param-type">string</td><td>Name of inspector</td></tr>
+          <tr><td class="param-name">inspection_date<span class="optional">opt</span></td><td class="param-type">string</td><td>ISO datetime of inspection</td></tr>
+          <tr><td class="param-name">checklist<span class="optional">opt</span></td><td class="param-type">array</td><td>Array of {item, passed, notes}</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>General inspection notes</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-PUT">PUT</span>
+        <span class="endpoint-path">/api/sourcing/qc/inspections/&lt;id&gt;</span>
+        <span class="endpoint-summary">Update QC inspection with results</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Updates a QC inspection with results. Setting a <code>result</code> automatically advances status to <code>complete</code>.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">result<span class="optional">opt</span></td><td class="param-type">string</td><td>pass | fail | conditional</td></tr>
+          <tr><td class="param-name">quantity_passed<span class="optional">opt</span></td><td class="param-type">integer</td><td>Units that passed inspection</td></tr>
+          <tr><td class="param-name">quantity_failed<span class="optional">opt</span></td><td class="param-type">integer</td><td>Units that failed inspection</td></tr>
+          <tr><td class="param-name">defects_found<span class="optional">opt</span></td><td class="param-type">string</td><td>Description of defects</td></tr>
+          <tr><td class="param-name">photos<span class="optional">opt</span></td><td class="param-type">array</td><td>List of photo URLs</td></tr>
+          <tr><td class="param-name">checklist<span class="optional">opt</span></td><td class="param-type">array</td><td>Updated checklist results</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Final inspection notes</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="params-title" style="margin:20px 0 10px;font-size:13px;color:var(--accent)">Supplier Payments</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/payments</span>
+        <span class="endpoint-summary">Record a supplier payment</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Records a payment sent to a supplier. Auto-assigns a payment number (PAY-YYYY-NNNN). Supports wire transfers, PayPal, Alipay, and other methods.</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">supplier_id<span class="required">*</span></td><td class="param-type">integer</td><td>Supplier being paid</td></tr>
+          <tr><td class="param-name">amount<span class="required">*</span></td><td class="param-type">float</td><td>Payment amount</td></tr>
+          <tr><td class="param-name">shipment_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Link to a shipment</td></tr>
+          <tr><td class="param-name">rfq_id<span class="optional">opt</span></td><td class="param-type">integer</td><td>Link to an RFQ</td></tr>
+          <tr><td class="param-name">currency<span class="optional">opt</span></td><td class="param-type">string</td><td>Currency code (default: USD)</td></tr>
+          <tr><td class="param-name">payment_method<span class="optional">opt</span></td><td class="param-type">string</td><td>wire | paypal | alipay | check | other</td></tr>
+          <tr><td class="param-name">reference_number<span class="optional">opt</span></td><td class="param-type">string</td><td>Bank reference or transaction ID</td></tr>
+          <tr><td class="param-name">payment_date<span class="optional">opt</span></td><td class="param-type">string</td><td>ISO datetime (defaults to now)</td></tr>
+          <tr><td class="param-name">status<span class="optional">opt</span></td><td class="param-type">string</td><td>pending | sent | confirmed | failed (default: sent)</td></tr>
+          <tr><td class="param-name">notes<span class="optional">opt</span></td><td class="param-type">string</td><td>Payment notes</td></tr>
+        </table>
+        <div class="code-label">Example Response 201</div>
+        <div class="code-block">{ <span class="n">"payment_number"</span>: <span class="s">"PAY-2026-0001"</span>, <span class="n">"supplier_name"</span>: <span class="s">"GZ Kitchenware"</span>, <span class="n">"amount"</span>: <span class="b">18500.00</span>, <span class="n">"status"</span>: <span class="s">"sent"</span> }</div>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-GET">GET</span>
+        <span class="endpoint-path">/api/sourcing/payments</span>
+        <span class="endpoint-summary">List supplier payments</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Returns paginated list of supplier payments with optional filters. Also returns <code>total_amount_usd</code> for the filtered result set.</p>
+        <div class="params-title">Query Parameters</div>
+        <table>
+          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">supplier_id</td><td class="param-type">integer</td><td>Filter by supplier</td></tr>
+          <tr><td class="param-name">shipment_id</td><td class="param-type">integer</td><td>Filter by shipment</td></tr>
+          <tr><td class="param-name">rfq_id</td><td class="param-type">integer</td><td>Filter by RFQ</td></tr>
+          <tr><td class="param-name">status</td><td class="param-type">string</td><td>pending | sent | confirmed | failed</td></tr>
+          <tr><td class="param-name">page</td><td class="param-type">integer</td><td>Page number (default: 1)</td></tr>
+          <tr><td class="param-name">per_page</td><td class="param-type">integer</td><td>Results per page (default: 50)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ORCHESTRATOR -->
+    <div class="params-title" style="margin:20px 0 10px;font-size:13px;color:var(--accent)">AI Orchestration</div>
+
+    <div class="endpoint">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-tag tag-POST">POST</span>
+        <span class="endpoint-path">/api/sourcing/orchestrate</span>
+        <span class="endpoint-summary">AI sourcing orchestration</span>
+        <span class="auth-badge">🔐 Staff</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <p class="endpoint-desc">Uses GPT-4.1 to analyze current inventory needs and active suppliers, then generates a complete sub-agent configuration for the sourcing workflow (supplier discovery, RFQ management, QC coordination, shipment tracking, bilingual comms).</p>
+        <div class="params-title">Request Body (JSON)</div>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">requirement<span class="required">*</span></td><td class="param-type">string</td><td>Natural language sourcing need (e.g. "We need 50,000 vinyl gloves under $0.05/unit")</td></tr>
+        </table>
       </div>
     </div>
   </div>
