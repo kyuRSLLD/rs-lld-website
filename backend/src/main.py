@@ -29,7 +29,7 @@ from src.routes.customer_admin import customer_admin_bp
 from src.routes.voice_api import voice_api_bp
 from src.routes.sourcing import sourcing_bp
 from src.models.api_key import APIKey
-from src.models.sourcing import Supplier, RFQ, RFQQuote, Shipment, ShipmentEvent, QCInspection
+from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection
 from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
