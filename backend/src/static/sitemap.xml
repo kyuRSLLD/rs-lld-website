@@ -42,4 +42,20 @@
     <priority>0.5</priority>
   </url>
 
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://lldrestaurantsupply.com/privacy-policy</loc>
+    <lastmod>2026-03-22</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Terms and Conditions -->
+  <url>
+    <loc>https://lldrestaurantsupply.com/terms</loc>
+    <lastmod>2026-03-22</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
 </urlset>

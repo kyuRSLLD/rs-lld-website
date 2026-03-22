@@ -240,6 +240,22 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="py-8 bg-gray-900 text-gray-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-sm">
+              &copy; {new Date().getFullYear()} LLD Restaurant Supply. All rights reserved.
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
+              <Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

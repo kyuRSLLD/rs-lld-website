@@ -16,6 +16,8 @@ import CheckoutPage from './components/CheckoutPage'
 import OrderTrackingPage from './components/OrderTrackingPage'
 import StaffPortal from './components/StaffPortal'
 import SaveMeMoneyPage from './components/SaveMeMoneyPage'
+import PrivacyPolicyPage from './components/PrivacyPolicyPage'
+import TermsPage from './components/TermsPage'
 import './App.css'
 
 function App() {
@@ -100,6 +102,8 @@ function App() {
                 <Route path="/track" element={<OrderTrackingPage user={user} />} />
                 <Route path="/track/:orderNumber" element={<OrderTrackingPage user={user} />} />
                 <Route path="/save-me-money" element={<SaveMeMoneyPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
               </Route>
             </Routes>
           </div>
