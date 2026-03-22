@@ -92,6 +92,10 @@ def upload_image_temp():
 def admin_get_products():
     category_id = request.args.get('category_id', type=int)
     search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 200)  # cap at 200 to prevent abuse
+
     query = Product.query
     if category_id:
         query = query.filter(Product.category_id == category_id)
@@ -103,8 +107,18 @@ def admin_get_products():
                 Product.brand.ilike(f'%{search}%')
             )
         )
-    products = query_with_images(query).order_by(Product.category_id, Product.name).all()
-    return jsonify([p.to_dict() for p in products])
+    # Use list_dict() — strips full base64 image blobs, replaces with thumbnail URL.
+    # This reduces a 100-product response from ~100 MB to ~100 KB.
+    paginated = query_with_images(query).order_by(Product.category_id, Product.name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    return jsonify({
+        'products': [p.list_dict() for p in paginated.items],
+        'total': paginated.total,
+        'pages': paginated.pages,
+        'current_page': page,
+        'per_page': per_page,
+    })
 
 
 # ─── GET all categories ───────────────────────────────────────────────────────

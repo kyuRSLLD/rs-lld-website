@@ -1380,16 +1380,29 @@ const StaffPortal = () => {
     } catch {}
   }, [])
 
-  const fetchProducts = useCallback(async () => {
+  const [productPage, setProductPage] = useState(1)
+  const [productTotalPages, setProductTotalPages] = useState(1)
+  const [productTotal, setProductTotal] = useState(0)
+  const PRODUCTS_PER_PAGE = 50
+
+  const fetchProducts = useCallback(async (page = 1) => {
     try {
-      let url = `${API_BASE}/api/staff/products`
-      const params = []
+      const params = [`page=${page}`, `per_page=${PRODUCTS_PER_PAGE}`]
       if (productSearch) params.push(`search=${encodeURIComponent(productSearch)}`)
       if (productCategoryFilter) params.push(`category_id=${productCategoryFilter}`)
-      if (params.length) url += '?' + params.join('&')
+      const url = `${API_BASE}/api/staff/products?${params.join('&')}`
       const res = await staffFetch(url)
       const data = await res.json()
-      setProducts(Array.isArray(data) ? data : [])
+      // Handle paginated {products:[]} response
+      if (data && data.products) {
+        setProducts(data.products)
+        setProductTotalPages(data.pages || 1)
+        setProductTotal(data.total || 0)
+        setProductPage(page)
+      } else {
+        // Fallback for legacy array response
+        setProducts(Array.isArray(data) ? data : [])
+      }
     } catch {}
   }, [productSearch, productCategoryFilter])
 
@@ -2241,7 +2254,49 @@ const StaffPortal = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-stone-400 mt-2">{products.length} {lang === 'zh' ? '个产品。点击列标题排序。直接编辑库存数量后点击《更新库存》，或点击 ✏️ 编辑产品详情后点击《保存所有更改》。' : 'products shown. Click column headers to sort. Edit stock quantities inline and click "Update Inventory", or click ✏️ to edit product details and click "Save All Changes".'}</p>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-stone-400">
+                {lang === 'zh'
+                  ? `显示 ${products.length} / ${productTotal} 个产品（第 ${productPage} / ${productTotalPages} 页）`
+                  : `Showing ${products.length} of ${productTotal} products (page ${productPage} of ${productTotalPages})`}
+              </p>
+              {productTotalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => fetchProducts(1)}
+                    disabled={productPage === 1}
+                    className="px-2 py-1 text-xs border border-stone-200 rounded hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >«</button>
+                  <button
+                    onClick={() => fetchProducts(productPage - 1)}
+                    disabled={productPage === 1}
+                    className="px-2 py-1 text-xs border border-stone-200 rounded hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >{lang === 'zh' ? '上一页' : 'Prev'}</button>
+                  {Array.from({ length: Math.min(productTotalPages, 7) }, (_, i) => {
+                    const p = productTotalPages <= 7 ? i + 1
+                      : productPage <= 4 ? i + 1
+                      : productPage >= productTotalPages - 3 ? productTotalPages - 6 + i
+                      : productPage - 3 + i
+                    return (
+                      <button key={p} onClick={() => fetchProducts(p)}
+                        className={`px-2 py-1 text-xs border rounded ${
+                          p === productPage ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 hover:bg-stone-50'
+                        }`}>{p}</button>
+                    )
+                  })}
+                  <button
+                    onClick={() => fetchProducts(productPage + 1)}
+                    disabled={productPage === productTotalPages}
+                    className="px-2 py-1 text-xs border border-stone-200 rounded hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >{lang === 'zh' ? '下一页' : 'Next'}</button>
+                  <button
+                    onClick={() => fetchProducts(productTotalPages)}
+                    disabled={productPage === productTotalPages}
+                    className="px-2 py-1 text-xs border border-stone-200 rounded hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >»</button>
+                </div>
+              )}
+            </div>
 
             {showAddProduct && (
               <AddProductForm
