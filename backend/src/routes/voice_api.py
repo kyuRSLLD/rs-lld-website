@@ -79,6 +79,24 @@ def _find_user_by_phone(phone: str):
     return None
 
 
+# ── TEMP: DB stats for debugging customer lookup ─────────────────────────────
+
+@voice_api_bp.route('/voice/db_stats', methods=['GET'])
+def voice_db_stats():
+    """Temporary diagnostic: count users and phone numbers in DB."""
+    if not _check_secret():
+        return _auth_error()
+    total_users = User.query.count()
+    users_with_phone = User.query.filter(User.phone.isnot(None)).count()
+    sample = User.query.filter(User.phone.isnot(None)).limit(5).all()
+    return jsonify({
+        'total_users': total_users,
+        'users_with_phone': users_with_phone,
+        'sample_phones': [u.phone for u in sample],
+        'sample_usernames': [u.username for u in sample],
+    })
+
+
 # ── 1. get_customer ───────────────────────────────────────────────────────────
 
 @voice_api_bp.route('/voice/get_customer', methods=['POST'])
