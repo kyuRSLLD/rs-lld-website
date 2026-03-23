@@ -1311,7 +1311,8 @@ const StaffPortal = () => {
   const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false)
   const [expandedCustomer, setExpandedCustomer] = useState(null) // customer id for address expansion
   const [showAddCustomer, setShowAddCustomer] = useState(false)
-  const [addCustomerForm, setAddCustomerForm] = useState({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_address: '', billing_address: '' })
+  const [addCustomerForm, setAddCustomerForm] = useState({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_street: '', shipping_city: '', shipping_zip: '', billing_street: '', billing_city: '', billing_zip: '' })
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(false)
   const [addCustomerLoading, setAddCustomerLoading] = useState(false)
   const [addCustomerError, setAddCustomerError] = useState(null)
 
@@ -1504,10 +1505,23 @@ const StaffPortal = () => {
     setAddCustomerLoading(true)
     setAddCustomerError(null)
     try {
+      const shippingAddr = [addCustomerForm.shipping_street, addCustomerForm.shipping_city, addCustomerForm.shipping_zip].filter(Boolean).join(', ')
+      const billingAddr = billingSameAsShipping
+        ? shippingAddr
+        : [addCustomerForm.billing_street, addCustomerForm.billing_city, addCustomerForm.billing_zip].filter(Boolean).join(', ')
+      const payload = {
+        first_name: addCustomerForm.first_name,
+        last_name: addCustomerForm.last_name,
+        company_name: addCustomerForm.company_name,
+        email: addCustomerForm.email,
+        phone: addCustomerForm.phone,
+        shipping_address: shippingAddr,
+        billing_address: billingAddr,
+      }
       const res = await staffFetch('/api/staff/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addCustomerForm),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -1515,7 +1529,8 @@ const StaffPortal = () => {
         return
       }
       setShowAddCustomer(false)
-      setAddCustomerForm({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_address: '', billing_address: '' })
+      setAddCustomerForm({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_street: '', shipping_city: '', shipping_zip: '', billing_street: '', billing_city: '', billing_zip: '' })
+      setBillingSameAsShipping(false)
       setCustomerMessage({ type: 'success', text: `✅ ${t.customers.addSuccess}` })
       fetchCustomers()
     } catch (e) {
@@ -2180,25 +2195,78 @@ const StaffPortal = () => {
                     maxLength={13}
                   />
                 </div>
+                {/* ── SHIPPING ADDRESS ── */}
                 <div>
-                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.shippingAddressLabel}</label>
-                  <input
-                    type="text"
-                    value={addCustomerForm.shipping_address}
-                    onChange={e => setAddCustomerForm(f => ({ ...f, shipping_address: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                    placeholder="123 Main St, Chicago IL 60601"
-                  />
+                  <label className="block text-xs font-semibold text-stone-600 mb-2">{t.customers.shippingAddressLabel}</label>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={addCustomerForm.shipping_street}
+                      onChange={e => setAddCustomerForm(f => ({ ...f, shipping_street: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                      placeholder={t.customers.streetAddress}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={addCustomerForm.shipping_city}
+                        onChange={e => setAddCustomerForm(f => ({ ...f, shipping_city: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                        placeholder={t.customers.city}
+                      />
+                      <input
+                        type="text"
+                        value={addCustomerForm.shipping_zip}
+                        onChange={e => setAddCustomerForm(f => ({ ...f, shipping_zip: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                        placeholder={t.customers.zipCode}
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
                 </div>
+                {/* ── BILLING ADDRESS ── */}
                 <div>
-                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.billingAddressLabel}</label>
-                  <input
-                    type="text"
-                    value={addCustomerForm.billing_address}
-                    onChange={e => setAddCustomerForm(f => ({ ...f, billing_address: e.target.value }))}
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                    placeholder="123 Main St, Chicago IL 60601"
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-semibold text-stone-600">{t.customers.billingAddressLabel}</label>
+                    <label className="flex items-center gap-1.5 text-xs text-stone-500 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={billingSameAsShipping}
+                        onChange={e => setBillingSameAsShipping(e.target.checked)}
+                        className="w-3.5 h-3.5 accent-stone-700 cursor-pointer"
+                      />
+                      {t.customers.sameAsShipping}
+                    </label>
+                  </div>
+                  {!billingSameAsShipping && (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={addCustomerForm.billing_street}
+                        onChange={e => setAddCustomerForm(f => ({ ...f, billing_street: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                        placeholder={t.customers.streetAddress}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={addCustomerForm.billing_city}
+                          onChange={e => setAddCustomerForm(f => ({ ...f, billing_city: e.target.value }))}
+                          className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                          placeholder={t.customers.city}
+                        />
+                        <input
+                          type="text"
+                          value={addCustomerForm.billing_zip}
+                          onChange={e => setAddCustomerForm(f => ({ ...f, billing_zip: e.target.value }))}
+                          className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                          placeholder={t.customers.zipCode}
+                          maxLength={10}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button
