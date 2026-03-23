@@ -2166,9 +2166,18 @@ const StaffPortal = () => {
                   <input
                     type="tel"
                     value={addCustomerForm.phone}
-                    onChange={e => setAddCustomerForm(f => ({ ...f, phone: e.target.value }))}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      let formatted = ''
+                      if (digits.length === 0) formatted = ''
+                      else if (digits.length <= 3) formatted = `(${digits}`
+                      else if (digits.length <= 6) formatted = `(${digits.slice(0,3)})${digits.slice(3)}`
+                      else formatted = `(${digits.slice(0,3)})${digits.slice(3,6)}-${digits.slice(6)}`
+                      setAddCustomerForm(f => ({ ...f, phone: formatted }))
+                    }}
                     className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
                     placeholder="(555)123-4567"
+                    maxLength={13}
                   />
                 </div>
                 <div>
