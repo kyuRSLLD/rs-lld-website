@@ -256,6 +256,65 @@ def import_customers_csv():
     })
 
 
+# ─── Create a single customer manually ──────────────────────────────────────────
+
+@customer_admin_bp.route('/staff/customers', methods=['POST'])
+@staff_required
+def create_customer():
+    """
+    Manually create a single customer account from the Staff Portal.
+
+    Required body fields: first_name OR company_name, email
+    Optional: last_name, phone, shipping_address, billing_address
+    """
+    data = request.json or {}
+
+    email = (data.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': f'A customer with email "{email}" already exists'}), 409
+
+    first   = (data.get('first_name') or '').strip()
+    last    = (data.get('last_name')  or '').strip()
+    company = (data.get('company_name') or '').strip() or None
+    raw_phone = (data.get('phone') or '').strip()
+    phone   = _format_phone(raw_phone) or (raw_phone or None)
+    shipping = (data.get('shipping_address') or '').strip() or None
+    billing  = (data.get('billing_address')  or '').strip() or None
+
+    if not first and not company:
+        return jsonify({'error': 'First name or company name is required'}), 400
+
+    import secrets
+    username     = _split_username(first, last, email)
+    temp_password = secrets.token_urlsafe(12)
+
+    user = User(
+        username=username,
+        email=email,
+        company_name=company,
+        phone=phone,
+        shipping_address=shipping,
+        billing_address=billing,
+        is_active=True,
+        created_at=datetime.utcnow(),
+    )
+    user.set_password(temp_password)
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'company_name': user.company_name,
+        'phone': user.phone,
+    }), 201
+
+
 # ─── Delete a single customer ─────────────────────────────────────────────────
 
 @customer_admin_bp.route('/staff/customers/<int:user_id>', methods=['DELETE'])

@@ -1310,6 +1310,10 @@ const StaffPortal = () => {
   const [customerOrdersView, setCustomerOrdersView] = useState(null) // { name, orders }
   const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false)
   const [expandedCustomer, setExpandedCustomer] = useState(null) // customer id for address expansion
+  const [showAddCustomer, setShowAddCustomer] = useState(false)
+  const [addCustomerForm, setAddCustomerForm] = useState({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_address: '', billing_address: '' })
+  const [addCustomerLoading, setAddCustomerLoading] = useState(false)
+  const [addCustomerError, setAddCustomerError] = useState(null)
 
   const t = staffPortalTranslations[lang]
 
@@ -1492,6 +1496,32 @@ const StaffPortal = () => {
       fetchStats()
     } catch (e) {
       alert('Failed to delete customer: ' + e.message)
+    }
+  }
+
+  const handleAddCustomer = async (e) => {
+    e.preventDefault()
+    setAddCustomerLoading(true)
+    setAddCustomerError(null)
+    try {
+      const res = await staffFetch('/api/staff/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addCustomerForm),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAddCustomerError(data.error || t.customers.addError)
+        return
+      }
+      setShowAddCustomer(false)
+      setAddCustomerForm({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_address: '', billing_address: '' })
+      setCustomerMessage({ type: 'success', text: `✅ ${t.customers.addSuccess}` })
+      fetchCustomers()
+    } catch (e) {
+      setAddCustomerError(t.customers.addError)
+    } finally {
+      setAddCustomerLoading(false)
     }
   }
 
@@ -1991,6 +2021,10 @@ const StaffPortal = () => {
                     {customerImporting ? t.customers.importing : t.customers.importCsv}
                     <input type="file" accept=".csv" className="hidden" onChange={handleCustomerImport} disabled={customerImporting} />
                   </label>
+                  {/* Add Customer */}
+                  <button onClick={() => { setShowAddCustomer(true); setAddCustomerError(null) }} className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium">
+                    <Plus className="w-4 h-4" /> {t.customers.addCustomer}
+                  </button>
                 </div>
               </div>
               {/* Import result message */}
@@ -2069,6 +2103,112 @@ const StaffPortal = () => {
             )}
             </div>
             )}
+          </div>
+        )}
+
+        {/* ── ADD CUSTOMER MODAL ── */}
+        {showAddCustomer && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+                <h3 className="text-lg font-bold text-stone-900">{t.customers.addCustomerTitle}</h3>
+                <button onClick={() => setShowAddCustomer(false)} className="text-stone-400 hover:text-stone-600 text-xl font-bold">&times;</button>
+              </div>
+              <form onSubmit={handleAddCustomer} className="px-6 py-5 space-y-4">
+                {addCustomerError && (
+                  <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{addCustomerError}</div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.firstName}</label>
+                    <input
+                      type="text"
+                      value={addCustomerForm.first_name}
+                      onChange={e => setAddCustomerForm(f => ({ ...f, first_name: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                      placeholder={t.customers.firstName}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.lastName}</label>
+                    <input
+                      type="text"
+                      value={addCustomerForm.last_name}
+                      onChange={e => setAddCustomerForm(f => ({ ...f, last_name: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                      placeholder={t.customers.lastName}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.companyName}</label>
+                  <input
+                    type="text"
+                    value={addCustomerForm.company_name}
+                    onChange={e => setAddCustomerForm(f => ({ ...f, company_name: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder={t.customers.companyName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.emailRequired}</label>
+                  <input
+                    type="email"
+                    required
+                    value={addCustomerForm.email}
+                    onChange={e => setAddCustomerForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder="customer@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.phoneNumber}</label>
+                  <input
+                    type="tel"
+                    value={addCustomerForm.phone}
+                    onChange={e => setAddCustomerForm(f => ({ ...f, phone: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder="(555)123-4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.shippingAddressLabel}</label>
+                  <input
+                    type="text"
+                    value={addCustomerForm.shipping_address}
+                    onChange={e => setAddCustomerForm(f => ({ ...f, shipping_address: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder="123 Main St, Chicago IL 60601"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.billingAddressLabel}</label>
+                  <input
+                    type="text"
+                    value={addCustomerForm.billing_address}
+                    onChange={e => setAddCustomerForm(f => ({ ...f, billing_address: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder="123 Main St, Chicago IL 60601"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={addCustomerLoading}
+                    className="flex-1 bg-stone-900 hover:bg-stone-700 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {addCustomerLoading ? <><RefreshCw className="w-4 h-4 animate-spin" /> {t.customers.adding}</> : <><Plus className="w-4 h-4" /> {t.customers.addCustomer}</>}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCustomer(false)}
+                    className="px-5 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
+                  >
+                    {t.common.close}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
