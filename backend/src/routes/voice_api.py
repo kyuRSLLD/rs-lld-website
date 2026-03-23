@@ -56,10 +56,16 @@ def _auth_error():
 # ── Phone normalisation ───────────────────────────────────────────────────────
 
 def _normalize_phone(phone: str) -> str:
-    """Strip everything except digits. E.164 +17735551234 → 17735551234."""
+    """Strip everything except digits, then remove a leading US country code '1'
+    so that +17735551234, 17735551234, (773)555-1234, and 7735551234 all
+    normalise to the same 10-digit string 7735551234."""
     if not phone:
         return ''
-    return re.sub(r'\D', '', phone)
+    digits = re.sub(r'\D', '', phone)
+    # Strip leading US country code so E.164 (+1xxxxxxxxxx) matches stored 10-digit numbers
+    if len(digits) == 11 and digits[0] == '1':
+        digits = digits[1:]
+    return digits
 
 
 def _find_user_by_phone(phone: str):
