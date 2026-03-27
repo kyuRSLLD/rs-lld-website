@@ -26,6 +26,7 @@ We strip all non-digit characters for comparison so stored numbers like
 
 import os
 import re
+import threading
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from src.models.user import db, User
@@ -152,6 +153,31 @@ def get_customer():
         .all()
     )
 
+    # Sync customer profile to staff portal (background, non-blocking)
+    try:
+        from src.utils.staff_portal_sync import upsert_customer_profile, upsert_restaurant
+        def _sync_to_staff_portal():
+            try:
+                upsert_customer_profile(
+                    phone=user.phone or phone,
+                    name=user.username,
+                    email=user.email,
+                    payment_terms=user.payment_terms or 'credit_card',
+                    approved_for_terms=bool(user.approved_for_terms),
+                    source='web',
+                )
+                if user.company_name:
+                    upsert_restaurant(
+                        phone=user.phone or phone,
+                        name=user.company_name,
+                        address=user.shipping_address or '',
+                    )
+            except Exception as e:
+                print(f'[VoiceAPI] Staff portal sync failed: {e}')
+        threading.Thread(target=_sync_to_staff_portal, daemon=True).start()
+    except Exception:
+        pass
+
     return jsonify({
         'success': True,
         'found': True,
@@ -161,6 +187,8 @@ def get_customer():
             'company': user.company_name,
             'email': user.email,
             'phone': user.phone,
+            'payment_terms': user.payment_terms,
+            'approved_for_terms': bool(user.approved_for_terms),
             'recent_orders': [
                 {
                     'order_number': o.order_number,
@@ -493,6 +521,67 @@ def place_order():
         notify_voice_order(order)
     except Exception as _n8n_err:
         print(f"[N8N] Voice order webhook failed: {_n8n_err}")
+
+    # Sync customer profile + order to staff portal (background, non-blocking)
+    try:
+        from src.utils.staff_portal_sync import (
+            upsert_customer_profile, upsert_restaurant, sync_order_to_staff_portal
+        )
+        def _sync_order_to_staff():
+            try:
+                # 1. Upsert customer
+                cust_name = d_name if d_name != 'Guest Caller' else None
+                customer_id = upsert_customer_profile(
+                    phone=phone,
+                    name=cust_name,
+                    email=user.email if user else None,
+                    payment_terms=payment_method if payment_method in ('net30', 'credit_card', 'check') else 'credit_card',
+                    approved_for_terms=bool(user and getattr(user, 'approved_for_terms', False)),
+                    source='phone',
+                )
+                # 2. Upsert restaurant if company info available
+                restaurant_id = None
+                if d_company:
+                    addr_full = ', '.join(p for p in [d_address, d_city, d_state, d_zip] if p)
+                    restaurant_id = upsert_restaurant(
+                        phone=phone,
+                        name=d_company,
+                        address=d_address,
+                        city=d_city,
+                        state=d_state,
+                        zip_code=d_zip,
+                    )
+                # 3. Sync order
+                addr_full = ', '.join(p for p in [d_address, d_city, d_state, d_zip] if p)
+                sync_order_to_staff_portal(
+                    order_number=order_number,
+                    phone=phone,
+                    customer_id=customer_id,
+                    restaurant_id=restaurant_id,
+                    source_channel='phone',
+                    status='pending',
+                    payment_method=payment_method if payment_method in ('net30', 'credit_card', 'check') else 'credit_card',
+                    payment_status='pending',
+                    subtotal=round(subtotal, 2),
+                    total=total,
+                    delivery_address=addr_full or None,
+                    notes=special_notes or None,
+                    items=[
+                        {
+                            'product_name': item_data['product'].name,
+                            'product_sku': item_data['product'].sku,
+                            'quantity': item_data['qty'],
+                            'unit_price': item_data['unit_price'],
+                            'total_price': item_data['line_total'],
+                        }
+                        for item_data in order_items_data
+                    ],
+                )
+            except Exception as e:
+                print(f'[VoiceAPI] Staff portal order sync failed: {e}')
+        threading.Thread(target=_sync_order_to_staff, daemon=True).start()
+    except Exception:
+        pass
 
     caller_name = d_name if is_guest else user.username
 

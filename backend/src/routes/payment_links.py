@@ -458,6 +458,55 @@ def voice_webhook_call_complete():
     thread = threading.Thread(target=_save_log, daemon=True)
     thread.start()
 
+    # ── Sync customer profile to staff portal ────────────────────────────────
+    # Extract delivery info from tool calls for profile building
+    if caller_phone:
+        try:
+            from src.utils.staff_portal_sync import sync_voice_call_customer
+            # Try to extract delivery info from place_order tool calls
+            d_name = None
+            d_company = None
+            d_address = None
+            d_city = None
+            d_state = None
+            d_zip = None
+            for tc in (tool_calls or []):
+                if tc.get('tool_name') == 'place_order':
+                    tc_input = tc.get('input', {}) or tc.get('params', {})
+                    d_name = tc_input.get('delivery_name')
+                    d_company = tc_input.get('delivery_company')
+                    d_address = tc_input.get('delivery_address')
+                    d_city = tc_input.get('delivery_city')
+                    d_state = tc_input.get('delivery_state')
+                    d_zip = tc_input.get('delivery_zip')
+                    break
+            # Also try get_customer tool call for existing customer data
+            for tc in (tool_calls or []):
+                if tc.get('tool_name') == 'get_customer':
+                    tc_output = tc.get('output', {}) or tc.get('result', {})
+                    if isinstance(tc_output, dict):
+                        cust = tc_output.get('customer', {})
+                        if not d_name and cust.get('name'):
+                            d_name = cust.get('name')
+                        if not d_company and cust.get('company'):
+                            d_company = cust.get('company')
+                    break
+
+            sync_voice_call_customer(
+                phone=caller_phone,
+                transcript_text=transcript_text[:500] if transcript_text else None,
+                order_placed=order_placed,
+                order_number=order_number,
+                delivery_name=d_name,
+                delivery_company=d_company,
+                delivery_address=d_address,
+                delivery_city=d_city,
+                delivery_state=d_state,
+                delivery_zip=d_zip,
+            )
+        except Exception as e:
+            print(f'[webhook] Staff portal customer sync failed: {e}')
+
     return jsonify({'success': True}), 200
 
 
