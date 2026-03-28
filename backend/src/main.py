@@ -146,6 +146,12 @@ with app.app_context():
     _add_column_if_missing('call_log', 'payment_method', 'VARCHAR(50)')
     # vapi_call_id: make nullable (was NOT NULL unique, now optional)
     # product_image table: created by db.create_all() above (new table, no ALTER needed)
+    # ── User profile / auth columns added 2026-03 ─────────────────────────────
+    _add_column_if_missing('user', 'first_name', 'VARCHAR(100)')
+    _add_column_if_missing('user', 'last_name', 'VARCHAR(100)')
+    _add_column_if_missing('user', 'email_verified', 'BOOLEAN DEFAULT FALSE')
+    _add_column_if_missing('user', 'verification_token', 'VARCHAR(200)')
+    _add_column_if_missing('user', 'verification_token_expires', 'TIMESTAMP')
     # ─────────────────────────────────────────────────────────────────────────
 
     # Seed categories
