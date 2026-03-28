@@ -36,7 +36,7 @@ from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection, SupplierP
 from src.models.supplier_bill import SupplierBill
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'REDACTED_SECRET_KEY')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '')
 # Cookie settings — SameSite=None + Secure=True required for cross-origin requests
 # (Bluehost frontend calling Railway backend)
 _on_railway = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
@@ -213,38 +213,49 @@ with app.app_context():
             db.session.add(p)
         db.session.commit()
 
-    # Seed default staff accounts
+    # Seed default staff accounts — passwords read from Railway env vars (never hardcoded)
     if StaffUser.query.count() == 0:
-        admin = StaffUser(username='admin', email='admin@rslld.com', full_name='RS LLD Admin', role='admin')
-        admin.set_password('REDACTED_ADMIN_PW')
-        staff = StaffUser(username='staff', email='staff@rslld.com', full_name='RS LLD Staff', role='staff')
-        staff.set_password('REDACTED_STAFF_PW')
-        db.session.add(admin)
-        db.session.add(staff)
-        db.session.commit()
+        admin_pw = os.environ.get('SEED_ADMIN_PASSWORD', '')
+        staff_pw = os.environ.get('SEED_STAFF_PASSWORD', '')
+        if admin_pw:
+            admin = StaffUser(username='admin', email='admin@rslld.com', full_name='RS LLD Admin', role='admin')
+            admin.set_password(admin_pw)
+            db.session.add(admin)
+        if staff_pw:
+            staff = StaffUser(username='staff', email='staff@rslld.com', full_name='RS LLD Staff', role='staff')
+            staff.set_password(staff_pw)
+            db.session.add(staff)
+        if admin_pw or staff_pw:
+            db.session.commit()
 
-    # Seed a demo customer account
+    # Seed a demo customer account — password read from Railway env var
     from src.models.user import User
     if User.query.count() == 0:
-        demo = User(username='demo_restaurant', email='demo@myrestaurant.com',
-                    company_name="Mario's Italian Kitchen", phone='555-0100')
-        demo.set_password('REDACTED_DEMO_PW')
-        db.session.add(demo)
-        db.session.commit()
+        demo_pw = os.environ.get('SEED_DEMO_PASSWORD', '')
+        if demo_pw:
+            demo = User(username='demo_restaurant', email='demo@myrestaurant.com',
+                        company_name="Mario's Italian Kitchen", phone='555-0100')
+            demo.set_password(demo_pw)
+            db.session.add(demo)
+            db.session.commit()
 
-    # Ensure Robert Lin account exists
+    # Ensure Robert Lin account exists — password read from Railway env var
     if not User.query.filter_by(email='robert@lldrestaurantsupply.com').first():
-        robert = User(
-            username='robertlin',
-            email='robert@lldrestaurantsupply.com',
-            company_name=None,
-            phone='(224)305-3888',
-            shipping_address='3541 Melody St, 60060',
-        )
-        robert.set_password('REDACTED_ROBERT_PW')
-        db.session.add(robert)
-        db.session.commit()
-        print('[SEED] Robert Lin account created.')
+        robert_pw = os.environ.get('SEED_ROBERT_PASSWORD', '')
+        if robert_pw:
+            robert = User(
+                username='robertlin',
+                first_name='Robert',
+                last_name='Lin',
+                email='robert@lldrestaurantsupply.com',
+                company_name=None,
+                phone='(224)305-3888',
+                shipping_address='3541 Melody St, 60060',
+            )
+            robert.set_password(robert_pw)
+            db.session.add(robert)
+            db.session.commit()
+            print('[SEED] Robert Lin account created.')
 
 
 @app.route('/api-docs')
