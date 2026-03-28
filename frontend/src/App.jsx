@@ -34,6 +34,19 @@ function App() {
     } else if (params.get('social_login') === 'error') {
       window.history.replaceState({}, document.title, window.location.pathname)
     }
+    // Handle email verification redirect
+    const emailVerified = params.get('email_verified')
+    if (emailVerified === 'success') {
+      checkAuthStatus()
+      setTimeout(() => alert('✅ Your email address has been verified! You can now log in.'), 300)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else if (emailVerified === 'expired') {
+      setTimeout(() => alert('⚠️ Your verification link has expired. Please log in and request a new one.'), 300)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else if (emailVerified === 'invalid') {
+      setTimeout(() => alert('❌ Invalid verification link. Please request a new verification email.'), 300)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
   }, [])
 
   const checkAuthStatus = async () => {

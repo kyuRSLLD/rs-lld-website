@@ -217,3 +217,63 @@ def customer_forgot_username():
         'message': 'If that email is registered, your username has been sent to it.',
         'email_sent': sent,
     }), 200
+
+
+# ─── Customer: Email Verification ────────────────────────────────────────────
+
+@password_reset_bp.route('/auth/verify-email/<token>', methods=['GET'])
+def verify_email(token):
+    """Click-through link from the verification email — marks email as verified."""
+    user = User.query.filter_by(verification_token=token).first()
+    if not user:
+        # Redirect to frontend with error
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://lldrestaurantsupply.com')
+        return __import__('flask').redirect(f"{frontend_url}/?email_verified=invalid")
+
+    if user.verification_token_expires and datetime.utcnow() > user.verification_token_expires:
+        user.verification_token = None
+        user.verification_token_expires = None
+        db.session.commit()
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://lldrestaurantsupply.com')
+        return __import__('flask').redirect(f"{frontend_url}/?email_verified=expired")
+
+    user.email_verified = True
+    user.verification_token = None
+    user.verification_token_expires = None
+    db.session.commit()
+
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://lldrestaurantsupply.com')
+    return __import__('flask').redirect(f"{frontend_url}/?email_verified=success")
+
+
+@password_reset_bp.route('/auth/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend the email verification link to the logged-in user."""
+    from flask import session as flask_session
+    user_id = flask_session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if user.email_verified:
+        return jsonify({'message': 'Email is already verified'}), 200
+
+    token = secrets.token_urlsafe(48)
+    user.verification_token = token
+    user.verification_token_expires = datetime.utcnow() + timedelta(hours=24)
+    db.session.commit()
+
+    site_url = os.environ.get('SITE_URL', 'https://lldrestaurantsupply.com')
+    verify_url = f"{site_url}/api/auth/verify-email/{token}"
+
+    try:
+        from src.utils.email import send_verification_email
+        sent = send_verification_email(user, verify_url)
+    except Exception as e:
+        print(f"[EMAIL] Resend verification email failed: {e}")
+        sent = False
+
+    return jsonify({'message': 'Verification email sent', 'email_sent': sent}), 200

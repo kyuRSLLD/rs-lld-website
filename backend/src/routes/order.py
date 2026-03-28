@@ -245,23 +245,28 @@ def create_account_at_checkout():
         if _User.query.filter_by(email=email).first():
             return jsonify({'error': 'An account with this email already exists. Please sign in instead.'}), 409
 
-        # Generate a unique username from email prefix
-        base_username = email.split('@')[0].lower()
-        base_username = re.sub(r'[^a-z0-9_]', '', base_username) or 'user'
-        username = base_username
-        counter = 1
-        while _User.query.filter_by(username=username).first():
-            username = f'{base_username}{counter}'
-            counter += 1
+        # ── Split name into first/last ──────────────────────────────────────
+        name_parts = name.split(' ', 1) if name else []
+        first_name = name_parts[0] if name_parts else None
+        last_name  = name_parts[1] if len(name_parts) > 1 else None
 
-        # ── Create user ───────────────────────────────────────────────────────
+        # ── Create user (username = email) ────────────────────────────────────
+        import secrets as _secrets
+        from datetime import timedelta as _td
         user = _User(
-            username=username,
+            username=email,  # email is the primary login ID
             email=email,
+            first_name=first_name,
+            last_name=last_name,
             company_name=company or None,
             phone=phone or None,
             shipping_address=shipping_address or None,
+            email_verified=False,
         )
+        # Generate email verification token
+        v_token = _secrets.token_urlsafe(48)
+        user.verification_token = v_token
+        user.verification_token_expires = datetime.utcnow() + _td(hours=24)
         user.set_password(password)
         db.session.add(user)
         db.session.flush()  # get user.id
@@ -278,13 +283,17 @@ def create_account_at_checkout():
         # Log the new user in
         session['user_id'] = user.id
 
-        # Send welcome email in background thread
-        try:
-            from src.utils.email import send_welcome_email
-            _u = user
-            threading.Thread(target=send_welcome_email, args=(_u,), daemon=True).start()
-        except Exception as _email_err:
-            print(f'[EMAIL] Checkout account welcome email failed: {_email_err}')
+        # Send welcome + verification emails in background thread
+        _site_url = os.environ.get('SITE_URL', 'https://lldrestaurantsupply.com')
+        _verify_url = f"{_site_url}/api/auth/verify-email/{v_token}"
+        def _send_emails(_u, _vurl):
+            try:
+                from src.utils.email import send_welcome_email, send_verification_email
+                send_welcome_email(_u)
+                send_verification_email(_u, _vurl)
+            except Exception as _e:
+                print(f'[EMAIL] Checkout account emails failed: {_e}')
+        threading.Thread(target=_send_emails, args=(user, _verify_url), daemon=True).start()
 
         return jsonify({
             'success': True,

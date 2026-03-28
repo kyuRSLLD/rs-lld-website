@@ -447,3 +447,34 @@ def send_forgot_username_email(user, account_type: str = 'customer') -> bool:
             f"If you didn't request this, ignore this email.")
 
     return send_email(email, 'Your RS LLD Username', html, text)
+
+
+def send_verification_email(user, verify_url: str) -> bool:
+    """Send an email address verification link to a newly registered customer."""
+    name = user.full_name if hasattr(user, 'full_name') else (user.username or 'Customer')
+    email = user.email
+    body = f"""
+      <h2 style="color:#1c1917;font-size:20px;margin:0 0 4px;">Verify Your Email Address</h2>
+      <p style="font-size:15px;color:#555;margin:0 0 20px">
+        Hi {name}, thank you for creating an account with <strong>RS LLD Restaurant Supply</strong>.
+        Please verify your email address by clicking the button below.
+        This link expires in <strong>24 hours</strong>.
+      </p>
+      <div style="text-align:center;margin:28px 0">
+        <a href="{verify_url}"
+           style="background:#1a1a1a;color:#fff;padding:14px 32px;border-radius:6px;
+                  text-decoration:none;font-size:15px;font-weight:600;display:inline-block">
+          Verify Email Address
+        </a>
+      </div>
+      <p style="font-size:13px;color:#888;margin:20px 0 0">
+        If you did not create this account, you can safely ignore this email.
+      </p>
+    """
+    html = _wrap('Verify Your Email — RS LLD', body)
+    text = (
+        f"Hi {name},\n\nPlease verify your email address (expires in 24 hours):\n{verify_url}\n\n"
+        "If you did not create this account, ignore this email.\n\n"
+        "— RS LLD Restaurant Supply"
+    )
+    return send_email(email, 'Verify Your Email Address — RS LLD Restaurant Supply', html, text)

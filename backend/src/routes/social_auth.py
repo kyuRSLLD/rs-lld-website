@@ -49,20 +49,23 @@ def _find_or_create_user(email: str, name: str, provider: str, provider_id: str)
             return user
 
     # Create a brand-new account
-    base_username = (name or email or provider_id).split('@')[0].replace(' ', '_').lower()
-    username = base_username
-    counter = 1
-    while User.query.filter_by(username=username).first():
-        username = f"{base_username}{counter}"
-        counter += 1
+    # Split name into first/last
+    name_parts = (name or '').strip().split(' ', 1)
+    first_name = name_parts[0] if name_parts and name_parts[0] else None
+    last_name  = name_parts[1] if len(name_parts) > 1 else None
 
+    # Username = email (primary login ID); social accounts are auto-verified
+    user_email = email or f"{provider_id}@{provider}.social"
     user = User(
-        username=username,
-        email=email or f"{provider_id}@{provider}.social",
+        username=user_email,
+        email=user_email,
+        first_name=first_name,
+        last_name=last_name,
         company_name=None,
         phone=None,
         oauth_provider=provider,
         oauth_id=provider_id,
+        email_verified=True,  # social login = email already verified by provider
     )
     user.set_password(_random_password())
     db.session.add(user)
