@@ -4,12 +4,13 @@ import { StaffManagementTab } from './StaffManagement'
 import CreateOrderModal from './CreateOrderModal'
 import { ApiKeyManagerTab } from './ApiKeyManager'
 import { BillAnalyzerTab } from './BillAnalyzer'
+import { SalesRepTab } from './SalesRepTab'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye, EyeOff,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images
+  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images, Phone
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
@@ -1842,6 +1843,8 @@ const StaffPortal = () => {
   })
 
   const isAdmin = staff?.role === 'admin'
+  const isManager = staff?.role === 'manager'
+  const isSalesRep = staff?.role === 'sales_rep'
 
   // ── Sorted products for the Products tab ──────────────────────────────────
   const sortedProducts = [...products].sort((a, b) => {
@@ -1869,14 +1872,17 @@ const StaffPortal = () => {
     return <span className="ml-0.5 text-blue-500">{productSortDir === 'asc' ? '↑' : '↓'}</span>
   }
 
-  const tabs = [
-    { id: 'orders', label: t.tabs.orders, icon: ClipboardList },
-    { id: 'customers', label: t.tabs.customers, icon: Users },
-    { id: 'products', label: t.tabs.products, icon: Tag },
-    { id: 'invoices', label: t.tabs.invoices, icon: FileText },
-    { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
-    ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
-  ]
+  const tabs = isSalesRep
+    ? [{ id: 'salesRep', label: t.tabs.salesRep, icon: Phone }]
+    : [
+        { id: 'orders', label: t.tabs.orders, icon: ClipboardList },
+        { id: 'customers', label: t.tabs.customers, icon: Users },
+        { id: 'products', label: t.tabs.products, icon: Tag },
+        { id: 'invoices', label: t.tabs.invoices, icon: FileText },
+        { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
+        ...(isAdmin || isManager ? [{ id: 'salesRep', label: t.tabs.salesRep, icon: Phone }] : []),
+        ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
+      ]
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -2749,6 +2755,10 @@ const StaffPortal = () => {
               </div>
             </div>
           </div>
+        )}
+        {/* ── SALES REP TAB ── */}
+        {activeTab === 'salesRep' && (
+          <SalesRepTab t={t.salesRep} staff={staff} />
         )}
       </div>
 

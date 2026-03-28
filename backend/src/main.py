@@ -29,9 +29,11 @@ from src.routes.customer_admin import customer_admin_bp
 from src.routes.voice_api import voice_api_bp
 from src.routes.sourcing import sourcing_bp
 from src.routes.voice_analytics import voice_analytics_bp
+from src.routes.sales_rep import sales_rep_bp, SalesScript
 from src.routes.payment_links import payment_links_bp
 from src.models.api_key import APIKey
 from src.models.voice_analytics import CallLog, AgentPerformance
+# SalesScript imported from sales_rep blueprint
 from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection, SupplierPayment
 from src.models.supplier_bill import SupplierBill
 
@@ -76,6 +78,7 @@ app.register_blueprint(voice_api_bp, url_prefix='/api')
 app.register_blueprint(sourcing_bp, url_prefix='/api')
 app.register_blueprint(voice_analytics_bp, url_prefix='/api')
 app.register_blueprint(payment_links_bp, url_prefix='/api')
+app.register_blueprint(sales_rep_bp, url_prefix='/api')
 
 # Database configuration: use PostgreSQL (DATABASE_URL) if available, else fall back to SQLite
 _database_url = os.environ.get('DATABASE_URL', '')
@@ -152,6 +155,9 @@ with app.app_context():
     _add_column_if_missing('user', 'email_verified', 'BOOLEAN DEFAULT FALSE')
     _add_column_if_missing('user', 'verification_token', 'VARCHAR(200)')
     _add_column_if_missing('user', 'verification_token_expires', 'TIMESTAMP')
+    # ── Order sales attribution columns added 2026-03 ─────────────────────────
+    _add_column_if_missing('order', 'sales_rep_id', 'INTEGER REFERENCES staff_user(id)')
+    _add_column_if_missing('order', 'sales_source', 'VARCHAR(50)')
     # ─────────────────────────────────────────────────────────────────────────
 
     # Seed categories

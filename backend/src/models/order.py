@@ -41,6 +41,10 @@ class Order(db.Model):
     staff_notes = db.Column(db.Text, nullable=True)
     assigned_to = db.Column(db.String(100), nullable=True)  # staff member handling the order
 
+    # Sales attribution
+    sales_rep_id = db.Column(db.Integer, db.ForeignKey('staff_user.id'), nullable=True)  # which sales rep closed this
+    sales_source = db.Column(db.String(50), nullable=True)  # 'online', 'phone_rep', 'voice_agent'
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -51,6 +55,7 @@ class Order(db.Model):
     # Relationships
     user = db.relationship('User', backref=db.backref('orders', lazy=True))
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
+    sales_rep = db.relationship('StaffUser', backref=db.backref('attributed_orders', lazy=True), foreign_keys=[sales_rep_id])
 
     def to_dict(self, include_items=False):
         data = {
@@ -83,6 +88,9 @@ class Order(db.Model):
             'has_check_back_image': bool(self.check_back_image_filename),
             'staff_notes': self.staff_notes,
             'assigned_to': self.assigned_to,
+            'sales_rep_id': self.sales_rep_id,
+            'sales_rep_name': self.sales_rep.full_name if self.sales_rep else None,
+            'sales_source': self.sales_source,
             'item_count': len(self.items),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
