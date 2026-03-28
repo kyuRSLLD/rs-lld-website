@@ -512,6 +512,16 @@ def place_order():
 
     db.session.commit()
 
+    # Send order confirmation email to registered customer (non-blocking)
+    if not is_guest and user and getattr(user, 'email', None):
+        try:
+            import threading
+            from src.utils.email import send_order_confirmation
+            _o = order
+            threading.Thread(target=send_order_confirmation, args=(_o,), daemon=True).start()
+        except Exception as _email_err:
+            print(f'[EMAIL] Voice order confirmation email failed: {_email_err}')
+
     # Fire n8n webhooks (non-blocking background threads)
     try:
         from src.utils.n8n_notify import notify_order_placed, notify_voice_order

@@ -232,6 +232,20 @@ with app.app_context():
         db.session.add(demo)
         db.session.commit()
 
+    # Ensure Robert Lin account exists
+    if not User.query.filter_by(email='robert@lldrestaurantsupply.com').first():
+        robert = User(
+            username='robertlin',
+            email='robert@lldrestaurantsupply.com',
+            company_name=None,
+            phone='(224)305-3888',
+            shipping_address='3541 Melody St, 60060',
+        )
+        robert.set_password('REDACTED_ROBERT_PW')
+        db.session.add(robert)
+        db.session.commit()
+        print('[SEED] Robert Lin account created.')
+
 
 @app.route('/api-docs')
 def api_docs():

@@ -120,6 +120,7 @@ def staff_reset_password():
 # ─── Customer: Forgot Password ────────────────────────────────────────────────
 
 @password_reset_bp.route('/auth/forgot-password', methods=['POST'])
+@password_reset_bp.route('/customer/forgot-password', methods=['POST'])
 def customer_forgot_password():
     data = request.get_json() or {}
     identifier = data.get('identifier', '').strip()
@@ -188,3 +189,31 @@ def customer_reset_password():
         print(f"[EMAIL] Customer password-changed email failed: {e}")
 
     return jsonify({'message': 'Password updated successfully. You can now log in.'}), 200
+
+
+# ─── Customer: Forgot Username ────────────────────────────────────────────────
+
+@password_reset_bp.route('/auth/forgot-username', methods=['POST'])
+@password_reset_bp.route('/customer/forgot-username', methods=['POST'])
+def customer_forgot_username():
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+
+    if not email:
+        return jsonify({'error': 'Please enter your email address'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.is_active:
+        return jsonify({'message': 'If that email is registered, your username has been sent to it.'}), 200
+
+    try:
+        from src.utils.email import send_forgot_username_email
+        sent = send_forgot_username_email(user, account_type='customer')
+    except Exception as e:
+        print(f'[EMAIL] Customer forgot-username email failed: {e}')
+        sent = False
+
+    return jsonify({
+        'message': 'If that email is registered, your username has been sent to it.',
+        'email_sent': sent,
+    }), 200

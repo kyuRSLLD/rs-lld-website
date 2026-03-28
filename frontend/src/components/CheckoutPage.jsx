@@ -512,12 +512,21 @@ const CheckoutPage = ({ user }) => {
     delivery_state: '',
     delivery_zip: '',
     delivery_phone: user?.phone || '',
+    delivery_email: user?.email || '',
     special_notes: '',
     payment_method: 'credit_card',
     billing_address: '',
   })
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true)
   const [phoneError, setPhoneError] = useState('')
+
+  // ─── Create Account at Checkout ──────────────────────────────────────────────
+  const [createAccount, setCreateAccount] = useState(false)
+  const [accountPassword, setAccountPassword] = useState('')
+  const [accountPasswordConfirm, setAccountPasswordConfirm] = useState('')
+  const [accountPasswordError, setAccountPasswordError] = useState('')
+  const [accountCreated, setAccountCreated] = useState(false)
+  const [showAccountPassword, setShowAccountPassword] = useState(false)
 
   // ─── Phone helpers ────────────────────────────────────────────────────────────
   const formatPhoneNumber = (raw) => {
@@ -693,6 +702,10 @@ const CheckoutPage = ({ user }) => {
       const data = await res.json()
       if (data.success) {
         setConfirmedOrder(data.order)
+        // If user wants to create an account, do it now with the order number
+        if (createAccount && form.delivery_email) {
+          await handleCreateAccount(data.order.order_number)
+        }
         setStep(4) // Go to payment step
       } else {
         alert(data.error || 'Failed to place order')
@@ -701,6 +714,55 @@ const CheckoutPage = ({ user }) => {
       alert('Network error. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // ─── Password validation ──────────────────────────────────────────────────────────────────────
+  const validatePassword = (pw) => {
+    if (!pw) return t.passwordRequired || 'Password is required'
+    if (pw.length < 8) return t.passwordTooShort || 'Password must be at least 8 characters'
+    if (!/[0-9]/.test(pw)) return t.passwordNeedsNumber || 'Password must contain at least one number'
+    if (!/[^A-Za-z0-9]/.test(pw)) return t.passwordNeedsSpecial || 'Password must contain at least one special character'
+    return ''
+  }
+
+  const handleCreateAccount = async (orderNumber) => {
+    const pwErr = validatePassword(accountPassword)
+    if (pwErr) { setAccountPasswordError(pwErr); return false }
+    if (accountPassword !== accountPasswordConfirm) {
+      setAccountPasswordError(t.passwordMismatch || 'Passwords do not match')
+      return false
+    }
+    setAccountPasswordError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/orders/create-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: form.delivery_email,
+          password: accountPassword,
+          delivery_name: form.delivery_name,
+          delivery_phone: form.delivery_phone,
+          delivery_company: form.delivery_company,
+          delivery_address: form.delivery_address,
+          delivery_city: form.delivery_city,
+          delivery_state: form.delivery_state,
+          delivery_zip: form.delivery_zip,
+          order_number: orderNumber,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAccountCreated(true)
+        return true
+      } else {
+        setAccountPasswordError(data.error || 'Account creation failed')
+        return false
+      }
+    } catch (err) {
+      setAccountPasswordError('Network error. Please try again.')
+      return false
     }
   }
 
@@ -919,6 +981,21 @@ const CheckoutPage = ({ user }) => {
                     </p>
                   )}
                 </div>
+                {/* Email field */}
+                <div className="sm:col-span-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t.email || 'Email'}
+                  </label>
+                  <input
+                    type="email"
+                    name="delivery_email"
+                    value={form.delivery_email}
+                    onChange={handleFormChange}
+                    placeholder="your@email.com"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t.notes}</label>
                   <textarea
@@ -1020,6 +1097,76 @@ const CheckoutPage = ({ user }) => {
 
                 {form.special_notes && <p className="text-sm text-gray-500 mt-1 italic">"{form.special_notes}"</p>}
               </div>
+              {/* ── Create Account at Checkout ── */}
+              {!user && (
+                <div className="bg-white rounded-xl border border-gray-100 p-5">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={createAccount}
+                      onChange={e => {
+                        setCreateAccount(e.target.checked)
+                        setAccountPasswordError('')
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-sm font-medium text-gray-800">
+                      {t.createAccount || 'Create an account to track your orders'}
+                    </span>
+                  </label>
+
+                  {createAccount && (
+                    <div className="mt-4 space-y-3">
+                      {!form.delivery_email && (
+                        <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+                          ⚠ Please go back and enter your email address to create an account.
+                        </p>
+                      )}
+                      {form.delivery_email && (
+                        <p className="text-xs text-gray-500">Account will be created for: <span className="font-medium text-gray-800">{form.delivery_email}</span></p>
+                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t.password || 'Password'} <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showAccountPassword ? 'text' : 'password'}
+                            value={accountPassword}
+                            onChange={e => { setAccountPassword(e.target.value); setAccountPasswordError('') }}
+                            placeholder="Min 8 chars, 1 number, 1 special character"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowAccountPassword(v => !v)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                          >
+                            {showAccountPassword ? '🙈' : '👁'}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-400">Requirements: 8+ characters, 1 number, 1 special character (e.g. ! @ # $)</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t.confirmPassword || 'Confirm Password'} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type={showAccountPassword ? 'text' : 'password'}
+                          value={accountPasswordConfirm}
+                          onChange={e => { setAccountPasswordConfirm(e.target.value); setAccountPasswordError('') }}
+                          placeholder="Re-enter your password"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      {accountPasswordError && (
+                        <p className="text-xs text-red-600 flex items-center gap-1"><span>⚠</span> {accountPasswordError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(2)}>{t.backToDelivery}</Button>
                 <Button
@@ -1162,6 +1309,14 @@ const CheckoutPage = ({ user }) => {
                 <p className="text-sm text-gray-500 mb-1">{t.orderNumber}</p>
                 <p className="text-2xl font-bold text-blue-700 tracking-wider">{confirmedOrder.order_number}</p>
               </div>
+              {accountCreated && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-left">
+                  <p className="text-sm font-semibold text-green-800 mb-1">✅ Account Created!</p>
+                  <p className="text-xs text-green-700">
+                    Your account has been created for <strong>{form.delivery_email}</strong>. A welcome email has been sent. You can now log in to track your orders.
+                  </p>
+                </div>
+              )}
               <div className="space-y-3">
                 <Button
                   onClick={() => navigate(`/track/${confirmedOrder.order_number}`)}

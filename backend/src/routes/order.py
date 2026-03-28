@@ -198,6 +198,106 @@ def create_order():
         return jsonify({'error': str(e)}), 500
 
 
+@order_bp.route('/orders/create-account', methods=['POST'])
+def create_account_at_checkout():
+    """
+    Create a customer account at checkout (guest → registered).
+    Called when the customer checks "Create an account" during checkout.
+    Requires: email, password, delivery_name, delivery_phone (optional),
+              delivery_address, delivery_city, delivery_state, delivery_zip,
+              delivery_company (optional), order_number (optional, to link the order)
+    """
+    import re, threading
+    try:
+        data = request.json or {}
+        email    = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        name     = data.get('delivery_name', '').strip()
+        phone    = data.get('delivery_phone', '').strip()
+        company  = data.get('delivery_company', '').strip()
+        order_number = data.get('order_number', '').strip()
+
+        # Build address fields
+        addr_parts = [
+            data.get('delivery_address', '').strip(),
+            data.get('delivery_city', '').strip(),
+            data.get('delivery_state', '').strip(),
+            data.get('delivery_zip', '').strip(),
+        ]
+        shipping_address = ', '.join(p for p in addr_parts if p)
+
+        # ── Validation ────────────────────────────────────────────────────────
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
+
+        # Password rules: 8+ chars, 1 number, 1 special character
+        if len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        if not re.search(r'[0-9]', password):
+            return jsonify({'error': 'Password must contain at least one number'}), 400
+        if not re.search(r'[^A-Za-z0-9]', password):
+            return jsonify({'error': 'Password must contain at least one special character'}), 400
+
+        # Check for duplicate email
+        from src.models.user import User as _User
+        if _User.query.filter_by(email=email).first():
+            return jsonify({'error': 'An account with this email already exists. Please sign in instead.'}), 409
+
+        # Generate a unique username from email prefix
+        base_username = email.split('@')[0].lower()
+        base_username = re.sub(r'[^a-z0-9_]', '', base_username) or 'user'
+        username = base_username
+        counter = 1
+        while _User.query.filter_by(username=username).first():
+            username = f'{base_username}{counter}'
+            counter += 1
+
+        # ── Create user ───────────────────────────────────────────────────────
+        user = _User(
+            username=username,
+            email=email,
+            company_name=company or None,
+            phone=phone or None,
+            shipping_address=shipping_address or None,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()  # get user.id
+
+        # Link the order to this new account if order_number provided
+        if order_number:
+            order = Order.query.filter_by(order_number=order_number).first()
+            if order and order.user_id is None:
+                order.user_id = user.id
+                order.delivery_name = name or order.delivery_name
+
+        db.session.commit()
+
+        # Log the new user in
+        session['user_id'] = user.id
+
+        # Send welcome email in background thread
+        try:
+            from src.utils.email import send_welcome_email
+            _u = user
+            threading.Thread(target=send_welcome_email, args=(_u,), daemon=True).start()
+        except Exception as _email_err:
+            print(f'[EMAIL] Checkout account welcome email failed: {_email_err}')
+
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'user': user.to_dict(),
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f'[CHECKOUT] Account creation error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 @order_bp.route('/orders', methods=['GET'])
 @login_required
 def get_my_orders():
