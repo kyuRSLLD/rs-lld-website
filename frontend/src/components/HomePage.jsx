@@ -187,11 +187,6 @@ const HomePage = () => {
               <p className="text-gray-600 text-sm">Serving restaurant owners and food service businesses across the United States with wholesale pricing and reliable delivery.</p>
             </div>
             <div className="p-6">
-              <div className="text-4xl font-bold text-blue-600 mb-2">37+</div>
-              <div className="text-lg font-semibold text-gray-900 mb-1">Products In Stock</div>
-              <p className="text-gray-600 text-sm">Wholesale disposable goods, kitchen tools, cleaning supplies, packaging, pest control, and dry ingredients.</p>
-            </div>
-            <div className="p-6">
               <div className="text-4xl font-bold text-blue-600 mb-2">$0</div>
               <div className="text-lg font-semibold text-gray-900 mb-1">Delivery on Large Orders</div>
               <p className="text-gray-600 text-sm">Free delivery on orders over $200. Bulk pricing available on all products for restaurant owners.</p>
