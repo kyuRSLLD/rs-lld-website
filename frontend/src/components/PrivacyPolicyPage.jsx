@@ -90,7 +90,11 @@ const PrivacyPolicyPage = () => {
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">SMS/Text Messaging Consent and Usage</h2>
               <p className="leading-relaxed mb-3">
-                When you provide your phone number and consent to receive text messages from LLD Restaurant Supply, you agree to receive SMS/text messages related to your orders and account. These messages may include:
+                When you provide your phone number and consent to receive text messages from LLD Restaurant Supply, you agree to receive SMS/text messages related to your orders and account.
+                You may opt in by submitting the web form at{' '}
+                <Link to="/sms-opt-in" className="text-blue-600 hover:underline">lldrestaurantsupply.com/sms-opt-in</Link>,
+                by providing consent at the point of sale, or by providing verbal or written consent to a sales representative.
+                These messages may include:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Order confirmations and status updates</li>

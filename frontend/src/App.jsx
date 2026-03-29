@@ -18,6 +18,7 @@ import StaffPortal from './components/StaffPortal'
 import SaveMeMoneyPage from './components/SaveMeMoneyPage'
 import PrivacyPolicyPage from './components/PrivacyPolicyPage'
 import TermsPage from './components/TermsPage'
+import SmsOptInPage from './components/SmsOptInPage'
 import './App.css'
 
 function App() {
@@ -117,6 +118,7 @@ function App() {
                 <Route path="/save-me-money" element={<SaveMeMoneyPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/sms-opt-in" element={<SmsOptInPage />} />
               </Route>
             </Routes>
           </div>
