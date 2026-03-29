@@ -10,7 +10,7 @@ const translations = {
   en: {
     hero_title: 'SMS Text Message Opt-In',
     hero_sub:
-      'Sign up to receive order updates, delivery notifications, and important account information via text message from LLD Restaurant Supply.',
+      'Sign up to receive order updates, delivery notifications, and important account information via text message from RS LLD Restaurant Supply.',
     form_title: 'Subscribe to SMS Notifications',
     first_name: 'First Name',
     last_name: 'Last Name (optional)',
@@ -19,7 +19,7 @@ const translations = {
     email: 'Email Address (optional)',
     email_placeholder: 'your@email.com',
     consent_label:
-      'I agree to receive recurring automated SMS/text messages from LLD Restaurant Supply at the mobile number provided. Message frequency varies. Message and data rates may apply.',
+      'I agree to receive recurring automated SMS/text messages from RS LLD Restaurant Supply at the mobile number provided. Message frequency varies. Message and data rates may apply.',
     submit: 'Opt In to SMS',
     submitting: 'Submitting…',
     success_title: 'You\'re Opted In!',
@@ -31,10 +31,10 @@ const translations = {
     server_error: 'Something went wrong. Please try again.',
     // Disclosure block
     disc_title: 'Important Information',
-    disc_brand: 'LLD Restaurant Supply',
+    disc_brand: 'RS LLD Restaurant Supply',
     disc_how_title: 'How You Are Opting In',
     disc_how_body:
-      'By submitting this web form at lldrestaurantsupply.com/sms-opt-in, you are providing express written consent to receive SMS/text messages from LLD Restaurant Supply.',
+      'By submitting this web form at lldrestaurantsupply.com/sms-opt-in, you are providing express written consent to receive SMS/text messages from RS LLD Restaurant Supply.',
     disc_types_title: 'Types of Messages You Will Receive',
     disc_types: [
       'Order confirmations and status updates',
@@ -58,7 +58,7 @@ const translations = {
   zh: {
     hero_title: '短信通知订阅',
     hero_sub:
-      '订阅以接收来自LLD餐厅供应的订单更新、配送通知及重要账户信息短信。',
+      '订阅以接收来自RS LLD餐厅供应的订单更新、配送通知及重要账户信息短信。',
     form_title: '订阅短信通知',
     first_name: '名字',
     last_name: '姓氏（可选）',
@@ -67,7 +67,7 @@ const translations = {
     email: '电子邮件（可选）',
     email_placeholder: 'your@email.com',
     consent_label:
-      '我同意在所提供的手机号码上接收来自LLD餐厅供应的定期自动短信。短信频率不定。可能收取短信和数据费用。',
+      '我同意在所提供的手机号码上接收来自RS LLD餐厅供应的定期自动短信。短信频率不定。可能收取短信和数据费用。',
     submit: '订阅短信',
     submitting: '提交中…',
     success_title: '订阅成功！',
@@ -78,10 +78,10 @@ const translations = {
     phone_error: '请输入有效的美国手机号码。',
     server_error: '出现错误，请重试。',
     disc_title: '重要信息',
-    disc_brand: 'LLD餐厅供应',
+    disc_brand: 'RS LLD餐厅供应',
     disc_how_title: '您的订阅方式',
     disc_how_body:
-      '通过在 lldrestaurantsupply.com/sms-opt-in 提交此网络表单，您正在提供明确的书面同意，以接收来自LLD餐厅供应的短信。',
+      '通过在 lldrestaurantsupply.com/sms-opt-in 提交此网络表单，您正在提供明确的书面同意，以接收来自RS LLD餐厅供应的短信。',
     disc_types_title: '您将收到的消息类型',
     disc_types: [
       '订单确认和状态更新',
@@ -105,7 +105,7 @@ const translations = {
   ko: {
     hero_title: 'SMS 문자 메시지 수신 동의',
     hero_sub:
-      'LLD Restaurant Supply로부터 주문 업데이트, 배송 알림 및 중요 계정 정보를 문자 메시지로 받아보세요.',
+      'RS LLD Restaurant Supply로부터 주문 업데이트, 배송 알림 및 중요 계정 정보를 문자 메시지로 받아보세요.',
     form_title: 'SMS 알림 구독',
     first_name: '이름',
     last_name: '성 (선택)',
@@ -114,7 +114,7 @@ const translations = {
     email: '이메일 주소 (선택)',
     email_placeholder: 'your@email.com',
     consent_label:
-      '제공한 휴대폰 번호로 LLD Restaurant Supply의 반복 자동 SMS/문자 메시지 수신에 동의합니다. 메시지 빈도는 다를 수 있습니다. 메시지 및 데이터 요금이 적용될 수 있습니다.',
+      '제공한 휴대폰 번호로 RS LLD Restaurant Supply의 반복 자동 SMS/문자 메시지 수신에 동의합니다. 메시지 빈도는 다를 수 있습니다. 메시지 및 데이터 요금이 적용될 수 있습니다.',
     submit: 'SMS 수신 동의',
     submitting: '제출 중…',
     success_title: '구독 완료!',
@@ -125,10 +125,10 @@ const translations = {
     phone_error: '유효한 미국 휴대폰 번호를 입력해 주세요.',
     server_error: '오류가 발생했습니다. 다시 시도해 주세요.',
     disc_title: '중요 정보',
-    disc_brand: 'LLD Restaurant Supply',
+    disc_brand: 'RS LLD Restaurant Supply',
     disc_how_title: '수신 동의 방법',
     disc_how_body:
-      'lldrestaurantsupply.com/sms-opt-in의 이 웹 양식을 제출함으로써 LLD Restaurant Supply로부터 SMS/문자 메시지를 받는 것에 명시적 서면 동의를 제공합니다.',
+      'lldrestaurantsupply.com/sms-opt-in의 이 웹 양식을 제출함으로써 RS LLD Restaurant Supply로부터 SMS/문자 메시지를 받는 것에 명시적 서면 동의를 제공합니다.',
     disc_types_title: '수신할 메시지 유형',
     disc_types: [
       '주문 확인 및 상태 업데이트',
@@ -394,7 +394,7 @@ export default function SmsOptInPage() {
 
             {/* Contact card */}
             <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
-              <p className="text-sm font-bold text-blue-900 mb-1">LLD Restaurant Supply</p>
+              <p className="text-sm font-bold text-blue-900 mb-1">RS LLD Restaurant Supply</p>
               <p className="text-sm text-blue-700">Chicago, Illinois</p>
               <p className="text-sm text-blue-700 mt-1">
                 <a href="tel:+17755915629" className="hover:underline">(775) 591-5629</a>

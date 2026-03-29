@@ -94,7 +94,7 @@ def submit_sms_optin():
             client.messages.create(
                 body=(
                     f"Hi {first_name}, you've successfully opted in to receive SMS messages "
-                    "from LLD Restaurant Supply. Reply STOP to unsubscribe at any time. "
+                    "from RS LLD Restaurant Supply. Reply STOP to unsubscribe at any time. "
                     "Reply HELP for help. Msg & data rates may apply."
                 ),
                 from_=from_number,
@@ -107,6 +107,6 @@ def submit_sms_optin():
         'success': True,
         'message': (
             f"Thank you, {first_name}! You have successfully opted in to receive "
-            "SMS messages from LLD Restaurant Supply. You will receive a confirmation text shortly."
+            "SMS messages from RS LLD Restaurant Supply. You will receive a confirmation text shortly."
         )
     }), 200
