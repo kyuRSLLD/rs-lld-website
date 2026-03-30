@@ -351,7 +351,18 @@ function CallingListPanel({ t, onSelectCustomer }) {
 // Place Order Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
 function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }) {
-  const [customer, setCustomer]             = useState(initialCustomer || null)
+  // Normalize initialCustomer on first render so the card shows immediately
+  const normalizeCustomer = (c) => c ? ({
+    id: c.id,
+    full_name: c.full_name || c.name || c.username || '',
+    username: c.username || c.name || '',
+    company_name: c.company_name || c.company || '',
+    phone: c.phone || '',
+    email: c.email || '',
+    shipping_address: c.shipping_address || c.address || '',
+    source: c.source,
+  }) : null
+  const [customer, setCustomer]             = useState(() => normalizeCustomer(initialCustomer))
   const [custSearch, setCustSearch]         = useState('')
   const [custResults, setCustResults]       = useState([])
   const [custLoading, setCustLoading]       = useState(false)
@@ -376,7 +387,13 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   const [smsSending, setSmsSending]         = useState(false)
   const [smsResult, setSmsResult]           = useState(null)
 
-  useEffect(() => { if (initialCustomer) { setCustomer(initialCustomer); setSmsPhone(initialCustomer.phone || '') } }, [initialCustomer])
+  useEffect(() => {
+    if (initialCustomer) {
+      const normalized = normalizeCustomer(initialCustomer)
+      setCustomer(normalized)
+      setSmsPhone(normalized.phone || '')
+    }
+  }, [initialCustomer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Customer search
   const searchCustomers = useCallback(async (q) => {
@@ -396,17 +413,7 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   }, [custSearch, searchCustomers])
 
   const selectCustomer = (c) => {
-    // Normalize fields from either the search endpoint (name/company) or to_dict (full_name/company_name)
-    const normalized = {
-      id: c.id,
-      full_name: c.full_name || c.name || c.username || '',
-      username: c.username || c.name || '',
-      company_name: c.company_name || c.company || '',
-      phone: c.phone || '',
-      email: c.email || '',
-      shipping_address: c.shipping_address || c.address || '',
-      source: c.source,
-    }
+    const normalized = normalizeCustomer(c)
     setCustomer(normalized); setCustSearch(''); setCustResults([]); setSmsPhone(normalized.phone || '')
   }
 
@@ -1003,7 +1010,7 @@ export function SalesRepTab({ t, staff }) {
         ))}
       </div>
       {subTab === 'callList'   && <CallingListPanel t={t} onSelectCustomer={handleSelectCustomer} />}
-      {subTab === 'placeOrder' && <PlaceOrderPanel  t={t} selectedCustomer={selectedCustomer} onOrderPlaced={() => {}} />}
+      {subTab === 'placeOrder' && <PlaceOrderPanel  key={selectedCustomer?.id || 'none'} t={t} selectedCustomer={selectedCustomer} onOrderPlaced={() => {}} />}
       {subTab === 'script'     && <ScriptPanel      t={t} canEdit={canEditScript} />}
       {subTab === 'mySales'    && <MySalesPanel     t={t} showLeaderboard={showLeaderboard} />}
     </div>
