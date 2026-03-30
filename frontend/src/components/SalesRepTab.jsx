@@ -310,33 +310,33 @@ function CallingListPanel({ t, onSelectCustomer }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col items-end gap-1.5">
-                      {/* Row 1: Call + Place Order */}
+                      {/* Row 1: Place Order (first) + Call */}
                       <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => onSelectCustomer({ id: e.customer_id || null, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
+                          className="text-xs px-2.5 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-medium"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>{t.placeOrder || 'Place Order'}</span>
+                        </button>
                         {!['converted','dnc','customer'].includes(e.status) && (
                           <button
                             onClick={() => handleMarkCalled(e.id)}
                             title="Mark as Called"
-                            className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1"
+                            className="text-xs px-2.5 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1"
                           >
                             <Phone className="w-3.5 h-3.5" />
                             <span>Call</span>
                           </button>
                         )}
-                        <button
-                          onClick={() => onSelectCustomer({ id: e.customer_id || null, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
-                          className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          <span>{t.placeOrder || 'Place Order'}</span>
-                        </button>
                       </div>
                       {/* Row 2: Edit + Delete */}
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => openEdit(e)} className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1">
+                        <button onClick={() => openEdit(e)} className="text-xs px-2.5 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1">
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Edit</span>
                         </button>
-                        <button onClick={() => handleDelete(e.id)} className="text-xs px-2 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50 flex items-center gap-1">
+                        <button onClick={() => handleDelete(e.id)} className="text-xs px-2.5 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50 flex items-center gap-1">
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Delete</span>
                         </button>
