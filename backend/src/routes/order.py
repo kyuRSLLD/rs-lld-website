@@ -582,11 +582,17 @@ def staff_search_customers():
             if key not in seen:
                 seen.add(key)
                 results.append({
+                    'id': u.id,
                     'source': 'customer',
                     'name': u.username,
+                    'full_name': u.full_name,
+                    'username': u.username,
                     'company': u.company_name or '',
+                    'company_name': u.company_name or '',
                     'phone': u.phone or '',
-                    'address': last_order.delivery_address if last_order else '',
+                    'email': u.email or '',
+                    'shipping_address': u.shipping_address or '',
+                    'address': last_order.delivery_address if last_order else (u.shipping_address or ''),
                     'city': last_order.delivery_city if last_order else '',
                     'state': last_order.delivery_state if last_order else '',
                     'zip': last_order.delivery_zip if last_order else '',

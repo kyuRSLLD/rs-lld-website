@@ -223,6 +223,9 @@ def place_order_as_rep(staff):
     if not customer:
         return jsonify({'error': 'Customer not found'}), 404
 
+    discount_amount = float(data.get('discount_amount', 0.0))
+    delivery_fee = float(data.get('delivery_fee', 0.0))
+
     # Build order items and calculate totals
     order_items = []
     subtotal = 0.0
@@ -233,15 +236,20 @@ def place_order_as_rep(staff):
         qty = int(item.get('quantity', 1))
         if qty < 1:
             continue
-        unit_price = product.price
+        # Use staff-supplied unit_price if provided, otherwise fall back to product price
+        unit_price = float(item.get('unit_price') or product.unit_price or 0)
         line_total = unit_price * qty
         subtotal += line_total
         order_items.append(OrderItem(
             product_id=product.id,
             product_name=product.name,
+            product_sku=product.sku or 'CUSTOM',
+            product_brand=product.brand or '',
+            product_unit_size=getattr(product, 'unit_size', '') or '',
             quantity=qty,
             unit_price=unit_price,
-            total_price=line_total,
+            is_bulk_price=item.get('is_bulk_price', False),
+            line_total=line_total,
         ))
 
     if not order_items:
@@ -273,9 +281,9 @@ def place_order_as_rep(staff):
         delivery_phone=customer.phone or '',
         special_notes=notes,
         subtotal=round(subtotal, 2),
-        discount_amount=0.0,
-        delivery_fee=0.0,
-        total_amount=round(subtotal, 2),
+        discount_amount=round(discount_amount, 2),
+        delivery_fee=round(delivery_fee, 2),
+        total_amount=round(subtotal - discount_amount + delivery_fee, 2),
         payment_method=payment_method,
         payment_status='pending',
         sales_rep_id=staff.id,
@@ -360,3 +368,323 @@ def get_leaderboard(staff):
 
     leaderboard.sort(key=lambda x: x['revenue'], reverse=True)
     return jsonify({'leaderboard': leaderboard, 'period_days': days})
+
+
+# ─── Calling List: add / update / delete entries ─────────────────────────────
+
+class CallingListEntry(db.Model):
+    """Extra phone numbers uploaded by staff for outbound calling campaigns."""
+    __tablename__ = 'calling_list_entry'
+    id            = db.Column(db.Integer, primary_key=True)
+    company_name  = db.Column(db.String(200), nullable=True)
+    contact_name  = db.Column(db.String(200), nullable=True)
+    phone         = db.Column(db.String(30), nullable=False)
+    email         = db.Column(db.String(200), nullable=True)
+    address       = db.Column(db.Text, nullable=True)
+    notes         = db.Column(db.Text, nullable=True)
+    # Smart-filter score (0–100) — set by future ML pipeline; default 50
+    priority_score = db.Column(db.Float, default=50.0)
+    # Status tracking
+    status        = db.Column(db.String(30), default='new')   # new | called | converted | dnc
+    last_called   = db.Column(db.DateTime, nullable=True)
+    assigned_to   = db.Column(db.Integer, db.ForeignKey('staff_user.id'), nullable=True)
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_by   = db.Column(db.Integer, db.ForeignKey('staff_user.id'), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'company_name': self.company_name or '',
+            'contact_name': self.contact_name or '',
+            'phone': self.phone,
+            'email': self.email or '',
+            'address': self.address or '',
+            'notes': self.notes or '',
+            'priority_score': self.priority_score,
+            'status': self.status,
+            'last_called': self.last_called.isoformat() if self.last_called else None,
+            'assigned_to': self.assigned_to,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+@sales_rep_bp.route('/sales/calling-list', methods=['GET'])
+@sales_rep_required
+def get_calling_list_entries(staff):
+    """Return all calling list entries (uploaded prospects + registered customers with phones)."""
+    import re as _re
+
+    sort_by    = request.args.get('sort', 'priority_score')   # priority_score | company_name | last_called | status
+    sort_dir   = request.args.get('dir', 'desc')
+    status_f   = request.args.get('status', '')               # filter by status
+    search_q   = request.args.get('q', '').strip()
+
+    # ── Uploaded prospects ──────────────────────────────────────────────────
+    q = CallingListEntry.query
+    if status_f:
+        q = q.filter(CallingListEntry.status == status_f)
+    if search_q:
+        like = f'%{search_q}%'
+        q = q.filter(
+            (CallingListEntry.company_name.ilike(like)) |
+            (CallingListEntry.contact_name.ilike(like)) |
+            (CallingListEntry.phone.ilike(like))
+        )
+    entries = q.all()
+    result = [e.to_dict() for e in entries]
+
+    # ── Registered customers with phones (merged view) ──────────────────────
+    customers = User.query.filter(
+        User.phone.isnot(None), User.phone != '', User.is_active == True
+    ).all()
+    for c in customers:
+        orders = Order.query.filter_by(user_id=c.id).order_by(Order.created_at.desc()).all()
+        last_order = orders[0] if orders else None
+        total_spend = sum(o.total_amount for o in orders)
+        result.append({
+            'id': f'cust-{c.id}',
+            'source': 'customer',
+            'company_name': c.company_name or '',
+            'contact_name': c.full_name or c.username,
+            'phone': c.phone or '',
+            'email': c.email or '',
+            'address': c.shipping_address or '',
+            'notes': '',
+            'priority_score': min(100, 50 + len(orders) * 5),
+            'status': 'customer',
+            'last_called': last_order.created_at.isoformat() if last_order else None,
+            'order_count': len(orders),
+            'total_spend': round(total_spend, 2),
+            'customer_id': c.id,
+        })
+
+    # ── Sort ────────────────────────────────────────────────────────────────
+    reverse = sort_dir == 'desc'
+    if sort_by == 'company_name':
+        result.sort(key=lambda x: (x.get('company_name') or '').lower(), reverse=reverse)
+    elif sort_by == 'last_called':
+        result.sort(key=lambda x: x.get('last_called') or '', reverse=reverse)
+    elif sort_by == 'status':
+        result.sort(key=lambda x: x.get('status') or '', reverse=reverse)
+    else:  # priority_score (default)
+        result.sort(key=lambda x: x.get('priority_score', 50), reverse=reverse)
+
+    return jsonify({'entries': result, 'total': len(result)})
+
+
+@sales_rep_bp.route('/sales/calling-list', methods=['POST'])
+@sales_rep_required
+def add_calling_list_entry(staff):
+    """Add a single prospect to the calling list."""
+    data = request.json or {}
+    phone = (data.get('phone') or '').strip()
+    if not phone:
+        return jsonify({'error': 'phone is required'}), 400
+    entry = CallingListEntry(
+        company_name  = (data.get('company_name') or '').strip() or None,
+        contact_name  = (data.get('contact_name') or '').strip() or None,
+        phone         = phone,
+        email         = (data.get('email') or '').strip() or None,
+        address       = (data.get('address') or '').strip() or None,
+        notes         = (data.get('notes') or '').strip() or None,
+        priority_score= float(data.get('priority_score', 50)),
+        status        = data.get('status', 'new'),
+        uploaded_by   = staff.id,
+    )
+    db.session.add(entry)
+    db.session.commit()
+    return jsonify({'success': True, 'entry': entry.to_dict()}), 201
+
+
+@sales_rep_bp.route('/sales/calling-list/<int:entry_id>', methods=['PUT'])
+@sales_rep_required
+def update_calling_list_entry(staff, entry_id):
+    """Update a calling list entry (status, notes, last_called, etc.)."""
+    entry = CallingListEntry.query.get_or_404(entry_id)
+    data = request.json or {}
+    for field in ('company_name', 'contact_name', 'phone', 'email', 'address', 'notes', 'status'):
+        if field in data:
+            setattr(entry, field, data[field])
+    if 'priority_score' in data:
+        entry.priority_score = float(data['priority_score'])
+    if data.get('mark_called'):
+        entry.last_called = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True, 'entry': entry.to_dict()})
+
+
+@sales_rep_bp.route('/sales/calling-list/<int:entry_id>', methods=['DELETE'])
+@sales_rep_required
+def delete_calling_list_entry(staff, entry_id):
+    """Delete a calling list entry."""
+    entry = CallingListEntry.query.get_or_404(entry_id)
+    db.session.delete(entry)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@sales_rep_bp.route('/sales/calling-list/upload-csv', methods=['POST'])
+@sales_rep_required
+def upload_calling_list_csv(staff):
+    """
+    Bulk-upload prospects from CSV.
+    Expected columns: company_name, contact_name, phone, email, address, notes, priority_score
+    """
+    import csv, io as _io
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    f = request.files['file']
+    if not f.filename.lower().endswith('.csv'):
+        return jsonify({'error': 'File must be a .csv'}), 400
+    try:
+        stream = _io.StringIO(f.stream.read().decode('utf-8-sig'))
+        reader = csv.DictReader(stream)
+    except Exception as e:
+        return jsonify({'error': f'Could not read file: {e}'}), 400
+
+    created = 0
+    skipped = 0
+    errors  = []
+    for i, row in enumerate(reader, start=2):
+        phone = (row.get('phone') or '').strip()
+        if not phone:
+            skipped += 1
+            errors.append(f'Row {i}: phone is required — skipped')
+            continue
+        try:
+            score_raw = (row.get('priority_score') or '50').strip()
+            score = float(score_raw) if score_raw else 50.0
+        except ValueError:
+            score = 50.0
+        entry = CallingListEntry(
+            company_name  = (row.get('company_name') or '').strip() or None,
+            contact_name  = (row.get('contact_name') or '').strip() or None,
+            phone         = phone,
+            email         = (row.get('email') or '').strip() or None,
+            address       = (row.get('address') or '').strip() or None,
+            notes         = (row.get('notes') or '').strip() or None,
+            priority_score= score,
+            status        = 'new',
+            uploaded_by   = staff.id,
+        )
+        db.session.add(entry)
+        created += 1
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Database commit failed: {e}'}), 500
+    return jsonify({'success': True, 'created': created, 'skipped': skipped, 'errors': errors})
+
+
+# ─── Staff: send payment SMS for a specific order ─────────────────────────────
+
+@sales_rep_bp.route('/sales/send-payment-sms', methods=['POST'])
+@sales_rep_required
+def staff_send_payment_sms(staff):
+    """
+    Staff-facing wrapper around the payment SMS endpoint.
+    Body: { order_number, phone_number, payment_method }
+    Delegates to the existing /api/voice/send_payment_sms logic.
+    """
+    import os as _os
+    from src.routes.payment_links import send_payment_sms as _send
+    # Re-use the existing implementation by calling it directly via internal request context
+    # Since we can't call Flask routes internally, we duplicate the core logic here.
+    data = request.json or {}
+    order_number   = (data.get('order_number') or '').strip()
+    phone_number   = (data.get('phone_number') or '').strip()
+    payment_method = (data.get('payment_method') or 'net30').strip().lower()
+
+    if not order_number:
+        return jsonify({'success': False, 'error': 'order_number is required'}), 400
+    if not phone_number:
+        return jsonify({'success': False, 'error': 'phone_number is required'}), 400
+
+    order = Order.query.filter_by(order_number=order_number).first()
+    if not order:
+        return jsonify({'success': False, 'error': f'Order {order_number} not found'}), 404
+
+    import re as _re
+    digits = _re.sub(r'\D', '', phone_number)
+    if len(digits) == 11 and digits[0] == '1':
+        digits = digits[1:]
+    if len(digits) != 10:
+        return jsonify({'success': False, 'error': 'Invalid phone number'}), 400
+    to_phone = f'+1{digits}'
+
+    total = order.total_amount or 0.0
+    FRONTEND_URL = _os.environ.get('FRONTEND_URL', 'https://lldrestaurantsupply.com')
+    LLD_PHONE    = _os.environ.get('LLD_PHONE', '(775) 591-5629')
+
+    if payment_method == 'net30':
+        sms_body = (
+            f'RS LLD Restaurant Supply — Order {order_number} confirmed! '
+            f'Total: ${total:.2f}. Payment due in 30 days. '
+            f'Invoice emailed to your address on file. '
+            f'Questions? Call {LLD_PHONE}. Reply STOP to opt out.'
+        )
+        order.payment_method = 'net30'
+    elif payment_method == 'credit_card':
+        payment_url = f'{FRONTEND_URL}/pay/{order_number}'
+        try:
+            import stripe
+            stripe.api_key = _os.environ.get('STRIPE_SECRET_KEY', '')
+            amount_cents = int(round(total * 100))
+            if amount_cents > 0:
+                price = stripe.Price.create(
+                    unit_amount=amount_cents, currency='usd',
+                    product_data={'name': f'RS LLD Order {order_number}'},
+                )
+                link = stripe.PaymentLink.create(
+                    line_items=[{'price': price.id, 'quantity': 1}],
+                    metadata={'order_number': order_number},
+                    after_completion={
+                        'type': 'redirect',
+                        'redirect': {'url': f'{FRONTEND_URL}/order-confirmation?order={order_number}'},
+                    },
+                )
+                payment_url = link.url
+                order.stripe_payment_link = payment_url
+        except Exception:
+            pass
+        order.payment_method = 'credit_card'
+        sms_body = (
+            f'RS LLD Restaurant Supply — Complete your order {order_number} (${total:.2f}): '
+            f'{payment_url} — Secure link expires in 24 hours. Reply STOP to opt out.'
+        )
+    else:  # check
+        payment_url = f'{FRONTEND_URL}/pay/{order_number}'
+        order.payment_method = 'check'
+        order.payment_status = 'pending_review'
+        sms_body = (
+            f'RS LLD Restaurant Supply — Upload your check for order {order_number} (${total:.2f}): '
+            f'{payment_url} — Please photograph front and back. Reply STOP to opt out.'
+        )
+    db.session.commit()
+
+    twilio_sid   = _os.environ.get('TWILIO_ACCOUNT_SID', '')
+    twilio_token = _os.environ.get('TWILIO_AUTH_TOKEN', '')
+    twilio_from  = _os.environ.get('TWILIO_PHONE_NUMBER', '')
+
+    if not twilio_sid or not twilio_token or not twilio_from:
+        return jsonify({
+            'success': False,
+            'error': 'Twilio not configured on the server.',
+            'sms_preview': sms_body,
+        }), 500
+
+    try:
+        from twilio.rest import Client as TwilioClient
+        client = TwilioClient(twilio_sid, twilio_token)
+        msg = client.messages.create(body=sms_body, from_=twilio_from, to=to_phone)
+        return jsonify({
+            'success': True,
+            'sms_sid': msg.sid,
+            'to': to_phone,
+            'order_number': order_number,
+            'amount': total,
+            'payment_method': payment_method,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'sms_preview': sms_body}), 500

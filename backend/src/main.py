@@ -29,7 +29,7 @@ from src.routes.customer_admin import customer_admin_bp
 from src.routes.voice_api import voice_api_bp
 from src.routes.sourcing import sourcing_bp
 from src.routes.voice_analytics import voice_analytics_bp
-from src.routes.sales_rep import sales_rep_bp, SalesScript
+from src.routes.sales_rep import sales_rep_bp, SalesScript, CallingListEntry
 from src.routes.payment_links import payment_links_bp
 from src.routes.sms_optin import sms_optin_bp
 from src.models.api_key import APIKey

@@ -1,169 +1,346 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { Phone, ShoppingCart, FileText, BarChart2, ChevronDown, ChevronUp, Plus, Trash2, Search, X, Edit3, Save, Trophy } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  Phone, ShoppingCart, FileText, BarChart2, Plus, Trash2, Search,
+  Trophy, Upload, ChevronUp, ChevronDown, Star, X, Edit3,
+  Save, CheckCircle, Send, CreditCard, Banknote, Clock, UserPlus,
+  ArrowLeft, RefreshCw,
+} from 'lucide-react'
 import { staffFetch } from '@/lib/staffApi'
 
 const formatPrice = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`
-const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—'
+const formatDate  = (d) => d ? new Date(d).toLocaleDateString() : '—'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Call List Sub-tab
+// Calling List Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
-function CallListPanel({ t, onSelectCustomer, selectedCustomer }) {
-  const [customers, setCustomers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [viewInvoicesFor, setViewInvoicesFor] = useState(null)
-  const [invoices, setInvoices] = useState([])
-  const [invoicesLoading, setInvoicesLoading] = useState(false)
+function CallingListPanel({ t, onSelectCustomer }) {
+  const [entries, setEntries]           = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [search, setSearch]             = useState('')
+  const [sortBy, setSortBy]             = useState('priority_score')
+  const [sortDir, setSortDir]           = useState('desc')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [showAddForm, setShowAddForm]   = useState(false)
+  const [editEntry, setEditEntry]       = useState(null)
+  const [uploading, setUploading]       = useState(false)
+  const [uploadMsg, setUploadMsg]       = useState('')
+  const fileInputRef = useRef(null)
 
-  useEffect(() => {
-    staffFetch('/api/staff/customers')
-      .then(r => r.json())
-      .then(d => { setCustomers(d.customers || d || []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  const filtered = customers.filter(c => {
-    const q = search.toLowerCase()
-    return (
-      (c.full_name || '').toLowerCase().includes(q) ||
-      (c.company_name || '').toLowerCase().includes(q) ||
-      (c.phone || '').includes(q) ||
-      (c.email || '').toLowerCase().includes(q)
-    )
+  const [form, setForm] = useState({
+    company_name: '', contact_name: '', phone: '', email: '',
+    address: '', notes: '', priority_score: 50,
   })
 
-  const handleViewInvoices = async (customer) => {
-    setViewInvoicesFor(customer)
-    setInvoicesLoading(true)
-    try {
-      const r = await staffFetch(`/api/sales/customer/${customer.id}/invoices`)
-      const d = await r.json()
-      setInvoices(d.orders || [])
-    } catch {
-      setInvoices([])
-    }
-    setInvoicesLoading(false)
+  const load = useCallback(() => {
+    setLoading(true)
+    const params = new URLSearchParams({ sort: sortBy, dir: sortDir })
+    if (statusFilter) params.set('status', statusFilter)
+    if (search) params.set('q', search)
+    staffFetch(`/api/sales/calling-list?${params}`)
+      .then(r => r.json())
+      .then(d => { setEntries(d.entries || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [sortBy, sortDir, statusFilter, search])
+
+  useEffect(() => { load() }, [load])
+
+  const toggleSort = (col) => {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('desc') }
   }
 
-  if (viewInvoicesFor) {
-    return (
-      <div>
-        <button
-          onClick={() => setViewInvoicesFor(null)}
-          className="mb-4 text-sm text-stone-500 hover:text-stone-900 flex items-center gap-1"
-        >
-          ← {t.backToCallList}
-        </button>
-        <h3 className="text-lg font-semibold text-stone-900 mb-4">
-          {t.invoicesFor} {viewInvoicesFor.full_name || viewInvoicesFor.company_name}
-        </h3>
-        {invoicesLoading ? (
-          <p className="text-stone-400 text-sm">Loading...</p>
-        ) : invoices.length === 0 ? (
-          <p className="text-stone-400 text-sm">{t.noInvoices}</p>
-        ) : (
-          <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-stone-50 border-b border-stone-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.orderNumber}</th>
-                  <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.orderDate}</th>
-                  <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.orderTotal}</th>
-                  <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.orderStatus}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map(o => (
-                  <tr key={o.id} className="border-b border-stone-50 hover:bg-stone-50">
-                    <td className="px-4 py-3 font-mono text-xs text-stone-600">{o.order_number}</td>
-                    <td className="px-4 py-3 text-stone-600">{formatDate(o.created_at)}</td>
-                    <td className="px-4 py-3 font-semibold text-stone-900">{formatPrice(o.total_amount)}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600 capitalize">
-                        {o.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    )
+  const SortIcon = ({ col }) => {
+    if (sortBy !== col) return <ChevronDown className="w-3 h-3 text-stone-300 inline ml-1" />
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-stone-700 inline ml-1" />
+      : <ChevronDown className="w-3 h-3 text-stone-700 inline ml-1" />
+  }
+
+  const handleSave = async () => {
+    const url  = editEntry ? `/api/sales/calling-list/${editEntry.id}` : '/api/sales/calling-list'
+    const meth = editEntry ? 'PUT' : 'POST'
+    const r = await staffFetch(url, {
+      method: meth,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    if (r.ok) {
+      setShowAddForm(false)
+      setEditEntry(null)
+      setForm({ company_name: '', contact_name: '', phone: '', email: '', address: '', notes: '', priority_score: 50 })
+      load()
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this entry?')) return
+    await staffFetch(`/api/sales/calling-list/${id}`, { method: 'DELETE' })
+    load()
+  }
+
+  const handleMarkCalled = async (id) => {
+    await staffFetch(`/api/sales/calling-list/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mark_called: true, status: 'called' }),
+    })
+    load()
+  }
+
+  const handleCsvUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true); setUploadMsg('')
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const r = await staffFetch('/api/sales/calling-list/upload-csv', { method: 'POST', body: fd })
+      const d = await r.json()
+      if (r.ok) setUploadMsg(`Imported ${d.created} entries${d.skipped ? `, ${d.skipped} skipped` : ''}`)
+      else setUploadMsg(`Error: ${d.error}`)
+      load()
+    } catch { setUploadMsg('Upload failed') }
+    setUploading(false)
+    e.target.value = ''
+  }
+
+  const openEdit = (entry) => {
+    setEditEntry(entry)
+    setForm({
+      company_name: entry.company_name || '',
+      contact_name: entry.contact_name || '',
+      phone: entry.phone || '',
+      email: entry.email || '',
+      address: entry.address || '',
+      notes: entry.notes || '',
+      priority_score: entry.priority_score || 50,
+    })
+    setShowAddForm(true)
+  }
+
+  const statusBadge = (s) => {
+    const map = {
+      new:       'bg-blue-50 text-blue-700',
+      called:    'bg-yellow-50 text-yellow-700',
+      converted: 'bg-green-50 text-green-700',
+      dnc:       'bg-red-50 text-red-700',
+      customer:  'bg-purple-50 text-purple-700',
+    }
+    return `px-2 py-0.5 rounded-full text-xs font-medium ${map[s] || 'bg-stone-100 text-stone-600'}`
+  }
+
+  const priorityColor = (score) => {
+    if (score >= 80) return 'text-green-600 font-bold'
+    if (score >= 60) return 'text-yellow-600 font-semibold'
+    return 'text-stone-400'
   }
 
   return (
     <div>
-      <div className="mb-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t.searchProducts}
-            className="w-full pl-9 pr-4 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
-          />
+      {/* Header row */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t.searchCallList || 'Search name, company, phone…'}
+              className="pl-9 pr-4 py-2 border border-stone-200 rounded-lg text-sm w-56 focus:outline-none focus:ring-2 focus:ring-stone-900"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+          >
+            <option value="">{t.allStatuses || 'All Statuses'}</option>
+            <option value="new">New</option>
+            <option value="called">Called</option>
+            <option value="converted">Converted</option>
+            <option value="dnc">DNC</option>
+            <option value="customer">Customer</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-700">
+            <Star className="w-3 h-3" />
+            {t.smartFilter || 'Smart Sort: Best Conversion First'}
+          </span>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50"
+          >
+            <Upload className="w-4 h-4" />
+            {uploading ? 'Uploading…' : (t.uploadCsv || 'Upload CSV')}
+          </button>
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+          <button
+            onClick={() => { setEditEntry(null); setForm({ company_name:'',contact_name:'',phone:'',email:'',address:'',notes:'',priority_score:50 }); setShowAddForm(true) }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-lg text-sm hover:bg-stone-700"
+          >
+            <Plus className="w-4 h-4" />
+            {t.addEntry || 'Add Entry'}
+          </button>
         </div>
       </div>
+
+      {uploadMsg && (
+        <div className={`mb-3 p-2 rounded-lg text-sm ${uploadMsg.startsWith('Imported') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {uploadMsg}
+        </div>
+      )}
+
+      {/* Add / Edit form */}
+      {showAddForm && (
+        <div className="mb-4 bg-white border border-stone-200 rounded-xl p-5">
+          <h3 className="font-semibold text-stone-900 mb-4 text-sm">
+            {editEntry ? (t.editEntry || 'Edit Entry') : (t.addEntry || 'Add Entry')}
+          </h3>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            {[
+              ['company_name', t.company || 'Company'],
+              ['contact_name', t.contactName || 'Contact Name'],
+              ['phone', t.phone || 'Phone *'],
+              ['email', t.email || 'Email'],
+              ['address', t.address || 'Address'],
+            ].map(([key, label]) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-stone-500 mb-1">{label}</label>
+                <input
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs font-medium text-stone-500 mb-1">
+                {t.priorityScore || 'Priority Score (0–100)'}
+              </label>
+              <input
+                type="number" min="0" max="100"
+                value={form.priority_score}
+                onChange={e => setForm(f => ({ ...f, priority_score: e.target.value }))}
+                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+              />
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-stone-500 mb-1">{t.notes || 'Notes'}</label>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              rows={2}
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 resize-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleSave} className="px-4 py-2 bg-stone-900 text-white rounded-lg text-sm hover:bg-stone-700">
+              <Save className="w-4 h-4 inline mr-1" />{t.save || 'Save'}
+            </button>
+            <button onClick={() => { setShowAddForm(false); setEditEntry(null) }} className="px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50">
+              {t.cancel || 'Cancel'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
       {loading ? (
-        <p className="text-stone-400 text-sm">Loading...</p>
+        <p className="text-stone-400 text-sm py-8 text-center">Loading…</p>
+      ) : entries.length === 0 ? (
+        <div className="text-center py-16 text-stone-400">
+          <Phone className="w-10 h-10 mx-auto mb-3 text-stone-200" />
+          <p className="text-sm">{t.noEntries || 'No entries yet. Upload a CSV or add manually.'}</p>
+        </div>
       ) : (
         <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-stone-50 border-b border-stone-100">
               <tr>
-                <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.customerName}</th>
-                <th className="text-left px-4 py-3 text-stone-500 font-medium hidden sm:table-cell">{t.company}</th>
-                <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.phone}</th>
-                <th className="text-left px-4 py-3 text-stone-500 font-medium hidden md:table-cell">{t.lastOrder}</th>
-                <th className="text-left px-4 py-3 text-stone-500 font-medium hidden md:table-cell">{t.totalSpend}</th>
-                <th className="text-right px-4 py-3 text-stone-500 font-medium">Actions</th>
+                <th className="text-left px-4 py-3 text-stone-500 font-medium cursor-pointer select-none" onClick={() => toggleSort('priority_score')}>
+                  Score <SortIcon col="priority_score" />
+                </th>
+                <th className="text-left px-4 py-3 text-stone-500 font-medium cursor-pointer select-none" onClick={() => toggleSort('company_name')}>
+                  {t.company || 'Company'} <SortIcon col="company_name" />
+                </th>
+                <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.contactName || 'Contact'}</th>
+                <th className="text-left px-4 py-3 text-stone-500 font-medium">{t.phone || 'Phone'}</th>
+                <th className="text-left px-4 py-3 text-stone-500 font-medium cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort('status')}>
+                  {t.status || 'Status'} <SortIcon col="status" />
+                </th>
+                <th className="text-left px-4 py-3 text-stone-500 font-medium hidden lg:table-cell cursor-pointer select-none" onClick={() => toggleSort('last_called')}>
+                  {t.lastCalled || 'Last Called'} <SortIcon col="last_called" />
+                </th>
+                <th className="text-right px-4 py-3 text-stone-500 font-medium">{t.actions || 'Actions'}</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => (
-                <tr
-                  key={c.id}
-                  className={`border-b border-stone-50 hover:bg-stone-50 ${selectedCustomer?.id === c.id ? 'bg-blue-50' : ''}`}
-                >
+              {entries.map(e => (
+                <tr key={e.id} className="border-b border-stone-50 hover:bg-stone-50">
                   <td className="px-4 py-3">
-                    <span className="font-medium text-stone-900">{c.full_name || '—'}</span>
-                    {c.email && <div className="text-xs text-stone-400">{c.email}</div>}
+                    <span className={`text-sm ${priorityColor(e.priority_score)}`}>
+                      {Math.round(e.priority_score)}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-stone-600 hidden sm:table-cell">{c.company_name || '—'}</td>
                   <td className="px-4 py-3">
-                    {c.phone ? (
-                      <a href={`tel:${c.phone}`} className="text-blue-600 hover:underline font-mono text-xs">
-                        {c.phone}
+                    <p className="font-medium text-stone-900">{e.company_name || '—'}</p>
+                    {e.notes && <p className="text-xs text-stone-400 truncate max-w-[160px]">{e.notes}</p>}
+                  </td>
+                  <td className="px-4 py-3 text-stone-600">{e.contact_name || '—'}</td>
+                  <td className="px-4 py-3">
+                    {e.phone ? (
+                      <a href={`tel:${e.phone}`} className="text-blue-600 hover:underline font-mono text-xs">
+                        {e.phone}
                       </a>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-stone-500 text-xs hidden md:table-cell">
-                    {c.last_order_date ? formatDate(c.last_order_date) : t.neverOrdered}
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <span className={statusBadge(e.status)}>{e.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-stone-600 hidden md:table-cell">{formatPrice(c.total_spent || 0)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleViewInvoices(c)}
-                        className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50"
-                      >
-                        {t.viewInvoices}
-                      </button>
-                      <button
-                        onClick={() => onSelectCustomer(c)}
-                        className="text-xs px-2 py-1 rounded bg-stone-900 text-white hover:bg-stone-700"
-                      >
-                        {t.placeOrder}
-                      </button>
+                  <td className="px-4 py-3 text-stone-400 text-xs hidden lg:table-cell">
+                    {e.last_called ? formatDate(e.last_called) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {!['converted','dnc','customer'].includes(e.status) && (
+                        <button
+                          onClick={() => handleMarkCalled(e.id)}
+                          title="Mark as Called"
+                          className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50"
+                        >
+                          <Phone className="w-3.5 h-3.5 inline" />
+                        </button>
+                      )}
+                      {e.source === 'customer' && (
+                        <button
+                          onClick={() => onSelectCustomer({ id: e.customer_id, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
+                          className="text-xs px-2 py-1 rounded bg-stone-900 text-white hover:bg-stone-700"
+                        >
+                          {t.placeOrder || 'Order'}
+                        </button>
+                      )}
+                      {e.source !== 'customer' && (
+                        <button onClick={() => openEdit(e)} className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50">
+                          <Edit3 className="w-3.5 h-3.5 inline" />
+                        </button>
+                      )}
+                      {e.source !== 'customer' && (
+                        <button onClick={() => handleDelete(e.id)} className="text-xs px-2 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50">
+                          <Trash2 className="w-3.5 h-3.5 inline" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="px-4 py-2 bg-stone-50 border-t border-stone-100 text-xs text-stone-400">
+            {entries.length} {t.entries || 'entries'}
+          </div>
         </div>
       )}
     </div>
@@ -173,22 +350,102 @@ function CallListPanel({ t, onSelectCustomer, selectedCustomer }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Place Order Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
-function PlaceOrderPanel({ t, selectedCustomer, onOrderPlaced }) {
-  const [productSearch, setProductSearch] = useState('')
-  const [productResults, setProductResults] = useState([])
-  const [items, setItems] = useState([])
-  const [notes, setNotes] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('net30')
-  const [submitting, setSubmitting] = useState(false)
-  const [successMsg, setSuccessMsg] = useState('')
-  const [errorMsg, setErrorMsg] = useState('')
+function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }) {
+  const [customer, setCustomer]             = useState(initialCustomer || null)
+  const [custSearch, setCustSearch]         = useState('')
+  const [custResults, setCustResults]       = useState([])
+  const [custLoading, setCustLoading]       = useState(false)
+  const [showNewCustForm, setShowNewCustForm] = useState(false)
+  const [newCust, setNewCust] = useState({ first_name:'',last_name:'',company_name:'',email:'',phone:'',shipping_address:'',billing_address:'' })
+  const [creatingCust, setCreatingCust]     = useState(false)
+  const [custError, setCustError]           = useState('')
 
-  const searchProducts = useCallback(async (q) => {
-    if (!q.trim()) { setProductResults([]); return }
+  const [productSearch, setProductSearch]   = useState('')
+  const [productResults, setProductResults] = useState([])
+  const [items, setItems]                   = useState([])
+  const [notes, setNotes]                   = useState('')
+  const [paymentMethod, setPaymentMethod]   = useState('net30')
+  const [discountType, setDiscountType]     = useState('amount')
+  const [discountValue, setDiscountValue]   = useState('')
+  const [submitting, setSubmitting]         = useState(false)
+  const [errorMsg, setErrorMsg]             = useState('')
+
+  const [page, setPage]                     = useState('order')
+  const [placedOrder, setPlacedOrder]       = useState(null)
+  const [smsPhone, setSmsPhone]             = useState('')
+  const [smsSending, setSmsSending]         = useState(false)
+  const [smsResult, setSmsResult]           = useState(null)
+
+  useEffect(() => { if (initialCustomer) { setCustomer(initialCustomer); setSmsPhone(initialCustomer.phone || '') } }, [initialCustomer])
+
+  // Customer search
+  const searchCustomers = useCallback(async (q) => {
+    if (!q || q.length < 2) { setCustResults([]); return }
+    setCustLoading(true)
     try {
-      const r = await staffFetch(`/api/staff/products?search=${encodeURIComponent(q)}&limit=10`)
+      const r = await staffFetch(`/api/staff/customers/search?q=${encodeURIComponent(q)}`)
       const d = await r.json()
-      setProductResults(d.products || [])
+      setCustResults(d.customers || d || [])
+    } catch { setCustResults([]) }
+    setCustLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchCustomers(custSearch), 300)
+    return () => clearTimeout(timer)
+  }, [custSearch, searchCustomers])
+
+  const selectCustomer = (c) => {
+    // Normalize fields from either the search endpoint (name/company) or to_dict (full_name/company_name)
+    const normalized = {
+      id: c.id,
+      full_name: c.full_name || c.name || c.username || '',
+      username: c.username || c.name || '',
+      company_name: c.company_name || c.company || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      shipping_address: c.shipping_address || c.address || '',
+      source: c.source,
+    }
+    setCustomer(normalized); setCustSearch(''); setCustResults([]); setSmsPhone(normalized.phone || '')
+  }
+
+  const handleCreateCustomer = async () => {
+    if (!newCust.email) { setCustError('Email is required'); return }
+    if (!newCust.first_name && !newCust.company_name) { setCustError('First name or company name is required'); return }
+    setCreatingCust(true); setCustError('')
+    try {
+      const r = await staffFetch('/api/staff/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCust),
+      })
+      const d = await r.json()
+      if (r.ok) {
+        selectCustomer({
+          id: d.id,
+          full_name: `${newCust.first_name} ${newCust.last_name}`.trim() || d.username,
+          username: d.username,
+          company_name: d.company_name || '',
+          phone: d.phone || newCust.phone || '',
+          email: d.email || newCust.email || '',
+          shipping_address: newCust.shipping_address || '',
+          source: 'customer',
+        })
+        setShowNewCustForm(false)
+        setNewCust({ first_name:'',last_name:'',company_name:'',email:'',phone:'',shipping_address:'',billing_address:'' })
+      } else setCustError(d.error || 'Failed to create customer')
+    } catch { setCustError('Network error') }
+    setCreatingCust(false)
+  }
+
+  // Product search
+  const searchProducts = useCallback(async (q) => {
+    if (!q || q.length < 2) { setProductResults([]); return }
+    try {
+      const r = await staffFetch(`/api/products/search?q=${encodeURIComponent(q)}&limit=12`)
+      const d = await r.json()
+      setProductResults(d.products || d || [])
     } catch { setProductResults([]) }
   }, [])
 
@@ -200,102 +457,223 @@ function PlaceOrderPanel({ t, selectedCustomer, onOrderPlaced }) {
   const addItem = (product) => {
     setItems(prev => {
       const existing = prev.find(i => i.product_id === product.id)
-      if (existing) {
-        return prev.map(i => i.product_id === product.id ? { ...i, qty: i.qty + 1 } : i)
-      }
-      return [...prev, {
-        product_id: product.id,
-        name: product.name,
-        sku: product.sku,
-        qty: 1,
-        unit_price: parseFloat(product.unit_price) || 0,
-      }]
+      if (existing) return prev.map(i => i.product_id === product.id ? { ...i, qty: i.qty + 1 } : i)
+      return [...prev, { product_id: product.id, name: product.name, sku: product.sku, qty: 1, unit_price: parseFloat(product.unit_price) || 0 }]
     })
-    setProductSearch('')
-    setProductResults([])
+    setProductSearch(''); setProductResults([])
   }
 
-  const updateQty = (idx, val) => {
-    const q = parseInt(val)
-    if (q < 1) return
-    setItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: q } : it))
-  }
+  const updateQty   = (idx, val) => { const q = parseInt(val); if (!isNaN(q) && q >= 1) setItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: q } : it)) }
+  const updatePrice = (idx, val) => { const p = parseFloat(val); if (!isNaN(p) && p >= 0) setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: p } : it)) }
+  const removeItem  = (idx) => setItems(prev => prev.filter((_, i) => i !== idx))
 
-  const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx))
-
-  const subtotal = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
+  const subtotal    = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
+  const discountAmt = discountType === 'percent' ? subtotal * (parseFloat(discountValue) || 0) / 100 : parseFloat(discountValue) || 0
+  const total       = Math.max(0, subtotal - discountAmt)
 
   const handleSubmit = async () => {
-    if (!selectedCustomer) return
-    if (items.length === 0) { setErrorMsg(t.noItems); return }
-    setSubmitting(true)
-    setErrorMsg('')
+    if (!customer) { setErrorMsg(t.selectCustomer || 'Select a customer first'); return }
+    if (items.length === 0) { setErrorMsg(t.noItems || 'Add at least one item'); return }
+    setSubmitting(true); setErrorMsg('')
     try {
       const r = await staffFetch('/api/sales/place-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer_id: selectedCustomer.id,
+          customer_id: customer.id,
           items: items.map(i => ({ product_id: i.product_id, quantity: i.qty, unit_price: i.unit_price })),
-          notes,
-          payment_method: paymentMethod,
-          delivery_address: selectedCustomer.shipping_address || '',
-          customer_name: selectedCustomer.full_name || selectedCustomer.company_name || '',
-          customer_phone: selectedCustomer.phone || '',
-          customer_company: selectedCustomer.company_name || '',
+          notes, payment_method: paymentMethod,
+          discount_amount: discountAmt, delivery_fee: 0,
         }),
       })
       const d = await r.json()
-      if (r.ok) {
-        setSuccessMsg(t.orderSuccess + ' ' + (d.order_number || ''))
-        setItems([])
-        setNotes('')
-        if (onOrderPlaced) onOrderPlaced()
-      } else {
-        setErrorMsg(d.error || t.orderError)
-      }
-    } catch {
-      setErrorMsg(t.orderError)
-    }
+      if (r.ok) { setPlacedOrder(d); setSmsPhone(customer.phone || ''); setPage('payment'); if (onOrderPlaced) onOrderPlaced() }
+      else setErrorMsg(d.error || t.orderError || 'Failed to place order')
+    } catch { setErrorMsg(t.orderError || 'Failed to place order') }
     setSubmitting(false)
   }
 
-  if (!selectedCustomer) {
+  const handleSendSms = async (method) => {
+    if (!smsPhone) { setSmsResult({ error: 'Phone number required' }); return }
+    setSmsSending(true); setSmsResult(null)
+    try {
+      const r = await staffFetch('/api/sales/send-payment-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_number: placedOrder?.order_number, phone_number: smsPhone, payment_method: method }),
+      })
+      setSmsResult(await r.json())
+    } catch { setSmsResult({ error: 'Network error' }) }
+    setSmsSending(false)
+  }
+
+  // ── Payment Page ──────────────────────────────────────────────────────────
+  if (page === 'payment' && placedOrder) {
     return (
-      <div className="text-center py-20">
-        <Phone className="w-12 h-12 text-stone-200 mx-auto mb-3" />
-        <p className="text-stone-400">{t.selectCustomer}</p>
+      <div className="max-w-2xl">
+        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl mb-6">
+          <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-green-900">{t.orderSuccess || 'Order placed!'}</p>
+            <p className="text-sm text-green-700">
+              Order <span className="font-mono font-bold">{placedOrder.order_number}</span> — Total: <strong>{formatPrice(placedOrder.total_amount)}</strong>
+            </p>
+          </div>
+        </div>
+
+        <h3 className="text-lg font-bold text-stone-900 mb-1">{t.paymentPageTitle || 'Send Payment Request'}</h3>
+        <p className="text-sm text-stone-500 mb-5">{t.paymentPageSubtitle || 'Choose a payment method and send an SMS to the customer.'}</p>
+
+        <div className="mb-5">
+          <label className="block text-xs font-medium text-stone-600 mb-1">{t.customerPhone || "Customer's Phone Number"}</label>
+          <input
+            value={smsPhone}
+            onChange={e => setSmsPhone(e.target.value)}
+            placeholder="(555) 000-0000"
+            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          {[
+            { method: 'net30',       icon: Clock,       label: t.net30       || 'Net 30',       desc: t.net30Desc       || 'Send confirmation. Invoice due in 30 days.',      color: 'border-blue-200 hover:bg-blue-50' },
+            { method: 'credit_card', icon: CreditCard,  label: t.creditCard  || 'Credit Card',  desc: t.creditCardDesc  || 'Generate Stripe link and send via SMS.',           color: 'border-green-200 hover:bg-green-50' },
+            { method: 'check',       icon: Banknote,    label: t.check       || 'Check',        desc: t.checkDesc       || 'Send check upload link via SMS.',                  color: 'border-amber-200 hover:bg-amber-50' },
+          ].map(({ method, icon: Icon, label, desc, color }) => (
+            <button
+              key={method}
+              onClick={() => handleSendSms(method)}
+              disabled={smsSending}
+              className={`flex flex-col items-start p-4 border-2 rounded-xl text-left transition-all ${color} disabled:opacity-50`}
+            >
+              <div className="flex items-center gap-2 mb-1 w-full">
+                <Icon className="w-4 h-4 text-stone-700" />
+                <span className="font-semibold text-stone-900 text-sm">{label}</span>
+                <Send className="w-3.5 h-3.5 text-stone-400 ml-auto" />
+              </div>
+              <p className="text-xs text-stone-500">{desc}</p>
+            </button>
+          ))}
+        </div>
+
+        {smsSending && <div className="p-3 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-600 mb-4">Sending SMS…</div>}
+        {smsResult && (
+          <div className={`p-3 rounded-lg text-sm mb-4 ${smsResult.success ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
+            {smsResult.success
+              ? `SMS sent to ${smsResult.to} (${smsResult.payment_method})`
+              : `${smsResult.error || 'SMS failed'}${smsResult.sms_preview ? ` — Preview: "${smsResult.sms_preview}"` : ''}`}
+          </div>
+        )}
+
+        <button
+          onClick={() => { setPage('order'); setItems([]); setNotes(''); setDiscountValue(''); setPlacedOrder(null); setSmsResult(null) }}
+          className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {t.placeAnotherOrder || 'Place Another Order'}
+        </button>
       </div>
     )
   }
 
+  // ── Order Page ────────────────────────────────────────────────────────────
   return (
     <div className="max-w-3xl">
-      {/* Customer header */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
-        <p className="text-sm font-semibold text-blue-900">{t.placeOrderFor}: {selectedCustomer.full_name || selectedCustomer.company_name}</p>
-        {selectedCustomer.phone && <p className="text-xs text-blue-600 mt-0.5">{selectedCustomer.phone}</p>}
+      {/* Customer section */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-stone-700">{t.customer || 'Customer'}</h3>
+          <button
+            onClick={() => setShowNewCustForm(v => !v)}
+            className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-900 border border-stone-200 rounded-lg px-2 py-1"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            {t.newCustomer || 'New Customer'}
+          </button>
+        </div>
+
+        {showNewCustForm && (
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 mb-3">
+            <h4 className="text-xs font-semibold text-stone-700 mb-3">{t.newCustomer || 'New Customer'}</h4>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              {[
+                ['first_name','First Name'],['last_name','Last Name'],
+                ['company_name','Company'],['email','Email'],
+                ['phone','Phone'],['shipping_address','Shipping Address'],
+              ].map(([key, label]) => (
+                <div key={key}>
+                  <label className="block text-xs text-stone-500 mb-1">{label}</label>
+                  <input value={newCust[key]} onChange={e => setNewCust(f => ({ ...f, [key]: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900" />
+                </div>
+              ))}
+            </div>
+            {custError && <p className="text-red-600 text-xs mb-2">{custError}</p>}
+            <div className="flex gap-2">
+              <button onClick={handleCreateCustomer} disabled={creatingCust} className="px-4 py-2 bg-stone-900 text-white rounded-lg text-sm hover:bg-stone-700 disabled:opacity-50">
+                {creatingCust ? 'Creating…' : (t.createAndSelect || 'Create & Select')}
+              </button>
+              <button onClick={() => setShowNewCustForm(false)} className="px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50">
+                {t.cancel || 'Cancel'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!customer && !showNewCustForm && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <input
+              value={custSearch}
+              onChange={e => setCustSearch(e.target.value)}
+              placeholder={t.searchCustomers || 'Search customer by name, company, phone…'}
+              className="w-full pl-9 pr-4 py-2.5 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+            />
+            {custLoading && <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 animate-spin" />}
+            {custResults.length > 0 && (
+              <div className="absolute z-10 w-full bg-white border border-stone-200 rounded-lg shadow-lg mt-1 max-h-64 overflow-y-auto">
+                {custResults.map(c => (
+                  <button key={c.id} onClick={() => selectCustomer(c)} className="w-full text-left px-4 py-3 hover:bg-stone-50 border-b border-stone-50 last:border-0">
+                    <p className="font-medium text-stone-900 text-sm">{c.full_name || c.name || c.username}</p>
+                    <p className="text-xs text-stone-400">{c.company_name || c.company || ''} {c.phone ? `· ${c.phone}` : ''}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {customer && (
+          <div className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-xl p-4">
+            <div>
+              <p className="font-semibold text-blue-900 text-sm">{customer.full_name || customer.username}</p>
+              {customer.company_name && <p className="text-xs text-blue-600">{customer.company_name}</p>}
+              {customer.phone && <p className="text-xs text-blue-500 font-mono">{customer.phone}</p>}
+              {customer.shipping_address && <p className="text-xs text-blue-400 mt-0.5">{customer.shipping_address}</p>}
+            </div>
+            <button onClick={() => { setCustomer(null); setSmsPhone('') }} className="text-blue-400 hover:text-blue-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Product search */}
       <div className="mb-4 relative">
+        <label className="block text-xs font-semibold text-stone-700 mb-1">{t.addItem || 'Add Item'}</label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             value={productSearch}
             onChange={e => setProductSearch(e.target.value)}
-            placeholder={t.searchProducts}
+            placeholder={t.searchProducts || 'Search products…'}
             className="w-full pl-9 pr-4 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
           />
         </div>
         {productResults.length > 0 && (
           <div className="absolute z-10 w-full bg-white border border-stone-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
             {productResults.map(p => (
-              <button
-                key={p.id}
-                onClick={() => addItem(p)}
-                className="w-full text-left px-4 py-2.5 hover:bg-stone-50 border-b border-stone-50 last:border-0"
-              >
+              <button key={p.id} onClick={() => addItem(p)} className="w-full text-left px-4 py-2.5 hover:bg-stone-50 border-b border-stone-50 last:border-0">
                 <span className="font-medium text-stone-900 text-sm">{p.name}</span>
                 <span className="text-stone-400 text-xs ml-2">{p.sku}</span>
                 <span className="float-right text-stone-700 text-sm font-semibold">{formatPrice(p.unit_price)}</span>
@@ -306,15 +684,15 @@ function PlaceOrderPanel({ t, selectedCustomer, onOrderPlaced }) {
       </div>
 
       {/* Items table */}
-      {items.length > 0 && (
+      {items.length > 0 ? (
         <div className="bg-white rounded-xl border border-stone-100 mb-4 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-stone-50 border-b border-stone-100">
               <tr>
                 <th className="text-left px-4 py-2.5 text-stone-500 font-medium">Item</th>
-                <th className="text-center px-3 py-2.5 text-stone-500 font-medium w-20">{t.qty}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.unitPrice}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.lineTotal}</th>
+                <th className="text-center px-3 py-2.5 text-stone-500 font-medium w-20">{t.qty || 'Qty'}</th>
+                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.unitPrice || 'Unit Price'}</th>
+                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.lineTotal || 'Total'}</th>
                 <th className="w-8"></th>
               </tr>
             </thead>
@@ -326,157 +704,144 @@ function PlaceOrderPanel({ t, selectedCustomer, onOrderPlaced }) {
                     {item.sku && <p className="text-xs text-stone-400">{item.sku}</p>}
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.qty}
-                      onChange={e => updateQty(idx, e.target.value)}
-                      className="w-16 text-center border border-stone-200 rounded px-1 py-0.5 text-sm"
-                    />
+                    <input type="number" min="1" value={item.qty} onChange={e => updateQty(idx, e.target.value)}
+                      className="w-16 text-center border border-stone-200 rounded px-1 py-0.5 text-sm" />
                   </td>
-                  <td className="px-4 py-2.5 text-right text-stone-600">{formatPrice(item.unit_price)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => updatePrice(idx, e.target.value)}
+                      className="w-24 text-right border border-stone-200 rounded px-2 py-0.5 text-sm" />
+                  </td>
                   <td className="px-4 py-2.5 text-right font-semibold text-stone-900">{formatPrice(item.qty * item.unit_price)}</td>
                   <td className="pr-3">
-                    <button onClick={() => removeItem(idx)} className="text-stone-300 hover:text-red-500">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => removeItem(idx)} className="text-stone-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot className="bg-stone-50 border-t border-stone-100">
               <tr>
-                <td colSpan={3} className="px-4 py-2.5 text-right font-semibold text-stone-700">Subtotal</td>
-                <td className="px-4 py-2.5 text-right font-bold text-stone-900">{formatPrice(subtotal)}</td>
+                <td colSpan={3} className="px-4 py-2 text-right text-stone-500 text-sm">Subtotal</td>
+                <td className="px-4 py-2 text-right font-semibold text-stone-700">{formatPrice(subtotal)}</td>
+                <td></td>
+              </tr>
+              {discountAmt > 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-2 text-right text-green-600 text-sm">Discount</td>
+                  <td className="px-4 py-2 text-right font-semibold text-green-600">−{formatPrice(discountAmt)}</td>
+                  <td></td>
+                </tr>
+              )}
+              <tr>
+                <td colSpan={3} className="px-4 py-2.5 text-right font-bold text-stone-900">Total</td>
+                <td className="px-4 py-2.5 text-right font-bold text-stone-900 text-base">{formatPrice(total)}</td>
                 <td></td>
               </tr>
             </tfoot>
           </table>
         </div>
+      ) : (
+        <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-8 text-center mb-4">
+          <ShoppingCart className="w-8 h-8 text-stone-200 mx-auto mb-2" />
+          <p className="text-stone-400 text-sm">{t.noItemsYet || 'Search for products above to add items'}</p>
+        </div>
       )}
 
-      {/* Notes + payment */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+      {/* Discount + Notes + Payment */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">{t.notes}</label>
-          <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={3}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 resize-none"
-          />
+          <label className="block text-xs font-medium text-stone-600 mb-1">{t.discount || 'Discount'}</label>
+          <div className="flex gap-1">
+            <select value={discountType} onChange={e => setDiscountType(e.target.value)}
+              className="border border-stone-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
+              <option value="amount">$</option>
+              <option value="percent">%</option>
+            </select>
+            <input type="number" min="0" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)}
+              placeholder={discountType === 'percent' ? '0' : '0.00'}
+              className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900" />
+          </div>
+          {discountAmt > 0 && <p className="text-xs text-green-600 mt-1">−{formatPrice(discountAmt)} off</p>}
         </div>
         <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">{t.paymentMethod}</label>
-          <select
-            value={paymentMethod}
-            onChange={e => setPaymentMethod(e.target.value)}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
-          >
+          <label className="block text-xs font-medium text-stone-600 mb-1">{t.paymentMethod || 'Payment Method'}</label>
+          <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
+            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
             <option value="net30">Net 30</option>
             <option value="check">Check</option>
             <option value="credit_card">Credit Card</option>
             <option value="cash">Cash</option>
           </select>
         </div>
+        <div>
+          <label className="block text-xs font-medium text-stone-600 mb-1">{t.notes || 'Notes'}</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 resize-none" />
+        </div>
       </div>
 
-      {successMsg && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">{successMsg}</div>
-      )}
-      {errorMsg && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{errorMsg}</div>
-      )}
+      {errorMsg && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{errorMsg}</div>}
 
       <button
         onClick={handleSubmit}
-        disabled={submitting || items.length === 0}
-        className="px-6 py-2.5 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={submitting || items.length === 0 || !customer}
+        className="px-6 py-2.5 bg-stone-900 text-white rounded-lg text-sm font-semibold hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {submitting ? t.submitting : t.submitOrder}
+        {submitting ? (t.submitting || 'Submitting…') : (t.submitOrder || 'Submit Order')}
       </button>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Script Sub-tab
+// Call Script Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
 function ScriptPanel({ t, canEdit }) {
-  const [script, setScript] = useState('')
+  const [content, setContent] = useState('')
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [draft, setDraft]     = useState('')
+  const [saving, setSaving]   = useState(false)
+  const [saved, setSaved]     = useState(false)
 
   useEffect(() => {
-    staffFetch('/api/sales/script')
-      .then(r => r.json())
-      .then(d => setScript(d.content || ''))
-      .catch(() => {})
+    staffFetch('/api/sales/script').then(r => r.json()).then(d => setContent(d.content || '')).catch(() => {})
   }, [])
 
-  const handleEdit = () => { setDraft(script); setEditing(true) }
-  const handleCancel = () => setEditing(false)
   const handleSave = async () => {
     setSaving(true)
-    try {
-      const r = await staffFetch('/api/sales/script', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: draft }),
-      })
-      if (r.ok) { setScript(draft); setEditing(false); setMsg(t.scriptUpdated) }
-    } catch {}
+    const r = await staffFetch('/api/sales/script', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: draft }) })
+    if (r.ok) { setContent(draft); setEditing(false); setSaved(true); setTimeout(() => setSaved(false), 3000) }
     setSaving(false)
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-stone-900">{t.scriptTitle}</h3>
+        <h3 className="font-semibold text-stone-900">{t.scriptTitle || 'Call Script'}</h3>
         {canEdit && !editing && (
-          <button
-            onClick={handleEdit}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-stone-600 hover:bg-stone-50"
-          >
-            <Edit3 className="w-3.5 h-3.5" /> {t.scriptEditBtn} <span className="text-stone-400">{t.scriptEditNote}</span>
+          <button onClick={() => { setDraft(content); setEditing(true) }} className="flex items-center gap-1.5 text-sm text-stone-600 border border-stone-200 rounded-lg px-3 py-1.5 hover:bg-stone-50">
+            <Edit3 className="w-3.5 h-3.5" />{t.scriptEditBtn || 'Edit'}
           </button>
         )}
+        {!canEdit && <span className="text-xs text-stone-400">{t.scriptEditNote || '(Admin/Manager only)'}</span>}
       </div>
-      {msg && <p className="text-green-600 text-sm mb-3">{msg}</p>}
+      {saved && <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{t.scriptUpdated || 'Script updated.'}</div>}
       {editing ? (
-        <div>
-          <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            rows={20}
-            className="w-full border border-stone-200 rounded-lg px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-stone-900 resize-y"
-          />
+        <>
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={20}
+            className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-stone-900 resize-none" />
           <div className="flex gap-2 mt-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-700 disabled:opacity-50"
-            >
-              <Save className="w-3.5 h-3.5" /> {saving ? 'Saving...' : t.scriptSaveBtn}
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-stone-900 text-white rounded-lg text-sm hover:bg-stone-700 disabled:opacity-50">
+              <Save className="w-4 h-4 inline mr-1" />{saving ? 'Saving…' : (t.scriptSaveBtn || 'Save')}
             </button>
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50"
-            >
-              {t.scriptCancelBtn}
+            <button onClick={() => setEditing(false)} className="px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50">
+              {t.scriptCancelBtn || 'Cancel'}
             </button>
           </div>
-        </div>
+        </>
       ) : (
-        <div className="bg-white rounded-xl border border-stone-100 p-5">
-          {script ? (
-            <pre className="text-sm text-stone-700 whitespace-pre-wrap font-sans leading-relaxed">{script}</pre>
-          ) : (
-            <p className="text-stone-400 text-sm italic">No script set yet. {canEdit ? 'Click "Edit Script" to add one.' : 'Ask your manager to set up the call script.'}</p>
-          )}
-        </div>
+        <pre className="bg-stone-50 border border-stone-100 rounded-xl p-5 text-sm text-stone-700 whitespace-pre-wrap font-sans leading-relaxed">
+          {content || 'No script set.'}
+        </pre>
       )}
     </div>
   )
@@ -486,141 +851,108 @@ function ScriptPanel({ t, canEdit }) {
 // My Sales Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
 function MySalesPanel({ t, showLeaderboard }) {
-  const [period, setPeriod] = useState('30')
-  const [stats, setStats] = useState(null)
-  const [orders, setOrders] = useState([])
+  const [period, setPeriod]       = useState(30)
+  const [stats, setStats]         = useState(null)
+  const [orders, setOrders]       = useState([])
   const [leaderboard, setLeaderboard] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]     = useState(true)
 
-  const fetchSales = useCallback(async (p) => {
+  useEffect(() => {
     setLoading(true)
-    try {
-      const [statsRes, ordersRes] = await Promise.all([
-        staffFetch(`/api/sales/my-sales?days=${p}`),
-        staffFetch(`/api/sales/my-sales?days=${p}`),
-      ])
-      const [statsData, ordersData] = await Promise.all([statsRes.json(), ordersRes.json()])
-      setStats(statsData)
-      setOrders(ordersData.orders || [])
-    } catch {}
-    setLoading(false)
-  }, [])
-
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      const r = await staffFetch('/api/sales/leaderboard')
-      const d = await r.json()
-      setLeaderboard(d.leaderboard || [])
-    } catch {}
-  }, [])
-
-  useEffect(() => { fetchSales(period) }, [period, fetchSales])
-  useEffect(() => { if (showLeaderboard) fetchLeaderboard() }, [showLeaderboard, fetchLeaderboard])
+    Promise.all([
+      staffFetch(`/api/sales/my-sales?days=${period}`).then(r => r.json()),
+      showLeaderboard ? staffFetch(`/api/sales/leaderboard?days=${period}`).then(r => r.json()) : Promise.resolve({ leaderboard: [] }),
+    ]).then(([salesData, lbData]) => {
+      setStats(salesData.stats || null)
+      setOrders(salesData.orders || [])
+      setLeaderboard(lbData.leaderboard || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [period, showLeaderboard])
 
   return (
     <div>
-      {/* Period selector */}
-      <div className="flex items-center gap-2 mb-5">
-        <span className="text-sm text-stone-500">{t.periodLabel}:</span>
-        {[['7', t.last7], ['30', t.last30], ['90', t.last90]].map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setPeriod(val)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-              period === val
-                ? 'bg-stone-900 text-white border-stone-900'
-                : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-5">
+        <h3 className="font-semibold text-stone-900">{t.salesTitle || 'My Sales'}</h3>
+        <select value={period} onChange={e => setPeriod(Number(e.target.value))}
+          className="border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
+          <option value={7}>{t.last7 || 'Last 7 Days'}</option>
+          <option value={30}>{t.last30 || 'Last 30 Days'}</option>
+          <option value={90}>{t.last90 || 'Last 90 Days'}</option>
+        </select>
       </div>
-
-      {/* KPI cards */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          {[
-            { label: t.periodOrders, value: stats.period_orders ?? 0 },
-            { label: t.periodRevenue, value: formatPrice(stats.period_revenue ?? 0) },
-            { label: t.allTimeOrders, value: stats.all_time_orders ?? 0 },
-            { label: t.allTimeRevenue, value: formatPrice(stats.all_time_revenue ?? 0) },
-          ].map(kpi => (
-            <div key={kpi.label} className="bg-white rounded-xl border border-stone-100 p-4">
-              <p className="text-2xl font-bold text-stone-900">{kpi.value}</p>
-              <p className="text-xs text-stone-500 mt-0.5">{kpi.label}</p>
+      {loading ? <p className="text-stone-400 text-sm">Loading…</p> : (
+        <>
+          {stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              {[
+                [t.periodOrders || 'Orders This Period', stats.period_orders],
+                [t.periodRevenue || 'Revenue This Period', formatPrice(stats.period_revenue)],
+                [t.allTimeOrders || 'All-Time Orders', stats.total_orders],
+                [t.allTimeRevenue || 'All-Time Revenue', formatPrice(stats.total_revenue)],
+              ].map(([label, val]) => (
+                <div key={label} className="bg-white border border-stone-100 rounded-xl p-4">
+                  <p className="text-xs text-stone-400 mb-1">{label}</p>
+                  <p className="text-xl font-bold text-stone-900">{val}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Orders table */}
-      <div className="bg-white rounded-xl border border-stone-100 overflow-hidden mb-6">
-        <div className="px-4 py-3 border-b border-stone-100">
-          <h3 className="font-semibold text-stone-900 text-sm">{t.salesTitle}</h3>
-        </div>
-        {loading ? (
-          <p className="text-stone-400 text-sm p-4">Loading...</p>
-        ) : orders.length === 0 ? (
-          <p className="text-stone-400 text-sm p-4">{t.noSales}</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 border-b border-stone-100">
-              <tr>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.orderNumber}</th>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium hidden sm:table-cell">{t.customerName}</th>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.orderDate}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.orderTotal}</th>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.orderStatus}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => (
-                <tr key={o.id} className="border-b border-stone-50 hover:bg-stone-50">
-                  <td className="px-4 py-2.5 font-mono text-xs text-stone-600">{o.order_number}</td>
-                  <td className="px-4 py-2.5 text-stone-700 hidden sm:table-cell">{o.customer_name || '—'}</td>
-                  <td className="px-4 py-2.5 text-stone-500 text-xs">{formatDate(o.created_at)}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-stone-900">{formatPrice(o.total_amount)}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600 capitalize">{o.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Leaderboard (admin/manager only) */}
-      {showLeaderboard && leaderboard.length > 0 && (
-        <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
-          <div className="px-4 py-3 border-b border-stone-100 flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-yellow-500" />
-            <h3 className="font-semibold text-stone-900 text-sm">{t.leaderboard}</h3>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 border-b border-stone-100">
-              <tr>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium w-12">{t.rank}</th>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.repName}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.orders}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.revenue}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map((rep, idx) => (
-                <tr key={rep.id} className="border-b border-stone-50">
-                  <td className="px-4 py-2.5 font-bold text-stone-400">
-                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                  </td>
-                  <td className="px-4 py-2.5 font-medium text-stone-900">{rep.full_name || rep.username}</td>
-                  <td className="px-4 py-2.5 text-right text-stone-600">{rep.order_count}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-stone-900">{formatPrice(rep.revenue)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          )}
+          {orders.length === 0 ? <p className="text-stone-400 text-sm">{t.noSales || 'No sales yet.'}</p> : (
+            <div className="bg-white rounded-xl border border-stone-100 overflow-hidden mb-6">
+              <table className="w-full text-sm">
+                <thead className="bg-stone-50 border-b border-stone-100">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.orderNumber || 'Order #'}</th>
+                    <th className="text-left px-4 py-2.5 text-stone-500 font-medium hidden sm:table-cell">{t.customerName || 'Customer'}</th>
+                    <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.orderDate || 'Date'}</th>
+                    <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.orderTotal || 'Total'}</th>
+                    <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.orderStatus || 'Status'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => (
+                    <tr key={o.id} className="border-b border-stone-50 hover:bg-stone-50">
+                      <td className="px-4 py-2.5 font-mono text-xs text-stone-600">{o.order_number}</td>
+                      <td className="px-4 py-2.5 text-stone-700 hidden sm:table-cell">{o.customer_name || '—'}</td>
+                      <td className="px-4 py-2.5 text-stone-500 text-xs">{formatDate(o.created_at)}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-stone-900">{formatPrice(o.total_amount)}</td>
+                      <td className="px-4 py-2.5"><span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600 capitalize">{o.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {showLeaderboard && leaderboard.length > 0 && (
+            <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-stone-100 flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-yellow-500" />
+                <h3 className="font-semibold text-stone-900 text-sm">{t.leaderboard || 'Team Leaderboard'}</h3>
+              </div>
+              <table className="w-full text-sm">
+                <thead className="bg-stone-50 border-b border-stone-100">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 text-stone-500 font-medium w-12">{t.rank || 'Rank'}</th>
+                    <th className="text-left px-4 py-2.5 text-stone-500 font-medium">{t.repName || 'Rep'}</th>
+                    <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.orders || 'Orders'}</th>
+                    <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.revenue || 'Revenue'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((rep, idx) => (
+                    <tr key={rep.rep_id} className="border-b border-stone-50">
+                      <td className="px-4 py-2.5 font-bold text-stone-400">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</td>
+                      <td className="px-4 py-2.5 font-medium text-stone-900">{rep.rep_name}</td>
+                      <td className="px-4 py-2.5 text-right text-stone-600">{rep.order_count}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-stone-900">{formatPrice(rep.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -630,12 +962,12 @@ function MySalesPanel({ t, showLeaderboard }) {
 // Main SalesRepTab export
 // ─────────────────────────────────────────────────────────────────────────────
 export function SalesRepTab({ t, staff }) {
-  const [subTab, setSubTab] = useState('callList')
+  const [subTab, setSubTab]                     = useState('callList')
   const [selectedCustomer, setSelectedCustomer] = useState(null)
 
-  const isAdmin = staff?.role === 'admin'
-  const isManager = staff?.role === 'manager'
-  const canEditScript = isAdmin || isManager
+  const isAdmin         = staff?.role === 'admin'
+  const isManager       = staff?.role === 'manager'
+  const canEditScript   = isAdmin || isManager
   const showLeaderboard = isAdmin || isManager
 
   const handleSelectCustomer = (customer) => {
@@ -644,29 +976,25 @@ export function SalesRepTab({ t, staff }) {
   }
 
   const subTabs = [
-    { id: 'callList', label: t.callList, icon: Phone },
-    { id: 'placeOrder', label: t.placeOrder, icon: ShoppingCart },
-    { id: 'script', label: t.myScript, icon: FileText },
-    { id: 'mySales', label: t.mySales, icon: BarChart2 },
+    { id: 'callList',   label: t.callList   || 'Call List',   icon: Phone },
+    { id: 'placeOrder', label: t.placeOrder || 'Place Order', icon: ShoppingCart },
+    { id: 'script',     label: t.myScript   || 'Call Script', icon: FileText },
+    { id: 'mySales',    label: t.mySales    || 'My Sales',    icon: BarChart2 },
   ]
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-stone-900">{t.title}</h2>
-        <p className="text-sm text-stone-500 mt-0.5">{t.subtitle}</p>
+        <h2 className="text-xl font-bold text-stone-900">{t.title || 'Sales Rep Portal'}</h2>
+        <p className="text-sm text-stone-500 mt-0.5">{t.subtitle || 'Call customers and place orders on their behalf'}</p>
       </div>
-
-      {/* Sub-tab bar */}
       <div className="flex gap-1 mb-6 bg-stone-100 p-1 rounded-xl w-fit">
         {subTabs.map(st => (
           <button
             key={st.id}
             onClick={() => setSubTab(st.id)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              subTab === st.id
-                ? 'bg-white text-stone-900 shadow-sm'
-                : 'text-stone-500 hover:text-stone-700'
+              subTab === st.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'
             }`}
           >
             <st.icon className="w-3.5 h-3.5" />
@@ -674,19 +1002,10 @@ export function SalesRepTab({ t, staff }) {
           </button>
         ))}
       </div>
-
-      {subTab === 'callList' && (
-        <CallListPanel t={t} onSelectCustomer={handleSelectCustomer} selectedCustomer={selectedCustomer} />
-      )}
-      {subTab === 'placeOrder' && (
-        <PlaceOrderPanel t={t} selectedCustomer={selectedCustomer} onOrderPlaced={() => {}} />
-      )}
-      {subTab === 'script' && (
-        <ScriptPanel t={t} canEdit={canEditScript} />
-      )}
-      {subTab === 'mySales' && (
-        <MySalesPanel t={t} showLeaderboard={showLeaderboard} />
-      )}
+      {subTab === 'callList'   && <CallingListPanel t={t} onSelectCustomer={handleSelectCustomer} />}
+      {subTab === 'placeOrder' && <PlaceOrderPanel  t={t} selectedCustomer={selectedCustomer} onOrderPlaced={() => {}} />}
+      {subTab === 'script'     && <ScriptPanel      t={t} canEdit={canEditScript} />}
+      {subTab === 'mySales'    && <MySalesPanel     t={t} showLeaderboard={showLeaderboard} />}
     </div>
   )
 }
