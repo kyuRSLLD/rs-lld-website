@@ -295,6 +295,39 @@ def place_order_as_rep(staff):
     db.session.add(order)
     db.session.commit()
 
+    # ── Upsert customer into calling list with status=customer ──────────────
+    try:
+        cl_entry = CallingListEntry.query.filter(
+            db.or_(
+                CallingListEntry.phone == (customer.phone or '__none__'),
+                CallingListEntry.email == (customer.email or '__none__'),
+            )
+        ).first()
+        if cl_entry:
+            cl_entry.status       = 'customer'
+            cl_entry.company_name = customer.company_name or cl_entry.company_name
+            cl_entry.contact_name = customer.full_name or cl_entry.contact_name
+            cl_entry.phone        = customer.phone or cl_entry.phone
+            cl_entry.email        = customer.email or cl_entry.email
+            cl_entry.address      = customer.shipping_address or cl_entry.address
+        else:
+            cl_entry = CallingListEntry(
+                company_name   = customer.company_name or '',
+                contact_name   = customer.full_name or customer.username,
+                phone          = customer.phone or '',
+                email          = customer.email or '',
+                address        = customer.shipping_address or '',
+                notes          = f'Customer — order {order.order_number}',
+                priority_score = 100.0,
+                status         = 'customer',
+                uploaded_by    = staff.id,
+            )
+            db.session.add(cl_entry)
+        db.session.commit()
+    except Exception as _cle:
+        print(f'[SALES REP] Calling list upsert failed: {_cle}')
+
+
     # Send order confirmation email to customer
     try:
         from src.utils.email import send_order_confirmation_email

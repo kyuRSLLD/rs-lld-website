@@ -279,6 +279,7 @@ function CallingListPanel({ t, onSelectCustomer }) {
                 <th className="text-left px-4 py-3 text-stone-500 font-medium hidden lg:table-cell cursor-pointer select-none" onClick={() => toggleSort('last_called')}>
                   {t.lastCalled || 'Last Called'} <SortIcon col="last_called" />
                 </th>
+                <th className="text-center px-4 py-3 text-stone-500 font-medium">{t.placeOrder || 'Place Order'}</th>
                 <th className="text-right px-4 py-3 text-stone-500 font-medium">{t.actions || 'Actions'}</th>
               </tr>
             </thead>
@@ -308,39 +309,37 @@ function CallingListPanel({ t, onSelectCustomer }) {
                   <td className="px-4 py-3 text-stone-400 text-xs hidden lg:table-cell">
                     {e.last_called ? formatDate(e.last_called) : '—'}
                   </td>
+                  {/* Place Order — own column */}
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => onSelectCustomer({ id: e.customer_id || null, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold text-sm shadow-sm"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      {t.placeOrder || 'Place Order'}
+                    </button>
+                  </td>
+                  {/* Actions — Call, Edit, Delete */}
                   <td className="px-4 py-3">
-                    <div className="flex flex-col items-end gap-1.5">
-                      {/* Row 1: Place Order (first) + Call */}
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {!['converted','dnc','customer'].includes(e.status) && (
                         <button
-                          onClick={() => onSelectCustomer({ id: e.customer_id || null, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
-                          className="text-xs px-2.5 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-medium"
+                          onClick={() => handleMarkCalled(e.id)}
+                          title="Mark as Called"
+                          className="text-xs px-2.5 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1"
                         >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          <span>{t.placeOrder || 'Place Order'}</span>
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Call</span>
                         </button>
-                        {!['converted','dnc','customer'].includes(e.status) && (
-                          <button
-                            onClick={() => handleMarkCalled(e.id)}
-                            title="Mark as Called"
-                            className="text-xs px-2.5 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1"
-                          >
-                            <Phone className="w-3.5 h-3.5" />
-                            <span>Call</span>
-                          </button>
-                        )}
-                      </div>
-                      {/* Row 2: Edit + Delete */}
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => openEdit(e)} className="text-xs px-2.5 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1">
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
-                        </button>
-                        <button onClick={() => handleDelete(e.id)} className="text-xs px-2.5 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50 flex items-center gap-1">
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
+                      )}
+                      <button onClick={() => openEdit(e)} className="text-xs px-2.5 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1">
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                      <button onClick={() => handleDelete(e.id)} className="text-xs px-2.5 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50 flex items-center gap-1">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
