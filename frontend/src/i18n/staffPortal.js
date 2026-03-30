@@ -209,6 +209,11 @@ export const staffPortalTranslations = {
       addError: 'Failed to add customer.',
       emailAlreadyExists: 'A customer with this email already exists.',
       firstOrCompanyRequired: 'First name or company name is required.',
+      editCustomer: 'Edit Customer',
+      editCustomerTitle: 'Edit Customer',
+      saving: 'Saving...',
+      editSuccess: 'Customer updated successfully.',
+      editError: 'Failed to update customer.',
     },
     // Dashboard tab
     stats: {
@@ -794,6 +799,11 @@ export const staffPortalTranslations = {
       addError: '添加客户失败。',
       emailAlreadyExists: '该邮箱已存在对应客户。',
       firstOrCompanyRequired: '请填写名字或公司名称。',
+      editCustomer: '编辑客户',
+      editCustomerTitle: '编辑客户信息',
+      saving: '保存中...',
+      editSuccess: '客户信息已更新。',
+      editError: '更新客户失败。',
     },
     // 数据面板
     stats: {

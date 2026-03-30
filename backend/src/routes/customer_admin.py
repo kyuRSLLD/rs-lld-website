@@ -315,6 +315,66 @@ def create_customer():
     }), 201
 
 
+# ─── Update a single customer ───────────────────────────────────────────────────
+
+@customer_admin_bp.route('/staff/customers/<int:user_id>', methods=['PUT'])
+@staff_required
+def update_customer(user_id):
+    """
+    Update an existing customer's profile fields.
+    Body fields (all optional): first_name, last_name, company_name,
+                                email, phone, shipping_address, billing_address
+    """
+    user = User.query.get_or_404(user_id)
+    data = request.json or {}
+
+    # Email uniqueness check (skip if unchanged)
+    new_email = (data.get('email') or '').strip().lower()
+    if new_email and new_email != (user.email or '').lower():
+        if User.query.filter(User.email == new_email, User.id != user_id).first():
+            return jsonify({'error': f'Email "{new_email}" is already used by another customer'}), 409
+        user.email = new_email
+
+    first   = (data.get('first_name') or '').strip()
+    last    = (data.get('last_name')  or '').strip()
+    company = (data.get('company_name') or '').strip() or None
+    raw_phone = (data.get('phone') or '').strip()
+    phone   = _format_phone(raw_phone) or (raw_phone or None)
+    shipping = (data.get('shipping_address') or '').strip() or None
+    billing  = (data.get('billing_address')  or '').strip() or None
+
+    # Update username if first/last name provided
+    if first or last:
+        full = f'{first} {last}'.strip()
+        user.username = full if full else user.username
+
+    if company is not None:
+        user.company_name = company
+    if phone is not None:
+        user.phone = phone
+    if shipping is not None:
+        user.shipping_address = shipping
+    if billing is not None:
+        user.billing_address = billing
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+
+    return jsonify({
+        'success': True,
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'company_name': user.company_name,
+        'phone': user.phone,
+        'shipping_address': user.shipping_address,
+        'billing_address': user.billing_address,
+    })
+
+
 # ─── Delete a single customer ─────────────────────────────────────────────────
 
 @customer_admin_bp.route('/staff/customers/<int:user_id>', methods=['DELETE'])

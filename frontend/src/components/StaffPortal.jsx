@@ -1316,6 +1316,12 @@ const StaffPortal = () => {
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(false)
   const [addCustomerLoading, setAddCustomerLoading] = useState(false)
   const [addCustomerError, setAddCustomerError] = useState(null)
+  // Edit customer state
+  const [editCustomer, setEditCustomer] = useState(null) // customer object being edited
+  const [editCustomerForm, setEditCustomerForm] = useState({ first_name: '', last_name: '', company_name: '', email: '', phone: '', shipping_street: '', shipping_city: '', shipping_zip: '', billing_street: '', billing_city: '', billing_zip: '' })
+  const [editBillingSameAsShipping, setEditBillingSameAsShipping] = useState(false)
+  const [editCustomerLoading, setEditCustomerLoading] = useState(false)
+  const [editCustomerError, setEditCustomerError] = useState(null)
 
   const t = staffPortalTranslations[lang]
 
@@ -1538,6 +1544,73 @@ const StaffPortal = () => {
       setAddCustomerError(t.customers.addError)
     } finally {
       setAddCustomerLoading(false)
+    }
+  }
+
+  // Helper: parse "Street, City, ZIP" back into parts
+  const _parseAddress = (addr) => {
+    if (!addr) return { street: '', city: '', zip: '' }
+    const parts = addr.split(',').map(s => s.trim())
+    return { street: parts[0] || '', city: parts[1] || '', zip: parts[2] || '' }
+  }
+
+  const openEditCustomer = (c) => {
+    const ship = _parseAddress(c.shipping_address)
+    const bill = _parseAddress(c.billing_address)
+    const sameAddr = c.shipping_address && c.billing_address && c.shipping_address === c.billing_address
+    setEditCustomerForm({
+      first_name: c.first_name || '',
+      last_name: c.last_name || '',
+      company_name: c.company_name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      shipping_street: ship.street,
+      shipping_city: ship.city,
+      shipping_zip: ship.zip,
+      billing_street: bill.street,
+      billing_city: bill.city,
+      billing_zip: bill.zip,
+    })
+    setEditBillingSameAsShipping(sameAddr)
+    setEditCustomerError(null)
+    setEditCustomer(c)
+  }
+
+  const handleEditCustomer = async (e) => {
+    e.preventDefault()
+    setEditCustomerLoading(true)
+    setEditCustomerError(null)
+    try {
+      const shippingAddr = [editCustomerForm.shipping_street, editCustomerForm.shipping_city, editCustomerForm.shipping_zip].filter(Boolean).join(', ')
+      const billingAddr = editBillingSameAsShipping
+        ? shippingAddr
+        : [editCustomerForm.billing_street, editCustomerForm.billing_city, editCustomerForm.billing_zip].filter(Boolean).join(', ')
+      const payload = {
+        first_name: editCustomerForm.first_name,
+        last_name: editCustomerForm.last_name,
+        company_name: editCustomerForm.company_name,
+        email: editCustomerForm.email,
+        phone: editCustomerForm.phone,
+        shipping_address: shippingAddr,
+        billing_address: billingAddr,
+      }
+      const res = await staffFetch(`/api/staff/customers/${editCustomer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setEditCustomerError(data.error || t.customers.editError)
+        return
+      }
+      setEditCustomer(null)
+      setCustomerMessage({ type: 'success', text: `✅ ${t.customers.editSuccess}` })
+      fetchCustomers()
+    } catch (e) {
+      setEditCustomerError(t.customers.editError)
+    } finally {
+      setEditCustomerLoading(false)
     }
   }
 
@@ -2093,6 +2166,11 @@ const StaffPortal = () => {
                                 {t.customers.viewOrders}
                               </button>
                               <button
+                                onClick={e => { e.stopPropagation(); openEditCustomer(c) }}
+                                className="text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors flex items-center gap-1">
+                                <Edit3 className="w-3 h-3" /> {t.customers.editCustomer}
+                              </button>
+                              <button
                                 onClick={e => { e.stopPropagation(); handleDeleteCustomer(c.id, c.username) }}
                                 className="text-xs px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors flex items-center gap-1">
                                 <Trash2 className="w-3 h-3" /> {lang === 'zh' ? '删除' : 'Delete'}
@@ -2285,6 +2363,165 @@ const StaffPortal = () => {
                   <button
                     type="button"
                     onClick={() => setShowAddCustomer(false)}
+                    className="px-5 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
+                  >
+                    {t.common.close}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── EDIT CUSTOMER MODAL ── */}
+        {editCustomer && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+                <h3 className="text-lg font-bold text-stone-900">{t.customers.editCustomerTitle}</h3>
+                <button onClick={() => setEditCustomer(null)} className="text-stone-400 hover:text-stone-600 text-xl font-bold">&times;</button>
+              </div>
+              <form onSubmit={handleEditCustomer} className="px-6 py-5 space-y-4">
+                {editCustomerError && (
+                  <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{editCustomerError}</div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.firstName}</label>
+                    <input
+                      type="text"
+                      value={editCustomerForm.first_name}
+                      onChange={e => setEditCustomerForm(f => ({ ...f, first_name: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                      placeholder={t.customers.firstName}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.lastName}</label>
+                    <input
+                      type="text"
+                      value={editCustomerForm.last_name}
+                      onChange={e => setEditCustomerForm(f => ({ ...f, last_name: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                      placeholder={t.customers.lastName}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.companyName}</label>
+                  <input
+                    type="text"
+                    value={editCustomerForm.company_name}
+                    onChange={e => setEditCustomerForm(f => ({ ...f, company_name: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder={t.customers.companyName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.emailRequired}</label>
+                  <input
+                    type="email"
+                    required
+                    value={editCustomerForm.email}
+                    onChange={e => setEditCustomerForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder="customer@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-1">{t.customers.phoneNumber}</label>
+                  <input
+                    type="tel"
+                    value={editCustomerForm.phone}
+                    onChange={e => setEditCustomerForm(f => ({ ...f, phone: e.target.value }))}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    placeholder="(xxx) xxx-xxxx"
+                  />
+                </div>
+                {/* ── SHIPPING ADDRESS ── */}
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 mb-2">{t.customers.shippingAddressLabel}</label>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editCustomerForm.shipping_street}
+                      onChange={e => setEditCustomerForm(f => ({ ...f, shipping_street: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                      placeholder={t.customers.streetAddress}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={editCustomerForm.shipping_city}
+                        onChange={e => setEditCustomerForm(f => ({ ...f, shipping_city: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                        placeholder={t.customers.city}
+                      />
+                      <input
+                        type="text"
+                        value={editCustomerForm.shipping_zip}
+                        onChange={e => setEditCustomerForm(f => ({ ...f, shipping_zip: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                        placeholder={t.customers.zipCode}
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* ── BILLING ADDRESS ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-semibold text-stone-600">{t.customers.billingAddressLabel}</label>
+                    <label className="flex items-center gap-1.5 text-xs text-stone-500 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editBillingSameAsShipping}
+                        onChange={e => setEditBillingSameAsShipping(e.target.checked)}
+                        className="w-3.5 h-3.5 accent-stone-700 cursor-pointer"
+                      />
+                      {t.customers.sameAsShipping}
+                    </label>
+                  </div>
+                  {!editBillingSameAsShipping && (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={editCustomerForm.billing_street}
+                        onChange={e => setEditCustomerForm(f => ({ ...f, billing_street: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                        placeholder={t.customers.streetAddress}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={editCustomerForm.billing_city}
+                          onChange={e => setEditCustomerForm(f => ({ ...f, billing_city: e.target.value }))}
+                          className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                          placeholder={t.customers.city}
+                        />
+                        <input
+                          type="text"
+                          value={editCustomerForm.billing_zip}
+                          onChange={e => setEditCustomerForm(f => ({ ...f, billing_zip: e.target.value }))}
+                          className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                          placeholder={t.customers.zipCode}
+                          maxLength={10}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={editCustomerLoading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {editCustomerLoading ? <><RefreshCw className="w-4 h-4 animate-spin" /> {t.customers.saving}</> : <><Save className="w-4 h-4" /> {t.customers.editCustomerTitle}</>}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditCustomer(null)}
                     className="px-5 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
                   >
                     {t.common.close}
