@@ -191,6 +191,11 @@ const HomePage = () => {
               <div className="text-lg font-semibold text-gray-900 mb-1">Delivery on Large Orders</div>
               <p className="text-gray-600 text-sm">Free delivery on orders over $200. Bulk pricing available on all products for restaurant owners.</p>
             </div>
+            <div className="p-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">1,800+</div>
+              <div className="text-lg font-semibold text-gray-900 mb-1">Restaurants Served Since 2017</div>
+              <p className="text-gray-600 text-sm">Trusted by over 1,800 restaurants and food service businesses nationwide — from family-owned diners to large restaurant groups.</p>
+            </div>
           </div>
         </div>
       </section>
