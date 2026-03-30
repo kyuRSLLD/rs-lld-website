@@ -8,7 +8,12 @@ import {
 import { staffFetch } from '@/lib/staffApi'
 
 const formatPrice = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`
-const formatDate  = (d) => d ? new Date(d).toLocaleDateString() : '—'
+const formatDate  = (d) => {
+  if (!d) return '—'
+  const dt = new Date(d)
+  if (isNaN(dt.getTime())) return '—'
+  return dt.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calling List Sub-tab
@@ -304,34 +309,38 @@ function CallingListPanel({ t, onSelectCustomer }) {
                     {e.last_called ? formatDate(e.last_called) : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {!['converted','dnc','customer'].includes(e.status) && (
+                    <div className="flex flex-col items-end gap-1.5">
+                      {/* Row 1: Call + Place Order */}
+                      <div className="flex items-center gap-1.5">
+                        {!['converted','dnc','customer'].includes(e.status) && (
+                          <button
+                            onClick={() => handleMarkCalled(e.id)}
+                            title="Mark as Called"
+                            className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>Call</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleMarkCalled(e.id)}
-                          title="Mark as Called"
-                          className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50"
+                          onClick={() => onSelectCustomer({ id: e.customer_id || null, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
+                          className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
                         >
-                          <Phone className="w-3.5 h-3.5 inline" />
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>{t.placeOrder || 'Place Order'}</span>
                         </button>
-                      )}
-                      {e.source === 'customer' && (
-                        <button
-                          onClick={() => onSelectCustomer({ id: e.customer_id, full_name: e.contact_name, company_name: e.company_name, phone: e.phone, email: e.email, shipping_address: e.address })}
-                          className="text-xs px-2 py-1 rounded bg-stone-900 text-white hover:bg-stone-700"
-                        >
-                          {t.placeOrder || 'Order'}
+                      </div>
+                      {/* Row 2: Edit + Delete */}
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => openEdit(e)} className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 flex items-center gap-1">
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
                         </button>
-                      )}
-                      {e.source !== 'customer' && (
-                        <button onClick={() => openEdit(e)} className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 hover:bg-stone-50">
-                          <Edit3 className="w-3.5 h-3.5 inline" />
+                        <button onClick={() => handleDelete(e.id)} className="text-xs px-2 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50 flex items-center gap-1">
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
                         </button>
-                      )}
-                      {e.source !== 'customer' && (
-                        <button onClick={() => handleDelete(e.id)} className="text-xs px-2 py-1 rounded border border-red-100 text-red-400 hover:bg-red-50">
-                          <Trash2 className="w-3.5 h-3.5 inline" />
-                        </button>
-                      )}
+                      </div>
                     </div>
                   </td>
                 </tr>
