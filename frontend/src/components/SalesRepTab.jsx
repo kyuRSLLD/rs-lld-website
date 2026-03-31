@@ -454,11 +454,22 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
     setCreatingCust(false)
   }
 
+  // Custom item modal state
+  const [showCustomItem, setShowCustomItem] = useState(false)
+  const [customItem, setCustomItem] = useState({ name: '', sku: '', unit_price: '' })
+  const addCustomItem = () => {
+    if (!customItem.name.trim()) return
+    const price = parseFloat(customItem.unit_price) || 0
+    setItems(prev => [...prev, { product_id: null, name: customItem.name.trim(), sku: customItem.sku.trim(), qty: 1, unit_price: price }])
+    setCustomItem({ name: '', sku: '', unit_price: '' })
+    setShowCustomItem(false)
+  }
+
   // Product search
   const searchProducts = useCallback(async (q) => {
     if (!q || q.length < 2) { setProductResults([]); return }
     try {
-      const r = await staffFetch(`/api/products/search?q=${encodeURIComponent(q)}&limit=12`)
+      const r = await staffFetch(`/api/products?search=${encodeURIComponent(q)}&per_page=12`)
       const d = await r.json()
       setProductResults(d.products || d || [])
     } catch { setProductResults([]) }
@@ -675,7 +686,60 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
 
       {/* Product search */}
       <div className="mb-4 relative">
-        <label className="block text-xs font-semibold text-stone-700 mb-1">{t.addItem || 'Add Item'}</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-semibold text-stone-700">{t.addItem || 'Add Item'}</label>
+          <button
+            type="button"
+            onClick={() => setShowCustomItem(v => !v)}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-stone-300 rounded-lg text-stone-500 hover:bg-stone-50 hover:border-stone-400"
+          >
+            <Plus className="w-3 h-3" />{t.customItem || 'Custom Item'}
+          </button>
+        </div>
+
+        {/* Custom item inline form */}
+        {showCustomItem && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-xs font-semibold text-amber-800 mb-2">{t.customItem || 'Custom Item'}</p>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="col-span-3 sm:col-span-1">
+                <label className="block text-xs text-stone-500 mb-0.5">Item Name *</label>
+                <input
+                  value={customItem.name}
+                  onChange={e => setCustomItem(c => ({ ...c, name: e.target.value }))}
+                  placeholder="e.g. Delivery Fee"
+                  className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-500 mb-0.5">SKU (optional)</label>
+                <input
+                  value={customItem.sku}
+                  onChange={e => setCustomItem(c => ({ ...c, sku: e.target.value }))}
+                  placeholder="CUSTOM-001"
+                  className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-500 mb-0.5">Unit Price ($)</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={customItem.unit_price}
+                  onChange={e => setCustomItem(c => ({ ...c, unit_price: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={addCustomItem} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium">
+                <Plus className="w-3 h-3 inline mr-1" />Add to Order
+              </button>
+              <button onClick={() => setShowCustomItem(false)} className="px-3 py-1.5 border border-stone-200 rounded-lg text-xs text-stone-500 hover:bg-stone-50">Cancel</button>
+            </div>
+          </div>
+        )}
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
