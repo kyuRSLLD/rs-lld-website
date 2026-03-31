@@ -379,8 +379,11 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   const [creatingCust, setCreatingCust]     = useState(false)
   const [custError, setCustError]           = useState('')
 
+  const [categories, setCategories]         = useState([])
+  const [selectedCat, setSelectedCat]       = useState(null)
+  const [catProducts, setCatProducts]       = useState([])
+  const [catLoading, setCatLoading]         = useState(false)
   const [productSearch, setProductSearch]   = useState('')
-  const [productResults, setProductResults] = useState([])
   const [items, setItems]                   = useState([])
   const [notes, setNotes]                   = useState('')
   const [paymentMethod, setPaymentMethod]   = useState('net30')
@@ -454,6 +457,22 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
     setCreatingCust(false)
   }
 
+  // Load categories on mount
+  useEffect(() => {
+    staffFetch('/api/categories').then(r => r.json()).then(d => setCategories(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [])
+
+  // Load products when a category is selected
+  useEffect(() => {
+    if (!selectedCat) { setCatProducts([]); return }
+    setCatLoading(true)
+    staffFetch(`/api/products?category_id=${selectedCat.id}&per_page=200`)
+      .then(r => r.json())
+      .then(d => setCatProducts(d.products || d || []))
+      .catch(() => setCatProducts([]))
+      .finally(() => setCatLoading(false))
+  }, [selectedCat])
+
   // Custom item modal state
   const [showCustomItem, setShowCustomItem] = useState(false)
   const [customItem, setCustomItem] = useState({ name: '', sku: '', unit_price: '' })
@@ -465,20 +484,10 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
     setShowCustomItem(false)
   }
 
-  // Product search
-  const searchProducts = useCallback(async (q) => {
-    if (!q || q.length < 2) { setProductResults([]); return }
-    try {
-      const r = await staffFetch(`/api/products?search=${encodeURIComponent(q)}&per_page=12`)
-      const d = await r.json()
-      setProductResults(d.products || d || [])
-    } catch { setProductResults([]) }
-  }, [])
-
-  useEffect(() => {
-    const timer = setTimeout(() => searchProducts(productSearch), 300)
-    return () => clearTimeout(timer)
-  }, [productSearch, searchProducts])
+  // Product search within selected category (or all if no category)
+  const filteredCatProducts = catProducts.filter(p =>
+    !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase()) || p.sku?.toLowerCase().includes(productSearch.toLowerCase())
+  )
 
   const addItem = (product) => {
     setItems(prev => {
@@ -740,25 +749,63 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
           </div>
         )}
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-          <input
-            value={productSearch}
-            onChange={e => setProductSearch(e.target.value)}
-            placeholder={t.searchProducts || 'Search products…'}
-            className="w-full pl-9 pr-4 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
-          />
+        {/* Category pills */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCat(selectedCat?.id === cat.id ? null : cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                selectedCat?.id === cat.id
+                  ? 'bg-stone-900 text-white border-stone-900'
+                  : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+          {categories.length === 0 && <span className="text-xs text-stone-400">Loading categories…</span>}
         </div>
-        {productResults.length > 0 && (
-          <div className="absolute z-10 w-full bg-white border border-stone-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
-            {productResults.map(p => (
-              <button key={p.id} onClick={() => addItem(p)} className="w-full text-left px-4 py-2.5 hover:bg-stone-50 border-b border-stone-50 last:border-0">
-                <span className="font-medium text-stone-900 text-sm">{p.name}</span>
-                <span className="text-stone-400 text-xs ml-2">{p.sku}</span>
-                <span className="float-right text-stone-700 text-sm font-semibold">{formatPrice(p.unit_price)}</span>
-              </button>
-            ))}
+
+        {/* Product list for selected category */}
+        {selectedCat && (
+          <div className="border border-stone-200 rounded-xl overflow-hidden mb-2">
+            <div className="bg-stone-50 px-3 py-2 flex items-center justify-between border-b border-stone-100">
+              <span className="text-xs font-semibold text-stone-700">{selectedCat.name}</span>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400" />
+                <input
+                  value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  placeholder="Filter…"
+                  className="pl-6 pr-3 py-1 text-xs border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-400 w-36"
+                />
+              </div>
+            </div>
+            <div className="max-h-56 overflow-y-auto">
+              {catLoading && <div className="text-center py-4 text-xs text-stone-400">Loading…</div>}
+              {!catLoading && filteredCatProducts.length === 0 && (
+                <div className="text-center py-4 text-xs text-stone-400">No products in this category</div>
+              )}
+              {!catLoading && filteredCatProducts.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => addItem(p)}
+                  className="w-full text-left px-4 py-2.5 hover:bg-blue-50 border-b border-stone-50 last:border-0 flex items-center justify-between"
+                >
+                  <div>
+                    <span className="font-medium text-stone-900 text-sm">{p.name}</span>
+                    {p.sku && <span className="text-stone-400 text-xs ml-2">{p.sku}</span>}
+                    {p.brand && <span className="text-stone-400 text-xs ml-2">· {p.brand}</span>}
+                  </div>
+                  <span className="text-stone-700 text-sm font-semibold ml-4 shrink-0">{formatPrice(p.unit_price)}</span>
+                </button>
+              ))}
+            </div>
           </div>
+        )}
+        {!selectedCat && categories.length > 0 && (
+          <p className="text-xs text-stone-400 mb-2">Select a category above to browse products</p>
         )}
       </div>
 
