@@ -86,6 +86,8 @@ export const staffPortalTranslations = {
       credit_card: 'Credit Card',
       check: 'Check',
       net30: 'Net 30',
+      net15: 'Net 15',
+      ach: 'ACH',
       cash: 'Cash on Delivery',
     },
     // Products tab
@@ -742,6 +744,8 @@ export const staffPortalTranslations = {
       credit_card: '信用卡',
       check: '支票',
       net30: 'Net 30 账期',
+      net15: 'Net 15 账期',
+      ach: 'ACH 银行转账',
       cash: '货到付款',
     },
     // 产品标签页

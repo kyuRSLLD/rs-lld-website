@@ -392,8 +392,9 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
   ]
 
   const paymentMethodOptions = [
-    { value: 'ach', label: 'ACH' },
+    { value: 'ach', label: t.invoices.ach || 'ACH' },
     { value: 'net30', label: t.invoices.net30 },
+    { value: 'net15', label: t.invoices.net15 || 'Net 15' },
     { value: 'check', label: t.invoices.check },
     { value: 'credit_card', label: t.invoices.creditCard },
     { value: 'cash', label: t.invoices.cash },

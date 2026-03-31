@@ -480,7 +480,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
               <label className="block text-xs font-medium text-stone-600 mb-1">{tO.paymentMethod || 'Payment Method'}</label>
               <select className={inp} value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
                 <option value="net30">Net 30</option>
-                <option value="net15">Net 15</option>
+                <option value="ach">ACH</option>
                 <option value="credit_card">Credit Card</option>
                 <option value="check">Check</option>
                 <option value="cash">Cash</option>

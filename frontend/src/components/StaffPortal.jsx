@@ -29,7 +29,7 @@ const statusConfig = {
   cancelled: { label: 'Cancelled',  color: 'text-red-700',    bg: 'bg-red-50',     border: 'border-red-200',    icon: XCircle },
 }
 
-const paymentLabels = { net30: 'Net 30', net15: 'Net 15', cod: 'COD', credit_card: 'Credit Card', check: 'Check' }
+const paymentLabels = { net30: 'Net 30', net15: 'Net 15', ach: 'ACH', cod: 'COD', credit_card: 'Credit Card', check: 'Check', cash: 'Cash' }
 
 // ─── Language Toggle Button ───────────────────────────────────────────────────
 const LangToggle = ({ lang, onToggle }) => (
