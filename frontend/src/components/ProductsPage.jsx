@@ -315,7 +315,7 @@ const ProductsPage = () => {
                 <option value="">{L.allCategories}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {categoryIcons[cat.name] || '📦'} {getCategoryName(cat.name)}
+                    {getCategoryName(cat.name)}
                   </option>
                 ))}
               </select>
@@ -353,7 +353,7 @@ const ProductsPage = () => {
                 selectedCategory === String(cat.id) ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'
               }`}
             >
-              {categoryIcons[cat.name] || '📦'} {getCategoryName(cat.name)}
+              {getCategoryName(cat.name)}
             </button>
           ))}
         </div>
