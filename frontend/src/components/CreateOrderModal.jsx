@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { staffFetch } from '@/lib/staffApi'
 import { X, Plus, Trash2, Search, Package, User } from 'lucide-react'
 
@@ -103,14 +104,31 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
 
   // ── Product search ───────────────────────────────────────────────────────────
   const productSearchTimers = useRef({})
+  // Track the input element position for each row so we can portal the dropdown
+  const searchInputRefs = useRef({})
+  const [dropdownPos, setDropdownPos] = useState({})
+
   async function searchProducts(idx, query) {
     // Clear any pending timer for this row
     clearTimeout(productSearchTimers.current[idx])
     if (!query || query.length < 2) { setSearchResults(r => ({ ...r, [idx]: [] })); return }
+    // Calculate dropdown position from the input element
+    const el = searchInputRefs.current[idx]
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      setDropdownPos(p => ({
+        ...p,
+        [idx]: { top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width }
+      }))
+    }
     productSearchTimers.current[idx] = setTimeout(async () => {
       try {
-        // Use staff endpoint: case-insensitive ilike, searches name + SKU + brand, no cache
-        const res = await staffFetch(`/api/staff/products?search=${encodeURIComponent(query)}&per_page=20`, {})
+        // Try staff endpoint first (has ilike + SKU/brand search); fall back to public
+        let res = await staffFetch(`/api/staff/products?search=${encodeURIComponent(query)}&per_page=20`, {})
+        if (!res.ok) {
+          // Fall back to public endpoint (now also uses ilike)
+          res = await fetch(`${API}/api/products?search=${encodeURIComponent(query)}&per_page=20`)
+        }
         const data = await res.json()
         setSearchResults(r => ({ ...r, [idx]: data.products || data || [] }))
       } catch { setSearchResults(r => ({ ...r, [idx]: [] })) }
@@ -354,7 +372,10 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                   {/* Product search row */}
                   <div className="flex gap-2 mb-2">
                     <div className="flex-1 relative">
-                      <div className="flex items-center gap-2 border border-stone-200 rounded-lg px-3 py-1.5 bg-white">
+                      <div
+                        ref={el => { searchInputRefs.current[idx] = el }}
+                        className="flex items-center gap-2 border border-stone-200 rounded-lg px-3 py-1.5 bg-white"
+                      >
                         <Search className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                         <input
                           className="flex-1 py-0.5 text-xs focus:outline-none bg-transparent"
@@ -365,23 +386,47 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                             setProductSearch(s => ({ ...s, [idx]: q }))
                             searchProducts(idx, q)
                           }}
+                          onBlur={() => setTimeout(() => setSearchResults(r => ({ ...r, [idx]: [] })), 200)}
                         />
+                        {productSearch[idx] && (
+                          <button type="button" onClick={() => { setProductSearch(s => ({ ...s, [idx]: '' })); setSearchResults(r => ({ ...r, [idx]: [] })) }}
+                            className="text-stone-300 hover:text-stone-500">
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
-                      {(searchResults[idx] || []).length > 0 && (
-                        <div className="absolute top-full left-0 right-0 z-20 bg-white border border-stone-200 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto">
+                      {/* Portal dropdown — renders outside overflow container to avoid clipping */}
+                      {(searchResults[idx] || []).length > 0 && dropdownPos[idx] && createPortal(
+                        <div
+                          style={{
+                            position: 'fixed',
+                            top: dropdownPos[idx].top - window.scrollY,
+                            left: dropdownPos[idx].left,
+                            width: dropdownPos[idx].width,
+                            zIndex: 9999,
+                          }}
+                          className="bg-white border border-stone-200 rounded-lg shadow-2xl max-h-52 overflow-y-auto"
+                        >
                           {searchResults[idx].map(p => (
                             <button key={p.id} type="button"
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2"
-                              onClick={() => pickProduct(idx, p)}>
-                              <Package className="w-3 h-3 text-stone-400 flex-shrink-0" />
-                              <span className="font-medium">{p.name}</span>
-                              {p.bulk_price && p.bulk_quantity && (
-                                <span className="text-green-600 text-xs ml-1">Bulk: ${p.bulk_price} @ {p.bulk_quantity}+</span>
-                              )}
-                              <span className="text-stone-400 ml-auto">${p.unit_price}</span>
+                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-blue-50 flex items-start gap-2 border-b border-stone-50 last:border-0"
+                              onMouseDown={e => { e.preventDefault(); pickProduct(idx, p) }}>
+                              <Package className="w-3 h-3 text-stone-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-stone-800 truncate">{p.name}</div>
+                                <div className="text-stone-400 flex gap-2 mt-0.5">
+                                  {p.sku && <span>SKU: {p.sku}</span>}
+                                  {p.brand && <span>{p.brand}</span>}
+                                  {p.bulk_price && p.bulk_quantity && (
+                                    <span className="text-green-600">Bulk {p.bulk_quantity}+: ${p.bulk_price}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-stone-600 font-medium ml-auto flex-shrink-0">${p.unit_price}</span>
                             </button>
                           ))}
-                        </div>
+                        </div>,
+                        document.body
                       )}
                     </div>
                     {items.length > 1 && (

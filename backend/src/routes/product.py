@@ -49,7 +49,13 @@ def get_products():
             query = query.filter(Product.category_id == cat.id)
 
     if search:
-        query = query.filter(Product.name.contains(search))
+        query = query.filter(
+            db.or_(
+                Product.name.ilike(f'%{search}%'),
+                Product.sku.ilike(f'%{search}%'),
+                Product.brand.ilike(f'%{search}%'),
+            )
+        )
 
     # ── Single JOIN to fetch all gallery images — eliminates N+1 ──
     query = query_with_images(query)
