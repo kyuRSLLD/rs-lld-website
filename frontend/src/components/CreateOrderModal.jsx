@@ -102,13 +102,19 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   }
 
   // ── Product search ───────────────────────────────────────────────────────────
+  const productSearchTimers = useRef({})
   async function searchProducts(idx, query) {
+    // Clear any pending timer for this row
+    clearTimeout(productSearchTimers.current[idx])
     if (!query || query.length < 2) { setSearchResults(r => ({ ...r, [idx]: [] })); return }
-    try {
-      const res = await staffFetch(`/api/products?search=${encodeURIComponent(query)}`, {})
-      const data = await res.json()
-      setSearchResults(r => ({ ...r, [idx]: data.products || data || [] }))
-    } catch { setSearchResults(r => ({ ...r, [idx]: [] })) }
+    productSearchTimers.current[idx] = setTimeout(async () => {
+      try {
+        // Use staff endpoint: case-insensitive ilike, searches name + SKU + brand, no cache
+        const res = await staffFetch(`/api/staff/products?search=${encodeURIComponent(query)}&per_page=20`, {})
+        const data = await res.json()
+        setSearchResults(r => ({ ...r, [idx]: data.products || data || [] }))
+      } catch { setSearchResults(r => ({ ...r, [idx]: [] })) }
+    }, 250)
   }
 
   function pickProduct(idx, product) {

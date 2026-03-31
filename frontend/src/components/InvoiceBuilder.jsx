@@ -2,8 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { staffFetch } from '@/lib/staffApi'
 import {
   Plus, Trash2, X, Search, RefreshCw, Printer,
-  FileText, ChevronDown, ChevronUp, Check, Save
+  FileText, ChevronDown, ChevronUp, Check, Save, Download
 } from 'lucide-react'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const todayPlusDays = (days) => {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0] // YYYY-MM-DD
+}
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
@@ -268,9 +275,9 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
     customer_city: existingInvoice?.customer_city || '',
     customer_state: existingInvoice?.customer_state || '',
     customer_zip: existingInvoice?.customer_zip || '',
-    payment_method: existingInvoice?.payment_method || 'net30',
+    payment_method: existingInvoice?.payment_method || 'ach',
     payment_terms: existingInvoice?.payment_terms || 'Net 30',
-    due_date: existingInvoice?.due_date || '',
+    due_date: existingInvoice?.due_date || todayPlusDays(30),
     discount_amount: existingInvoice?.discount_amount || 0,
     tax_rate: existingInvoice?.tax_rate || 0,
     shipping_fee: existingInvoice?.shipping_fee || 0,
@@ -361,6 +368,23 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
     finally { setSaving(false) }
   }
 
+  const handleDownloadPdf = async () => {
+    if (!savedInvoice) return
+    try {
+      const res = await staffFetch(`${API_BASE}/api/invoices/${savedInvoice.id}/pdf`)
+      if (!res.ok) throw new Error('PDF generation failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${savedInvoice.invoice_number}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Could not download PDF. Please try again.')
+    }
+  }
+
   const paymentTermsOptions = [
     { value: 'Net 30', label: t.invoices.net30 },
     { value: 'Net 15', label: t.invoices.net15 },
@@ -368,6 +392,7 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
   ]
 
   const paymentMethodOptions = [
+    { value: 'ach', label: 'ACH' },
     { value: 'net30', label: t.invoices.net30 },
     { value: 'check', label: t.invoices.check },
     { value: 'credit_card', label: t.invoices.creditCard },
@@ -388,12 +413,20 @@ const InvoiceForm = ({ invoice: existingInvoice, t, lang, onSave, onCancel }) =>
         </div>
         <div className="flex gap-2 flex-wrap">
           {savedInvoice && (
-            <button
-              onClick={() => setShowPrint(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
-            >
-              <Printer className="w-4 h-4" /> {t.invoices.printInvoice}
-            </button>
+            <>
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-2 px-4 py-2 border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium"
+              >
+                <Download className="w-4 h-4" /> {t.invoices.downloadPdf || 'Download PDF'}
+              </button>
+              <button
+                onClick={() => setShowPrint(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50"
+              >
+                <Printer className="w-4 h-4" /> {t.invoices.printInvoice}
+              </button>
+            </>
           )}
           <button
             onClick={() => handleSave('draft')}
@@ -922,6 +955,25 @@ const InvoiceList = ({ t, lang, onNew, onEdit }) => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1 flex-wrap">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await staffFetch(`${API_BASE}/api/invoices/${inv.id}/pdf`)
+                              if (!res.ok) throw new Error()
+                              const blob = await res.blob()
+                              const url = URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `${inv.invoice_number}.pdf`
+                              a.click()
+                              URL.revokeObjectURL(url)
+                            } catch { alert('PDF download failed') }
+                          }}
+                          className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                          title={t.invoices.downloadPdf || 'Download PDF'}
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={() => setShowPrint(inv)}
                           className="p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded"

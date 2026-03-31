@@ -1,9 +1,25 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, send_file
 from src.models.user import db
 from src.models.invoice import CustomInvoice
 from src.models.order import StaffUser
 from datetime import datetime
 import re
+import os
+import threading
+
+INVOICE_PDF_DIR = os.environ.get('INVOICE_PDF_DIR', '/tmp/invoices')
+
+
+def _generate_pdf_async(invoice_dict):
+    """Generate and save invoice PDF in a background thread."""
+    def _run():
+        try:
+            from src.utils.invoice_pdf import save_invoice_pdf
+            save_invoice_pdf(invoice_dict, output_dir=INVOICE_PDF_DIR)
+        except Exception as e:
+            print(f'[invoice_pdf] Error generating PDF: {e}')
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
 
 invoice_bp = Blueprint('invoice', __name__)
 
@@ -120,6 +136,9 @@ def create_invoice():
     db.session.add(inv)
     db.session.commit()
 
+    # Auto-generate PDF in background
+    _generate_pdf_async(inv.to_dict())
+
     return jsonify(inv.to_dict()), 201
 
 
@@ -176,7 +195,40 @@ def update_invoice(invoice_id):
             inv.paid_at = datetime.utcnow()
 
     db.session.commit()
+
+    # Auto-generate PDF in background
+    _generate_pdf_async(inv.to_dict())
+
     return jsonify(inv.to_dict())
+
+
+# ─── Download invoice PDF ─────────────────────────────────────────────────────
+
+@invoice_bp.route('/invoices/<int:invoice_id>/pdf', methods=['GET'])
+def download_invoice_pdf(invoice_id):
+    staff = require_staff()
+    if not staff:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    inv = CustomInvoice.query.get_or_404(invoice_id)
+    inv_dict = inv.to_dict()
+
+    # Try to serve cached file; regenerate if missing
+    inv_num = inv_dict.get('invoice_number', 'invoice').replace('/', '-')
+    filepath = os.path.join(INVOICE_PDF_DIR, f'{inv_num}.pdf')
+    if not os.path.exists(filepath):
+        try:
+            from src.utils.invoice_pdf import save_invoice_pdf
+            save_invoice_pdf(inv_dict, output_dir=INVOICE_PDF_DIR)
+        except Exception as e:
+            return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
+
+    return send_file(
+        filepath,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'{inv_num}.pdf'
+    )
 
 
 # ─── Delete invoice ───────────────────────────────────────────────────────────
