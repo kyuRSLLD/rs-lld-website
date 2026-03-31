@@ -9,7 +9,7 @@ from functools import wraps
 from datetime import datetime
 import jwt as pyjwt
 
-from src.extensions import db
+from src.models.user import db
 from src.models.order import Order, OrderItem, StaffUser
 
 shipping_bp = Blueprint('shipping', __name__)
@@ -131,9 +131,9 @@ def _order_to_shipping_dict(order):
         'special_notes': order.special_notes or '',
         'item_count': sum(i.quantity for i in order.items),
         'items': items,
-        # Tracking
-        'tracking_number': getattr(order, 'tracking_number', '') or '',
-        'carrier': getattr(order, 'carrier', '') or '',
+        # Tracking (stored in staff_notes if not a dedicated column)
+        'tracking_number': '',
+        'carrier': '',
     }
 
 @shipping_bp.route('/shipping/orders', methods=['GET'])
