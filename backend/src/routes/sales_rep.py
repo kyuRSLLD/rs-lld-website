@@ -213,11 +213,16 @@ def place_order_as_rep(staff):
     items_data = data.get('items', [])
     notes = data.get('notes', '')
     payment_method = data.get('payment_method', 'net30')
+    ach_data = data.get('ach', {}) or {}  # { bank_name, account_name, routing_number, account_number, account_type }
 
     if not customer_id:
         return jsonify({'error': 'customer_id is required'}), 400
     if not items_data:
         return jsonify({'error': 'At least one item is required'}), 400
+
+    # Net 15 / Net 30 require ACH info
+    if payment_method in ('net15', 'net30') and not ach_data.get('routing_number'):
+        return jsonify({'error': 'ACH bank information is required for Net 15 / Net 30 payment terms.', 'ach_required': True}), 400
 
     customer = User.query.get(customer_id)
     if not customer:
@@ -268,6 +273,11 @@ def place_order_as_rep(staff):
     delivery_state = addr_parts[2].strip() if len(addr_parts) > 2 else 'IL'
     delivery_zip = addr_parts[3].strip() if len(addr_parts) > 3 else ''
 
+    # Mask account number before storing (keep last 4 digits)
+    raw_acct = (ach_data.get('account_number') or '').strip()
+    masked_acct = f'****{raw_acct[-4:]}' if len(raw_acct) >= 4 else raw_acct
+    ach_now = datetime.utcnow() if ach_data.get('routing_number') else None
+
     order = Order(
         order_number=order_number,
         user_id=customer.id,
@@ -288,11 +298,29 @@ def place_order_as_rep(staff):
         payment_status='pending',
         sales_rep_id=staff.id,
         sales_source='phone_rep',
+        # ACH snapshot on the order
+        ach_bank_name=ach_data.get('bank_name', '').strip() or None,
+        ach_account_name=ach_data.get('account_name', '').strip() or None,
+        ach_routing_number=ach_data.get('routing_number', '').strip() or None,
+        ach_account_number=masked_acct or None,
+        ach_account_type=ach_data.get('account_type', '').strip() or None,
+        ach_authorized_at=ach_now,
     )
     for oi in order_items:
         order.items.append(oi)
 
     db.session.add(order)
+
+    # ── Save / update ACH on the customer record for future orders ──────────
+    if ach_data.get('routing_number'):
+        customer.ach_bank_name      = ach_data.get('bank_name', '').strip() or customer.ach_bank_name
+        customer.ach_account_name   = ach_data.get('account_name', '').strip() or customer.ach_account_name
+        customer.ach_routing_number = ach_data.get('routing_number', '').strip()
+        customer.ach_account_number = masked_acct or customer.ach_account_number
+        customer.ach_account_type   = ach_data.get('account_type', '').strip() or customer.ach_account_type
+        customer.ach_authorized_at  = ach_now
+        customer.ach_authorized_by  = staff.id
+
     db.session.commit()
 
     # ── Upsert customer into calling list with status=customer ──────────────
@@ -656,10 +684,18 @@ def staff_send_payment_sms(staff):
     FRONTEND_URL = _os.environ.get('FRONTEND_URL', 'https://lldrestaurantsupply.com')
     LLD_PHONE    = _os.environ.get('LLD_PHONE', '(775) 591-5629')
 
-    if payment_method == 'net30':
+    if payment_method == 'net15':
         sms_body = (
             f'RS LLD Restaurant Supply — Order {order_number} confirmed! '
-            f'Total: ${total:.2f}. Payment due in 30 days. '
+            f'Total: ${total:.2f}. Payment due in 15 days via ACH on file. '
+            f'Invoice emailed to your address on file. '
+            f'Questions? Call {LLD_PHONE}. Reply STOP to opt out.'
+        )
+        order.payment_method = 'net15'
+    elif payment_method == 'net30':
+        sms_body = (
+            f'RS LLD Restaurant Supply — Order {order_number} confirmed! '
+            f'Total: ${total:.2f}. Payment due in 30 days via ACH on file. '
             f'Invoice emailed to your address on file. '
             f'Questions? Call {LLD_PHONE}. Reply STOP to opt out.'
         )
@@ -727,3 +763,64 @@ def staff_send_payment_sms(staff):
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e), 'sms_preview': sms_body}), 500
+
+
+# ─── ACH bank account management ─────────────────────────────────────────────
+
+@sales_rep_bp.route('/sales/customer/<int:customer_id>/ach', methods=['GET'])
+@sales_rep_required
+def get_customer_ach(staff, customer_id):
+    """Return the ACH info on file for a customer (masked account number)."""
+    customer = User.query.get_or_404(customer_id)
+    return jsonify({
+        'customer_id': customer.id,
+        'has_ach': bool(customer.ach_routing_number and customer.ach_account_number),
+        'ach_bank_name': customer.ach_bank_name,
+        'ach_account_name': customer.ach_account_name,
+        'ach_routing_number': customer.ach_routing_number,
+        'ach_account_number_masked': (
+            f'****{customer.ach_account_number[-4:]}'
+            if customer.ach_account_number and len(customer.ach_account_number) >= 4
+            else customer.ach_account_number
+        ),
+        'ach_account_type': customer.ach_account_type,
+        'ach_authorized_at': customer.ach_authorized_at.isoformat() if customer.ach_authorized_at else None,
+    })
+
+
+@sales_rep_bp.route('/sales/customer/<int:customer_id>/ach', methods=['PUT'])
+@sales_rep_required
+def update_customer_ach(staff, customer_id):
+    """
+    Save or update ACH bank info for a customer.
+    Body: { bank_name, account_name, routing_number, account_number, account_type }
+    """
+    customer = User.query.get_or_404(customer_id)
+    data = request.json or {}
+    routing = (data.get('routing_number') or '').strip()
+    account = (data.get('account_number') or '').strip()
+    if not routing or not account:
+        return jsonify({'error': 'routing_number and account_number are required'}), 400
+    # Validate routing number (9 digits)
+    import re as _re
+    if not _re.fullmatch(r'\d{9}', routing):
+        return jsonify({'error': 'Routing number must be exactly 9 digits'}), 400
+    masked = f'****{account[-4:]}' if len(account) >= 4 else account
+    customer.ach_bank_name      = (data.get('bank_name') or '').strip() or customer.ach_bank_name
+    customer.ach_account_name   = (data.get('account_name') or '').strip() or customer.ach_account_name
+    customer.ach_routing_number = routing
+    customer.ach_account_number = masked
+    customer.ach_account_type   = (data.get('account_type') or '').strip() or customer.ach_account_type
+    customer.ach_authorized_at  = datetime.utcnow()
+    customer.ach_authorized_by  = staff.id
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'has_ach': True,
+        'ach_bank_name': customer.ach_bank_name,
+        'ach_account_name': customer.ach_account_name,
+        'ach_routing_number': customer.ach_routing_number,
+        'ach_account_number_masked': masked,
+        'ach_account_type': customer.ach_account_type,
+        'ach_authorized_at': customer.ach_authorized_at.isoformat(),
+    })

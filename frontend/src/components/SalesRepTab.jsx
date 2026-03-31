@@ -405,6 +405,41 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   const [showCustomItem, setShowCustomItem] = useState(false)
   const [customItem, setCustomItem] = useState({ name: '', sku: '', unit_price: '' })
 
+  // ACH state — pre-filled from customer record, editable before submit
+  const emptyAch = { bank_name: '', account_name: '', routing_number: '', account_number: '', account_type: 'checking' }
+  const [ach, setAch]               = useState(emptyAch)
+  const [achOnFile, setAchOnFile]   = useState(null)   // { has_ach, ach_bank_name, ... } from server
+  const [achLoading, setAchLoading] = useState(false)
+  const [showAchForm, setShowAchForm] = useState(false)
+  const [achError, setAchError]     = useState('')
+
+  const isNetTerms = paymentMethod === 'net15' || paymentMethod === 'net30'
+
+  // Load ACH info on file whenever customer changes
+  useEffect(() => {
+    if (!customer?.id) { setAchOnFile(null); setAch(emptyAch); return }
+    setAchLoading(true)
+    staffFetch(`/api/sales/customer/${customer.id}/ach`)
+      .then(r => r.json())
+      .then(d => {
+        setAchOnFile(d)
+        if (d.has_ach) {
+          setAch(prev => ({
+            ...prev,
+            bank_name: d.ach_bank_name || '',
+            account_name: d.ach_account_name || '',
+            routing_number: d.ach_routing_number || '',
+            account_number: '',   // never pre-fill full account number
+            account_type: d.ach_account_type || 'checking',
+          }))
+        } else {
+          setAch(emptyAch)
+        }
+      })
+      .catch(() => setAchOnFile(null))
+      .finally(() => setAchLoading(false))
+  }, [customer?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (initialCustomer) {
       const n = normalizeCustomer(initialCustomer)
@@ -595,8 +630,26 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   const handleSubmit = async () => {
     if (!customer) { setErrorMsg(t.selectCustomer || 'Select a customer first'); return }
     if (items.length === 0) { setErrorMsg(t.noItems || 'Add at least one item'); return }
+    // Require ACH for net terms
+    if (isNetTerms) {
+      const needsNew = !achOnFile?.has_ach
+      const hasNewAch = ach.routing_number && ach.account_number
+      if (needsNew && !hasNewAch) {
+        setErrorMsg(t.achRequired || 'ACH bank information is required for Net 15 / Net 30. Please fill in the bank details below.')
+        setShowAchForm(true)
+        return
+      }
+    }
     setSubmitting(true); setErrorMsg('')
     try {
+      // Build ACH payload: send new info if provided, otherwise signal to use info on file
+      const achPayload = isNetTerms ? {
+        bank_name: ach.bank_name,
+        account_name: ach.account_name,
+        routing_number: ach.routing_number,
+        account_number: ach.account_number,
+        account_type: ach.account_type,
+      } : null
       const r = await staffFetch('/api/sales/place-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -605,11 +658,15 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
           items: items.map(i => ({ product_id: i.product_id, quantity: i.qty, unit_price: i.unit_price, is_bulk_price: i.is_bulk || false })),
           notes, payment_method: paymentMethod,
           discount_amount: discountAmt, delivery_fee: 0,
+          ach: achPayload,
         }),
       })
       const d = await r.json()
       if (r.ok) { setPlacedOrder(d.order || d); setSmsPhone(customer.phone || ''); setPage('payment'); if (onOrderPlaced) onOrderPlaced() }
-      else setErrorMsg(d.error || t.orderError || 'Failed to place order')
+      else {
+        setErrorMsg(d.error || t.orderError || 'Failed to place order')
+        if (d.ach_required) setShowAchForm(true)
+      }
     } catch { setErrorMsg(t.orderError || 'Failed to place order') }
     setSubmitting(false)
   }
@@ -1008,14 +1065,97 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
           {/* Payment method */}
           <div className="mb-3">
             <label className="block text-xs font-medium text-stone-600 mb-1">{t.paymentMethod || 'Payment Method'}</label>
-            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
+            <select value={paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setShowAchForm(false); setAchError('') }}
               className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
-              <option value="net30">Net 30</option>
+              <option value="net15">Net 15 (ACH)</option>
+              <option value="net30">Net 30 (ACH)</option>
               <option value="check">Check</option>
               <option value="credit_card">Credit Card</option>
               <option value="cash">Cash</option>
             </select>
           </div>
+
+          {/* ACH section — shown when Net 15 or Net 30 is selected */}
+          {isNetTerms && (
+            <div className="mb-3 border border-blue-100 rounded-xl overflow-hidden">
+              <div className="bg-blue-50 px-3 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-800">{t.achTitle || 'ACH Bank Account'}</span>
+                  {achLoading && <RefreshCw className="w-3 h-3 text-blue-400 animate-spin" />}
+                  {achOnFile?.has_ach && !showAchForm && (
+                    <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">{t.achOnFile || 'On File'}</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setShowAchForm(v => !v); setAchError('') }}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  {showAchForm ? (t.achHide || 'Hide') : (achOnFile?.has_ach ? (t.achUpdate || 'Update') : (t.achAdd || 'Add'))}
+                </button>
+              </div>
+
+              {/* ACH on file summary */}
+              {achOnFile?.has_ach && !showAchForm && (
+                <div className="px-3 py-2 text-xs text-stone-600 space-y-0.5">
+                  {achOnFile.ach_bank_name && <p><span className="text-stone-400">{t.achBank || 'Bank'}:</span> {achOnFile.ach_bank_name}</p>}
+                  {achOnFile.ach_account_name && <p><span className="text-stone-400">{t.achAccountName || 'Account Name'}:</span> {achOnFile.ach_account_name}</p>}
+                  <p><span className="text-stone-400">{t.achRouting || 'Routing'}:</span> {achOnFile.ach_routing_number}</p>
+                  <p><span className="text-stone-400">{t.achAccount || 'Account'}:</span> {achOnFile.ach_account_number_masked}</p>
+                  {achOnFile.ach_account_type && <p><span className="text-stone-400">{t.achType || 'Type'}:</span> {achOnFile.ach_account_type}</p>}
+                </div>
+              )}
+
+              {/* ACH entry form */}
+              {(!achOnFile?.has_ach || showAchForm) && (
+                <div className="px-3 py-3 space-y-2">
+                  {!achOnFile?.has_ach && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                      {t.achRequiredNote || 'Net 15 / Net 30 requires ACH bank info to collect payment after delivery.'}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <label className="block text-xs text-stone-500 mb-0.5">{t.achBank || 'Bank Name'}</label>
+                      <input value={ach.bank_name} onChange={e => setAch(a => ({ ...a, bank_name: e.target.value }))}
+                        placeholder="e.g. Chase, Bank of America"
+                        className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-stone-500 mb-0.5">{t.achAccountName || 'Name on Account'} *</label>
+                      <input value={ach.account_name} onChange={e => setAch(a => ({ ...a, account_name: e.target.value }))}
+                        placeholder="Full name on bank account"
+                        className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-0.5">{t.achRouting || 'Routing #'} *</label>
+                      <input value={ach.routing_number} onChange={e => setAch(a => ({ ...a, routing_number: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                        placeholder="9 digits"
+                        maxLength={9}
+                        className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-0.5">{t.achAccount || 'Account #'} *</label>
+                      <input value={ach.account_number} onChange={e => setAch(a => ({ ...a, account_number: e.target.value.replace(/\D/g, '').slice(0, 17) }))}
+                        placeholder="Account number"
+                        className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-stone-500 mb-0.5">{t.achType || 'Account Type'}</label>
+                      <select value={ach.account_type} onChange={e => setAch(a => ({ ...a, account_type: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
+                        <option value="checking">{t.achChecking || 'Checking'}</option>
+                        <option value="savings">{t.achSavings || 'Savings'}</option>
+                      </select>
+                    </div>
+                  </div>
+                  {achError && <p className="text-xs text-red-600">{achError}</p>}
+                  <p className="text-xs text-stone-400 italic">{t.achConsent || 'By providing ACH info, the customer authorizes RS LLD to debit this account for the order total after delivery.'}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div className="mb-4">

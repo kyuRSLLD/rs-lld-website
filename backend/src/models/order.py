@@ -36,6 +36,13 @@ class Order(db.Model):
     payment_intent_id = db.Column(db.String(200), nullable=True)  # Stripe PaymentIntent ID
     check_image_filename = db.Column(db.String(300), nullable=True)  # uploaded check front image filename
     check_back_image_filename = db.Column(db.String(300), nullable=True)  # uploaded check back image filename
+    # ACH details snapshot (for net15/net30 — collected at order time, used to pull payment after delivery)
+    ach_bank_name      = db.Column(db.String(200), nullable=True)
+    ach_account_name   = db.Column(db.String(200), nullable=True)
+    ach_routing_number = db.Column(db.String(20),  nullable=True)
+    ach_account_number = db.Column(db.String(30),  nullable=True)  # masked after save
+    ach_account_type   = db.Column(db.String(20),  nullable=True)  # 'checking' | 'savings'
+    ach_authorized_at  = db.Column(db.DateTime,    nullable=True)
 
     # Internal staff notes
     staff_notes = db.Column(db.Text, nullable=True)
@@ -86,6 +93,13 @@ class Order(db.Model):
             'check_back_image_filename': self.check_back_image_filename,
             'has_check_image': bool(self.check_image_filename),
             'has_check_back_image': bool(self.check_back_image_filename),
+            'ach_bank_name': self.ach_bank_name,
+            'ach_account_name': self.ach_account_name,
+            'ach_routing_number': self.ach_routing_number,
+            'ach_account_number_masked': f'****{self.ach_account_number[-4:]}' if self.ach_account_number and len(self.ach_account_number) >= 4 else (self.ach_account_number or None),
+            'ach_account_type': self.ach_account_type,
+            'ach_authorized_at': self.ach_authorized_at.isoformat() if self.ach_authorized_at else None,
+            'has_ach': bool(self.ach_routing_number and self.ach_account_number),
             'staff_notes': self.staff_notes,
             'assigned_to': self.assigned_to,
             'sales_rep_id': self.sales_rep_id,

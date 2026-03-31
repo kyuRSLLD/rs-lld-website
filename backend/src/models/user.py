@@ -31,6 +31,14 @@ class User(db.Model):
     credit_limit = db.Column(db.Float, default=0.0)
     payment_terms = db.Column(db.String(20), nullable=True)
     credit_notes = db.Column(db.Text, nullable=True)
+    # ACH bank account (for Net 15 / Net 30 payment collection after delivery)
+    ach_bank_name       = db.Column(db.String(200), nullable=True)
+    ach_account_name    = db.Column(db.String(200), nullable=True)  # name on account
+    ach_routing_number  = db.Column(db.String(20),  nullable=True)
+    ach_account_number  = db.Column(db.String(30),  nullable=True)  # stored masked after save
+    ach_account_type    = db.Column(db.String(20),  nullable=True)  # 'checking' | 'savings'
+    ach_authorized_at   = db.Column(db.DateTime,    nullable=True)  # when customer authorized
+    ach_authorized_by   = db.Column(db.Integer,     nullable=True)  # staff_user.id who collected it
     # Social OAuth fields
     oauth_provider = db.Column(db.String(20), nullable=True)   # 'google' | 'facebook' | 'twitter'
     oauth_id = db.Column(db.String(255), nullable=True)
@@ -73,4 +81,12 @@ class User(db.Model):
             'approved_for_terms': self.approved_for_terms,
             'credit_limit': self.credit_limit,
             'payment_terms': self.payment_terms,
+            'ach_bank_name': self.ach_bank_name,
+            'ach_account_name': self.ach_account_name,
+            'ach_routing_number': self.ach_routing_number,
+            # Return masked account number (last 4 digits only)
+            'ach_account_number_masked': f'****{self.ach_account_number[-4:]}' if self.ach_account_number and len(self.ach_account_number) >= 4 else (self.ach_account_number or None),
+            'ach_account_type': self.ach_account_type,
+            'ach_authorized_at': self.ach_authorized_at.isoformat() if self.ach_authorized_at else None,
+            'has_ach': bool(self.ach_routing_number and self.ach_account_number),
         }

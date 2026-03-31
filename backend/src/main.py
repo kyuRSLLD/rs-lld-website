@@ -162,6 +162,20 @@ with app.app_context():
     # ── Order sales attribution columns added 2026-03 ─────────────────────────
     _add_column_if_missing('order', 'sales_rep_id', 'INTEGER REFERENCES staff_user(id)')
     _add_column_if_missing('order', 'sales_source', 'VARCHAR(50)')
+    # ── ACH payment columns added 2026-03 ─────────────────────────────────────
+    _add_column_if_missing('user',  'ach_bank_name',      'VARCHAR(200)')
+    _add_column_if_missing('user',  'ach_account_name',   'VARCHAR(200)')
+    _add_column_if_missing('user',  'ach_routing_number', 'VARCHAR(20)')
+    _add_column_if_missing('user',  'ach_account_number', 'VARCHAR(30)')
+    _add_column_if_missing('user',  'ach_account_type',   'VARCHAR(20)')
+    _add_column_if_missing('user',  'ach_authorized_at',  'TIMESTAMP')
+    _add_column_if_missing('user',  'ach_authorized_by',  'INTEGER')
+    _add_column_if_missing('order', 'ach_bank_name',      'VARCHAR(200)')
+    _add_column_if_missing('order', 'ach_account_name',   'VARCHAR(200)')
+    _add_column_if_missing('order', 'ach_routing_number', 'VARCHAR(20)')
+    _add_column_if_missing('order', 'ach_account_number', 'VARCHAR(30)')
+    _add_column_if_missing('order', 'ach_account_type',   'VARCHAR(20)')
+    _add_column_if_missing('order', 'ach_authorized_at',  'TIMESTAMP')
     # ─────────────────────────────────────────────────────────────────────────
 
     # Seed categories
