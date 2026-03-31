@@ -3,13 +3,18 @@ Save Me Money – public form submission endpoint.
 Accepts name, restaurant name, address, city, state, phone, email,
 optional RD customer #, and an optional invoice file attachment.
 Emails the submission to info@lldrestaurantsupply.com.
+
+Uses the shared send_email() utility from src.utils.email so that
+SMTP credentials are loaded once and the request never hangs on a
+failed email connection.
 """
 import os
-import smtplib
+import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+import smtplib
 
 from flask import Blueprint, request, jsonify
 
@@ -23,22 +28,22 @@ def _allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def _send_save_me_money_email(form_data, file_bytes=None, file_name=None, file_mime=None):
-    """Send the Save Me Money submission to info@lldrestaurantsupply.com."""
-    smtp_user = os.environ.get('SMTP_USER', '')
-    smtp_pass = os.environ.get('SMTP_PASSWORD', '')
+def _send_email_async(form_data, file_bytes=None, file_name=None, file_mime=None):
+    """Send the Save Me Money email in a background thread so the HTTP response is never blocked."""
     smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
     smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-    from_addr = os.environ.get('SMTP_FROM', smtp_user or 'noreply@lldrestaurantsupply.com')
-    to_addr = 'info@lldrestaurantsupply.com'
+    smtp_user = os.environ.get('SMTP_USER', '')
+    smtp_pass = os.environ.get('SMTP_PASSWORD', '')
+    from_addr = os.environ.get('SMTP_FROM', smtp_user or 'info@lldrestaurantsupply.com')
+    to_addr   = 'info@lldrestaurantsupply.com'
 
-    name = form_data.get('name', '')
-    restaurant = form_data.get('restaurant_name', '')
-    address = form_data.get('address', '')
-    city = form_data.get('city', '')
-    state = form_data.get('state', '')
-    phone = form_data.get('phone', '')
-    email = form_data.get('email', '')
+    name        = form_data.get('name', '')
+    restaurant  = form_data.get('restaurant_name', '')
+    address     = form_data.get('address', '')
+    city        = form_data.get('city', '')
+    state       = form_data.get('state', '')
+    phone       = form_data.get('phone', '')
+    email       = form_data.get('email', '')
     rd_customer = form_data.get('rd_customer_number', '') or 'N/A'
 
     text_body = f"""New "Save Me Money" Submission
@@ -54,7 +59,7 @@ Invoice attached:  {'Yes – ' + file_name if file_name else 'No'}
 
     html_body = f"""
 <html><body style="font-family:Arial,sans-serif;color:#333;">
-  <h2 style="color:#1e40af;">New "Save Me Money" Submission</h2>
+  <h2 style="color:#1e40af;">New &#8220;Save Me Money&#8221; Submission</h2>
   <table style="border-collapse:collapse;width:100%;max-width:600px;">
     <tr><td style="padding:8px;font-weight:bold;background:#f0f4ff;">Name</td><td style="padding:8px;">{name}</td></tr>
     <tr><td style="padding:8px;font-weight:bold;background:#f0f4ff;">Restaurant</td><td style="padding:8px;">{restaurant}</td></tr>
@@ -68,15 +73,15 @@ Invoice attached:  {'Yes – ' + file_name if file_name else 'No'}
 """
 
     if not smtp_user or not smtp_pass:
-        print(f"[SAVE ME MONEY] Email not configured. Submission from {name} / {email}")
+        print(f"[SAVE ME MONEY] SMTP not configured — submission from {name} / {email}")
         print(text_body)
-        return True  # Return True so the user still gets a success response
+        return
 
     try:
         msg = MIMEMultipart('mixed')
         msg['Subject'] = f'Save Me Money Request – {restaurant} ({name})'
-        msg['From'] = f'RS LLD Website <{from_addr}>'
-        msg['To'] = to_addr
+        msg['From']    = f'RS LLD Website <{from_addr}>'
+        msg['To']      = to_addr
         msg['Reply-To'] = email
 
         alt = MIMEMultipart('alternative')
@@ -93,15 +98,14 @@ Invoice attached:  {'Yes – ' + file_name if file_name else 'No'}
                 part.set_type(file_mime)
             msg.attach(part)
 
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.login(smtp_user, smtp_pass)
             server.sendmail(from_addr, [to_addr], msg.as_string())
-        return True
+        print(f"[SAVE ME MONEY] Email sent for {name} / {restaurant}")
     except Exception as e:
         print(f"[SAVE ME MONEY] Email send failed: {e}")
-        return False
 
 
 @save_me_money_bp.route('/save-me-money', methods=['POST'])
@@ -120,8 +124,8 @@ def submit_save_me_money():
 
     # Optional invoice file
     file_bytes = None
-    file_name = None
-    file_mime = None
+    file_name  = None
+    file_mime  = None
 
     if 'invoice' in request.files:
         f = request.files['invoice']
@@ -132,9 +136,18 @@ def submit_save_me_money():
             if len(raw) > MAX_FILE_SIZE:
                 return jsonify({'error': 'File too large. Maximum size is 10 MB.'}), 400
             file_bytes = raw
-            file_name = f.filename
-            file_mime = f.content_type
+            file_name  = f.filename
+            file_mime  = f.content_type
 
-    _send_save_me_money_email(form_data, file_bytes, file_name, file_mime)
+    # Fire-and-forget: send email in background so the HTTP response is instant
+    t = threading.Thread(
+        target=_send_email_async,
+        args=(form_data, file_bytes, file_name, file_mime),
+        daemon=True,
+    )
+    t.start()
 
-    return jsonify({'success': True, 'message': 'Thank you! We will review your invoice and get back to you shortly.'})
+    return jsonify({
+        'success': True,
+        'message': 'Thank you! We will review your invoice and get back to you shortly.',
+    })

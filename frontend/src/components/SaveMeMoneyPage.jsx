@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { ArrowLeft, Upload, CheckCircle, DollarSign, Globe, TrendingDown } from 'lucide-react'
@@ -13,6 +13,88 @@ const US_STATES = [
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
+// ─── Phone formatting helper (matches CheckoutPage / LoginModal standard) ─────
+function formatPhoneNumber(raw) {
+  const digits = raw.replace(/\D/g, '').slice(0, 10)
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+function isValidPhone(val) {
+  if (!val) return false
+  return val.replace(/\D/g, '').length === 10
+}
+
+// ─── Google Places Address Autocomplete (mirrors CheckoutPage component) ──────
+const AddressAutocomplete = ({ value, onChange, onPlaceSelect, className, placeholder }) => {
+  const inputRef       = useRef(null)
+  const autocompleteRef = useRef(null)
+
+  useEffect(() => {
+    const initAutocomplete = () => {
+      if (!window.google?.maps?.places || !inputRef.current) return
+      if (autocompleteRef.current) return // already initialised
+
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+        fields: ['address_components', 'formatted_address'],
+      })
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current.getPlace()
+        if (!place.address_components) return
+
+        let streetNumber = ''
+        let streetName   = ''
+        let city         = ''
+        let state        = ''
+        let zip          = ''
+
+        for (const component of place.address_components) {
+          const types = component.types
+          if (types.includes('street_number'))             streetNumber = component.long_name
+          if (types.includes('route'))                     streetName   = component.long_name
+          if (types.includes('locality'))                  city         = component.long_name
+          if (types.includes('sublocality_level_1') && !city) city = component.long_name
+          if (types.includes('administrative_area_level_1')) state = component.short_name
+          if (types.includes('postal_code'))               zip   = component.long_name
+        }
+
+        const streetAddress = streetNumber ? `${streetNumber} ${streetName}` : streetName
+        onPlaceSelect({ address: streetAddress, city, state, zip })
+      })
+    }
+
+    if (window.google?.maps?.places) {
+      initAutocomplete()
+    } else {
+      const interval = setInterval(() => {
+        if (window.google?.maps?.places) {
+          clearInterval(interval)
+          initAutocomplete()
+        }
+      }, 200)
+      return () => clearInterval(interval)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder || 'Start typing your address…'}
+      className={className}
+      autoComplete="off"
+    />
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 const SaveMeMoneyPage = () => {
   const { language } = useLanguage()
 
@@ -33,6 +115,7 @@ const SaveMeMoneyPage = () => {
       city: 'City',
       state: 'State',
       phone: 'Phone',
+      phonePlaceholder: '(224) 000-0000',
       email: 'Email',
       rdCustomer: 'RD Customer # (optional)',
       attachInvoice: 'Attach Invoice (optional)',
@@ -42,7 +125,7 @@ const SaveMeMoneyPage = () => {
       successTitle: 'Thank You!',
       successMsg: 'We received your submission. Our team will review your invoice and reach out within 1–2 business days with a savings estimate.',
       backHome: '← Back to Home',
-      required: 'Required',
+      phoneError: 'Please enter a valid 10-digit phone number.',
     },
     zh: {
       badge: '免费成本分析',
@@ -60,6 +143,7 @@ const SaveMeMoneyPage = () => {
       city: '城市',
       state: '州',
       phone: '电话',
+      phonePlaceholder: '(224) 000-0000',
       email: '电子邮件',
       rdCustomer: 'RD 客户编号（选填）',
       attachInvoice: '附上发票（选填）',
@@ -69,7 +153,7 @@ const SaveMeMoneyPage = () => {
       successTitle: '感谢您！',
       successMsg: '我们已收到您的提交。我们的团队将审核您的发票，并在 1-2 个工作日内与您联系，提供节省估算。',
       backHome: '← 返回首页',
-      required: '必填',
+      phoneError: '请输入有效的10位电话号码。',
     },
     ko: {
       badge: '무료 비용 분석',
@@ -87,6 +171,7 @@ const SaveMeMoneyPage = () => {
       city: '도시',
       state: '주',
       phone: '전화번호',
+      phonePlaceholder: '(224) 000-0000',
       email: '이메일',
       rdCustomer: 'RD 고객 번호 (선택)',
       attachInvoice: '청구서 첨부 (선택)',
@@ -96,7 +181,7 @@ const SaveMeMoneyPage = () => {
       successTitle: '감사합니다!',
       successMsg: '제출을 받았습니다. 저희 팀이 청구서를 검토하고 1-2 영업일 내에 절감 예상액을 알려드리겠습니다.',
       backHome: '← 홈으로 돌아가기',
-      required: '필수',
+      phoneError: '유효한 10자리 전화번호를 입력해 주세요.',
     },
   }
 
@@ -107,12 +192,32 @@ const SaveMeMoneyPage = () => {
     state: '', phone: '', email: '', rd_customer_number: '',
   })
   const [invoiceFile, setInvoiceFile] = useState(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState('')
+  const [submitting, setSubmitting]   = useState(false)
+  const [success, setSuccess]         = useState(false)
+  const [error, setError]             = useState('')
+  const [phoneError, setPhoneError]   = useState('')
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value)
+    setForm(f => ({ ...f, phone: formatted }))
+    if (phoneError && isValidPhone(formatted)) setPhoneError('')
+  }
+
+  const handlePlaceSelect = ({ address, city, state }) => {
+    setForm(f => ({
+      ...f,
+      address: address || f.address,
+      city:    city    || f.city,
+      state:   state   || f.state,
+    }))
+  }
+
+  const handleAddressChange = (e) => {
+    setForm(f => ({ ...f, address: e.target.value }))
   }
 
   const handleFileChange = (e) => {
@@ -122,6 +227,13 @@ const SaveMeMoneyPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    // Phone validation
+    if (!isValidPhone(form.phone)) {
+      setPhoneError(t.phoneError)
+      return
+    }
+    setPhoneError('')
     setSubmitting(true)
 
     try {
@@ -139,7 +251,7 @@ const SaveMeMoneyPage = () => {
       } else {
         setError(data.error || 'Something went wrong. Please try again.')
       }
-    } catch (err) {
+    } catch {
       setError('Network error. Please check your connection and try again.')
     } finally {
       setSubmitting(false)
@@ -173,9 +285,9 @@ const SaveMeMoneyPage = () => {
           <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8">{t.subtitle}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {[
-              { icon: Globe, text: t.bullets[0] },
+              { icon: Globe,       text: t.bullets[0] },
               { icon: TrendingDown, text: t.bullets[1] },
-              { icon: DollarSign, text: t.bullets[2] },
+              { icon: DollarSign,  text: t.bullets[2] },
             ].map(({ icon: Icon, text }, i) => (
               <div key={i} className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2 text-sm">
                 <Icon className="w-4 h-4 text-orange-400 flex-shrink-0" />
@@ -216,9 +328,12 @@ const SaveMeMoneyPage = () => {
                 </label>
                 <input
                   type="tel" name="phone" required
-                  value={form.phone} onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.phone}
+                  onChange={handlePhoneChange}
+                  placeholder={t.phonePlaceholder}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${phoneError ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                 />
+                {phoneError && <p className="text-xs text-red-600 mt-1">{phoneError}</p>}
               </div>
             </div>
 
@@ -234,19 +349,21 @@ const SaveMeMoneyPage = () => {
               />
             </div>
 
-            {/* Address */}
+            {/* Street Address — Google Places autocomplete */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t.address} <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text" name="address" required
-                value={form.address} onChange={handleChange}
+              <AddressAutocomplete
+                value={form.address}
+                onChange={handleAddressChange}
+                onPlaceSelect={handlePlaceSelect}
+                placeholder={t.address}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* City + State */}
+            {/* City + State — auto-filled by Places, still editable */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
