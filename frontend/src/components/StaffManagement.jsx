@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { staffFetch } from '@/lib/staffApi'
-import { Users, Plus, Edit3, Trash2, RefreshCw, X, Check, Shield, UserCheck, UserX, Key } from 'lucide-react'
+import { Users, Plus, Edit3, Trash2, RefreshCw, X, Check, Shield, UserCheck, UserX, Key, Eye, EyeOff } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -26,6 +26,8 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
 
   const inp = 'border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 w-full'
 
@@ -48,12 +50,12 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
     if (form.password) payload.password = form.password
 
     try {
-      const url = isEdit ? `${API_BASE}/api/staff/users/${user.id}` : `${API_BASE}/api/staff/users`
+      const path = isEdit ? `/api/staff/users/${user.id}` : `/api/staff/users`
       const method = isEdit ? 'PUT' : 'POST'
-      const res = await fetch(url, {
+      const res = await staffFetch(path, {
         method,
         headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (res.ok) { onSave(data) }
@@ -143,27 +145,47 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
               {isEdit ? t.staffMgmt.newPassword : t.staffMgmt.password} {!isEdit && '*'}
             </label>
             {isEdit && <p className="text-xs text-stone-400 mb-2">{t.staffMgmt.leaveBlankPassword}</p>}
-            <input
-              className={inp}
-              type="password"
-              value={form.password}
-              onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-              placeholder={isEdit ? t.staffMgmt.leaveBlankPassword : t.staffMgmt.passwordPlaceholder}
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <input
+                className={inp + ' pr-10'}
+                type={showPw ? 'text' : 'password'}
+                value={form.password}
+                onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                placeholder={isEdit ? t.staffMgmt.leaveBlankPassword : t.staffMgmt.passwordPlaceholder}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                tabIndex={-1}
+              >
+                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {(form.password || !isEdit) && (
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">{t.staffMgmt.confirmPassword}</label>
-              <input
-                className={inp}
-                type="password"
-                value={form.confirm_password}
-                onChange={e => setForm(p => ({ ...p, confirm_password: e.target.value }))}
-                placeholder={t.staffMgmt.confirmPasswordPlaceholder}
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  className={inp + ' pr-10'}
+                  type={showConfirmPw ? 'text' : 'password'}
+                  value={form.confirm_password}
+                  onChange={e => setForm(p => ({ ...p, confirm_password: e.target.value }))}
+                  placeholder={t.staffMgmt.confirmPasswordPlaceholder}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  tabIndex={-1}
+                >
+                  {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           )}
 
