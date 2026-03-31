@@ -32,6 +32,7 @@ from src.routes.voice_analytics import voice_analytics_bp
 from src.routes.sales_rep import sales_rep_bp, SalesScript, CallingListEntry
 from src.routes.payment_links import payment_links_bp
 from src.routes.sms_optin import sms_optin_bp
+from src.routes.shipping import shipping_bp
 from src.models.api_key import APIKey
 from src.models.voice_analytics import CallLog, AgentPerformance
 # SalesScript imported from sales_rep blueprint
@@ -81,6 +82,7 @@ app.register_blueprint(voice_analytics_bp, url_prefix='/api')
 app.register_blueprint(payment_links_bp, url_prefix='/api')
 app.register_blueprint(sales_rep_bp, url_prefix='/api')
 app.register_blueprint(sms_optin_bp, url_prefix='/api')
+app.register_blueprint(shipping_bp, url_prefix='/api')
 
 # Database configuration: use PostgreSQL (DATABASE_URL) if available, else fall back to SQLite
 _database_url = os.environ.get('DATABASE_URL', '')

@@ -15,6 +15,7 @@ import ChatBot from './components/ChatBot'
 import CheckoutPage from './components/CheckoutPage'
 import OrderTrackingPage from './components/OrderTrackingPage'
 import StaffPortal from './components/StaffPortal'
+import ShippingPortal from './components/ShippingPortal'
 import SaveMeMoneyPage from './components/SaveMeMoneyPage'
 import PrivacyPolicyPage from './components/PrivacyPolicyPage'
 import TermsPage from './components/TermsPage'
@@ -103,6 +104,8 @@ function App() {
             <Routes>
               {/* Staff portal — full-screen, no shared header */}
               <Route path="/staff/*" element={<StaffPortal />} />
+              {/* Shipping portal — warehouse-only, separate login */}
+              <Route path="/shipping" element={<ShippingPortal />} />
 
               {/* Customer-facing pages — all share the Header/ChatBot layout */}
               <Route element={<CustomerLayout />}>
