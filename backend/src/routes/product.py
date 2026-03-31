@@ -78,6 +78,48 @@ def get_product_by_sku(sku):
     return _cache(make_response(jsonify(product.to_dict())), seconds=30)
 
 
+@product_bp.route('/products/sales-catalog', methods=['GET'])
+def get_sales_catalog():
+    """
+    Returns ALL products grouped by category in a single slim response.
+    Only the fields needed for the Place Order panel are included.
+    Cached for 5 minutes — clicking a category in the UI is instant.
+    """
+    from sqlalchemy.orm import joinedload
+    categories = Category.query.order_by(Category.name).all()
+    # Fetch all products in one query with category pre-loaded
+    products = (
+        Product.query
+        .options(joinedload(Product.category))
+        .order_by(Product.name)
+        .all()
+    )
+    # Build a lookup: category_id -> list of slim product dicts
+    cat_map = {c.id: {'id': c.id, 'name': c.name, 'products': []} for c in categories}
+    uncategorized = []
+    for p in products:
+        slim = {
+            'id': p.id,
+            'name': p.name,
+            'sku': p.sku or '',
+            'unit_price': float(p.unit_price) if p.unit_price else 0.0,
+            'bulk_price': float(p.bulk_price) if p.bulk_price else None,
+            'bulk_quantity': p.bulk_quantity,
+            'brand': p.brand or '',
+            'unit_size': p.unit_size or '',
+            'in_stock': p._in_stock_computed(),
+        }
+        if p.category_id and p.category_id in cat_map:
+            cat_map[p.category_id]['products'].append(slim)
+        else:
+            uncategorized.append(slim)
+    result = [v for v in cat_map.values() if v['products']]
+    if uncategorized:
+        result.append({'id': 0, 'name': 'Other', 'products': uncategorized})
+    resp = make_response(jsonify(result))
+    return _cache(resp, seconds=300)  # 5 min browser cache
+
+
 @product_bp.route('/products/featured', methods=['GET'])
 def get_featured_products():
     products = (

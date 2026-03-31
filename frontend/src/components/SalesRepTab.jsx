@@ -379,6 +379,7 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   const [creatingCust, setCreatingCust]     = useState(false)
   const [custError, setCustError]           = useState('')
 
+  const [catalog, setCatalog]               = useState([])   // [{id, name, products:[]}]
   const [categories, setCategories]         = useState([])
   const [selectedCat, setSelectedCat]       = useState(null)
   const [catProducts, setCatProducts]       = useState([])
@@ -457,21 +458,26 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
     setCreatingCust(false)
   }
 
-  // Load categories on mount
+  // Preload the full catalog once — all categories + products in one request
   useEffect(() => {
-    staffFetch('/api/categories').then(r => r.json()).then(d => setCategories(Array.isArray(d) ? d : [])).catch(() => {})
+    setCatLoading(true)
+    staffFetch('/api/products/sales-catalog')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCatalog(data)
+          setCategories(data.map(c => ({ id: c.id, name: c.name })))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCatLoading(false))
   }, [])
-
-  // Load products when a category is selected
+  // When a category is selected, pull products from the already-loaded catalog (instant — no network call)
   useEffect(() => {
     if (!selectedCat) { setCatProducts([]); return }
-    setCatLoading(true)
-    staffFetch(`/api/products?category_id=${selectedCat.id}&per_page=200`)
-      .then(r => r.json())
-      .then(d => setCatProducts(d.products || d || []))
-      .catch(() => setCatProducts([]))
-      .finally(() => setCatLoading(false))
-  }, [selectedCat])
+    const entry = catalog.find(c => c.id === selectedCat.id)
+    setCatProducts(entry ? entry.products : [])
+  }, [selectedCat, catalog])
 
   // Custom item modal state
   const [showCustomItem, setShowCustomItem] = useState(false)
