@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Phone, ShoppingCart, FileText, BarChart2, Plus, Trash2, Search,
   Trophy, Upload, ChevronUp, ChevronDown, Star, X, Edit3,
   Save, CheckCircle, Send, CreditCard, Banknote, Clock, UserPlus,
-  ArrowLeft, RefreshCw,
+  ArrowLeft, RefreshCw, Tag,
 } from 'lucide-react'
 import { staffFetch } from '@/lib/staffApi'
 
@@ -359,7 +359,6 @@ function CallingListPanel({ t, onSelectCustomer }) {
 // Place Order Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
 function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }) {
-  // Normalize initialCustomer on first render so the card shows immediately
   const normalizeCustomer = (c) => c ? ({
     id: c.id,
     full_name: c.full_name || c.name || c.username || '',
@@ -370,40 +369,47 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
     shipping_address: c.shipping_address || c.address || '',
     source: c.source,
   }) : null
-  const [customer, setCustomer]             = useState(() => normalizeCustomer(initialCustomer))
-  const [custSearch, setCustSearch]         = useState('')
-  const [custResults, setCustResults]       = useState([])
-  const [custLoading, setCustLoading]       = useState(false)
+
+  const [customer, setCustomer]               = useState(() => normalizeCustomer(initialCustomer))
+  const [custSearch, setCustSearch]           = useState('')
+  const [custResults, setCustResults]         = useState([])
+  const [custLoading, setCustLoading]         = useState(false)
   const [showNewCustForm, setShowNewCustForm] = useState(false)
-  const [newCust, setNewCust] = useState({ first_name:'',last_name:'',company_name:'',email:'',phone:'',shipping_address:'',billing_address:'' })
-  const [creatingCust, setCreatingCust]     = useState(false)
-  const [custError, setCustError]           = useState('')
+  const [newCust, setNewCust]                 = useState({ first_name:'',last_name:'',company_name:'',email:'',phone:'',shipping_address:'',billing_address:'' })
+  const [creatingCust, setCreatingCust]       = useState(false)
+  const [custError, setCustError]             = useState('')
 
-  const [catalog, setCatalog]               = useState([])   // [{id, name, products:[]}]
-  const [categories, setCategories]         = useState([])
-  const [selectedCat, setSelectedCat]       = useState(null)
-  const [catProducts, setCatProducts]       = useState([])
-  const [catLoading, setCatLoading]         = useState(false)
-  const [productSearch, setProductSearch]   = useState('')
-  const [items, setItems]                   = useState([])
-  const [notes, setNotes]                   = useState('')
-  const [paymentMethod, setPaymentMethod]   = useState('net30')
-  const [discountType, setDiscountType]     = useState('amount')
-  const [discountValue, setDiscountValue]   = useState('')
-  const [submitting, setSubmitting]         = useState(false)
-  const [errorMsg, setErrorMsg]             = useState('')
+  // Catalog state
+  const [catalog, setCatalog]         = useState([])   // [{id, name, products:[]}]
+  const [catLoading, setCatLoading]   = useState(false)
+  const [selectedCat, setSelectedCat] = useState(null)
+  const [productSearch, setProductSearch] = useState('')
 
-  const [page, setPage]                     = useState('order')
-  const [placedOrder, setPlacedOrder]       = useState(null)
-  const [smsPhone, setSmsPhone]             = useState('')
-  const [smsSending, setSmsSending]         = useState(false)
-  const [smsResult, setSmsResult]           = useState(null)
+  // Cart state — each item: { product_id, name, sku, qty, unit_price, bulk_price, bulk_quantity, is_bulk }
+  const [items, setItems]           = useState([])
+  const [notes, setNotes]           = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('net30')
+  const [discountType, setDiscountType]   = useState('amount')
+  const [discountValue, setDiscountValue] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg]     = useState('')
+
+  // Payment page state
+  const [page, setPage]           = useState('order')
+  const [placedOrder, setPlacedOrder] = useState(null)
+  const [smsPhone, setSmsPhone]   = useState('')
+  const [smsSending, setSmsSending] = useState(false)
+  const [smsResult, setSmsResult] = useState(null)
+
+  // Custom item form
+  const [showCustomItem, setShowCustomItem] = useState(false)
+  const [customItem, setCustomItem] = useState({ name: '', sku: '', unit_price: '' })
 
   useEffect(() => {
     if (initialCustomer) {
-      const normalized = normalizeCustomer(initialCustomer)
-      setCustomer(normalized)
-      setSmsPhone(normalized.phone || '')
+      const n = normalizeCustomer(initialCustomer)
+      setCustomer(n)
+      setSmsPhone(n.phone || '')
     }
   }, [initialCustomer]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -425,8 +431,8 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   }, [custSearch, searchCustomers])
 
   const selectCustomer = (c) => {
-    const normalized = normalizeCustomer(c)
-    setCustomer(normalized); setCustSearch(''); setCustResults([]); setSmsPhone(normalized.phone || '')
+    const n = normalizeCustomer(c)
+    setCustomer(n); setCustSearch(''); setCustResults([]); setSmsPhone(n.phone || '')
   }
 
   const handleCreateCustomer = async () => {
@@ -458,55 +464,129 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
     setCreatingCust(false)
   }
 
-  // Preload the full catalog once — all categories + products in one request
+  // Load full catalog once on mount
   useEffect(() => {
     setCatLoading(true)
     staffFetch('/api/products/sales-catalog')
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setCatalog(data)
-          setCategories(data.map(c => ({ id: c.id, name: c.name })))
-        }
-      })
+      .then(data => { if (Array.isArray(data)) setCatalog(data) })
       .catch(() => {})
       .finally(() => setCatLoading(false))
   }, [])
-  // When a category is selected, pull products from the already-loaded catalog (instant — no network call)
-  useEffect(() => {
-    if (!selectedCat) { setCatProducts([]); return }
-    const entry = catalog.find(c => c.id === selectedCat.id)
-    setCatProducts(entry ? entry.products : [])
-  }, [selectedCat, catalog])
 
-  // Custom item modal state
-  const [showCustomItem, setShowCustomItem] = useState(false)
-  const [customItem, setCustomItem] = useState({ name: '', sku: '', unit_price: '' })
-  const addCustomItem = () => {
-    if (!customItem.name.trim()) return
-    const price = parseFloat(customItem.unit_price) || 0
-    setItems(prev => [...prev, { product_id: null, name: customItem.name.trim(), sku: customItem.sku.trim(), qty: 1, unit_price: price }])
-    setCustomItem({ name: '', sku: '', unit_price: '' })
-    setShowCustomItem(false)
-  }
+  // Derive products for selected category (instant — no network call)
+  const catProducts = selectedCat
+    ? (catalog.find(c => c.id === selectedCat.id)?.products || [])
+    : []
 
-  // Product search within selected category (or all if no category)
   const filteredCatProducts = catProducts.filter(p =>
-    !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase()) || p.sku?.toLowerCase().includes(productSearch.toLowerCase())
+    !productSearch ||
+    p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.sku?.toLowerCase().includes(productSearch.toLowerCase())
   )
+
+  // ── Cart helpers ────────────────────────────────────────────────────────────
+  // Determine effective price for a given product + qty (auto bulk)
+  const effectivePrice = (p, qty) => {
+    if (p.bulk_price && p.bulk_quantity && qty >= p.bulk_quantity) return parseFloat(p.bulk_price)
+    return parseFloat(p.unit_price) || 0
+  }
 
   const addItem = (product) => {
     setItems(prev => {
       const existing = prev.find(i => i.product_id === product.id)
-      if (existing) return prev.map(i => i.product_id === product.id ? { ...i, qty: i.qty + 1 } : i)
-      return [...prev, { product_id: product.id, name: product.name, sku: product.sku, qty: 1, unit_price: parseFloat(product.unit_price) || 0 }]
+      if (existing) {
+        // Increment qty and re-evaluate bulk pricing
+        return prev.map(i => {
+          if (i.product_id !== product.id) return i
+          const newQty = i.qty + 1
+          const newPrice = effectivePrice(product, newQty)
+          return { ...i, qty: newQty, unit_price: newPrice, is_bulk: product.bulk_quantity ? newQty >= product.bulk_quantity : false }
+        })
+      }
+      const price = effectivePrice(product, 1)
+      return [...prev, {
+        product_id: product.id,
+        name: product.name,
+        sku: product.sku || '',
+        qty: 1,
+        unit_price: price,
+        bulk_price: product.bulk_price ? parseFloat(product.bulk_price) : null,
+        bulk_quantity: product.bulk_quantity || null,
+        is_bulk: false,
+      }]
     })
-    setProductSearch(''); setProductResults([])
   }
 
-  const updateQty   = (idx, val) => { const q = parseInt(val); if (!isNaN(q) && q >= 1) setItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: q } : it)) }
-  const updatePrice = (idx, val) => { const p = parseFloat(val); if (!isNaN(p) && p >= 0) setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: p } : it)) }
-  const removeItem  = (idx) => setItems(prev => prev.filter((_, i) => i !== idx))
+  const updateQty = (idx, val) => {
+    const q = parseInt(val)
+    if (isNaN(q) || q < 1) return
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it
+      const isBulk = it.bulk_quantity ? q >= it.bulk_quantity : false
+      const newPrice = (isBulk && it.bulk_price) ? it.bulk_price : (it.bulk_price && !isBulk ? parseFloat(it.bulk_price) / 1 : it.unit_price)
+      // Re-derive price from original product prices stored on item
+      const basePrice = it.bulk_price && it.bulk_quantity
+        ? (q >= it.bulk_quantity ? it.bulk_price : (it._list_price || it.unit_price))
+        : it.unit_price
+      return { ...it, qty: q, unit_price: basePrice, is_bulk: isBulk }
+    }))
+  }
+
+  // When adding an item, also store the list price so we can revert if qty drops below bulk threshold
+  const addItemFull = (product) => {
+    setItems(prev => {
+      const existing = prev.find(i => i.product_id === product.id)
+      const listPrice = parseFloat(product.unit_price) || 0
+      const bulkPrice = product.bulk_price ? parseFloat(product.bulk_price) : null
+      const bulkQty   = product.bulk_quantity || null
+      if (existing) {
+        return prev.map(i => {
+          if (i.product_id !== product.id) return i
+          const newQty  = i.qty + 1
+          const isBulk  = bulkQty ? newQty >= bulkQty : false
+          const newPrice = isBulk && bulkPrice ? bulkPrice : listPrice
+          return { ...i, qty: newQty, unit_price: newPrice, is_bulk: isBulk }
+        })
+      }
+      return [...prev, {
+        product_id:   product.id,
+        name:         product.name,
+        sku:          product.sku || '',
+        qty:          1,
+        unit_price:   listPrice,
+        _list_price:  listPrice,
+        bulk_price:   bulkPrice,
+        bulk_quantity: bulkQty,
+        is_bulk:      false,
+      }]
+    })
+  }
+
+  const updateQtyFull = (idx, val) => {
+    const q = parseInt(val)
+    if (isNaN(q) || q < 1) return
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it
+      const isBulk  = it.bulk_quantity ? q >= it.bulk_quantity : false
+      const newPrice = isBulk && it.bulk_price ? it.bulk_price : (it._list_price || it.unit_price)
+      return { ...it, qty: q, unit_price: newPrice, is_bulk: isBulk }
+    }))
+  }
+
+  const updatePrice = (idx, val) => {
+    const p = parseFloat(val)
+    if (!isNaN(p) && p >= 0) setItems(prev => prev.map((it, i) => i === idx ? { ...it, unit_price: p } : it))
+  }
+  const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx))
+
+  const addCustomItem = () => {
+    if (!customItem.name.trim()) return
+    const price = parseFloat(customItem.unit_price) || 0
+    setItems(prev => [...prev, { product_id: null, name: customItem.name.trim(), sku: customItem.sku.trim(), qty: 1, unit_price: price, _list_price: price, bulk_price: null, bulk_quantity: null, is_bulk: false }])
+    setCustomItem({ name: '', sku: '', unit_price: '' })
+    setShowCustomItem(false)
+  }
 
   const subtotal    = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
   const discountAmt = discountType === 'percent' ? subtotal * (parseFloat(discountValue) || 0) / 100 : parseFloat(discountValue) || 0
@@ -522,13 +602,13 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_id: customer.id,
-          items: items.map(i => ({ product_id: i.product_id, quantity: i.qty, unit_price: i.unit_price })),
+          items: items.map(i => ({ product_id: i.product_id, quantity: i.qty, unit_price: i.unit_price, is_bulk_price: i.is_bulk || false })),
           notes, payment_method: paymentMethod,
           discount_amount: discountAmt, delivery_fee: 0,
         }),
       })
       const d = await r.json()
-      if (r.ok) { setPlacedOrder(d); setSmsPhone(customer.phone || ''); setPage('payment'); if (onOrderPlaced) onOrderPlaced() }
+      if (r.ok) { setPlacedOrder(d.order || d); setSmsPhone(customer.phone || ''); setPage('payment'); if (onOrderPlaced) onOrderPlaced() }
       else setErrorMsg(d.error || t.orderError || 'Failed to place order')
     } catch { setErrorMsg(t.orderError || 'Failed to place order') }
     setSubmitting(false)
@@ -619,9 +699,9 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
 
   // ── Order Page ────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl">
-      {/* Customer section */}
-      <div className="mb-5">
+    <div>
+      {/* ── Customer bar ── */}
+      <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-stone-700">{t.customer || 'Customer'}</h3>
           <button
@@ -685,12 +765,11 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
         )}
 
         {customer && (
-          <div className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-xl p-4">
+          <div className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-xl p-3">
             <div>
               <p className="font-semibold text-blue-900 text-sm">{customer.full_name || customer.username}</p>
               {customer.company_name && <p className="text-xs text-blue-600">{customer.company_name}</p>}
               {customer.phone && <p className="text-xs text-blue-500 font-mono">{customer.phone}</p>}
-              {customer.shipping_address && <p className="text-xs text-blue-400 mt-0.5">{customer.shipping_address}</p>}
             </div>
             <button onClick={() => { setCustomer(null); setSmsPhone('') }} className="text-blue-400 hover:text-blue-700">
               <X className="w-4 h-4" />
@@ -699,227 +778,264 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
         )}
       </div>
 
-      {/* Product search */}
-      <div className="mb-4 relative">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-semibold text-stone-700">{t.addItem || 'Add Item'}</label>
+      {/* ── Two-column layout: Catalog browser (left) + Cart (right) ── */}
+      <div className="flex gap-4 items-start">
+
+        {/* ── LEFT: Catalog browser ── */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-stone-700">{t.catalog || 'Product Catalog'}</span>
+            <button
+              type="button"
+              onClick={() => setShowCustomItem(v => !v)}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium border border-dashed border-stone-300 rounded-lg text-stone-500 hover:bg-stone-50"
+            >
+              <Plus className="w-3 h-3" />{t.customItem || 'Custom Item'}
+            </button>
+          </div>
+
+          {/* Custom item form */}
+          {showCustomItem && (
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-xs font-semibold text-amber-800 mb-2">{t.customItem || 'Custom Item'}</p>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="col-span-3">
+                  <label className="block text-xs text-stone-500 mb-0.5">Item Name *</label>
+                  <input value={customItem.name} onChange={e => setCustomItem(c => ({ ...c, name: e.target.value }))}
+                    placeholder="e.g. Delivery Fee"
+                    className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-500 mb-0.5">SKU</label>
+                  <input value={customItem.sku} onChange={e => setCustomItem(c => ({ ...c, sku: e.target.value }))}
+                    placeholder="CUSTOM-001"
+                    className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-500 mb-0.5">Unit Price ($)</label>
+                  <input type="number" min="0" step="0.01" value={customItem.unit_price}
+                    onChange={e => setCustomItem(c => ({ ...c, unit_price: e.target.value }))}
+                    placeholder="0.00"
+                    className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={addCustomItem} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium">
+                  <Plus className="w-3 h-3 inline mr-1" />{t.addToCart || 'Add to Cart'}
+                </button>
+                <button onClick={() => setShowCustomItem(false)} className="px-3 py-1.5 border border-stone-200 rounded-lg text-xs text-stone-500 hover:bg-stone-50">{t.cancel || 'Cancel'}</button>
+              </div>
+            </div>
+          )}
+
+          {/* Category pills */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {catLoading && <span className="text-xs text-stone-400">Loading catalog…</span>}
+            {!catLoading && catalog.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCat(selectedCat?.id === cat.id ? null : cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  selectedCat?.id === cat.id
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Product list for selected category */}
+          {selectedCat ? (
+            <div className="border border-stone-200 rounded-xl overflow-hidden">
+              <div className="bg-stone-50 px-3 py-2 flex items-center justify-between border-b border-stone-100">
+                <span className="text-xs font-semibold text-stone-700">{selectedCat.name}</span>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400" />
+                  <input
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    placeholder="Filter…"
+                    className="pl-6 pr-3 py-1 text-xs border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-400 w-32"
+                  />
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                {filteredCatProducts.length === 0 && (
+                  <div className="text-center py-6 text-xs text-stone-400">No products found</div>
+                )}
+                {filteredCatProducts.map(p => {
+                  const inCart = items.find(i => i.product_id === p.id)
+                  const hasBulk = p.bulk_price && p.bulk_quantity
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => addItemFull(p)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-stone-50 last:border-0 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-stone-900 text-sm truncate">{p.name}</span>
+                          {inCart && (
+                            <span className="shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                              ×{inCart.qty}
+                            </span>
+                          )}
+                        </div>
+                        {p.sku && <span className="text-stone-400 text-xs">{p.sku}</span>}
+                        {hasBulk && (
+                          <span className="ml-1 text-xs text-green-600">
+                            · Bulk {p.bulk_quantity}+: {formatPrice(p.bulk_price)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="text-stone-700 text-sm font-semibold">{formatPrice(p.unit_price)}</span>
+                        <div className="text-xs text-stone-400">{t.tapToAdd || 'tap to add'}</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            !catLoading && catalog.length > 0 && (
+              <p className="text-xs text-stone-400 py-4 text-center">{t.selectCategoryHint || 'Select a category above to browse products'}</p>
+            )
+          )}
+        </div>
+
+        {/* ── RIGHT: Cart ── */}
+        <div className="w-80 shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-stone-700 flex items-center gap-1">
+              <ShoppingCart className="w-3.5 h-3.5" />
+              {t.cart || 'Cart'}
+              {items.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-stone-900 text-white rounded-full text-xs">{items.length}</span>
+              )}
+            </span>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-6 text-center">
+              <ShoppingCart className="w-7 h-7 text-stone-200 mx-auto mb-2" />
+              <p className="text-stone-400 text-xs">{t.cartEmpty || 'Cart is empty. Click a product to add.'}</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-stone-100 overflow-hidden mb-3">
+              {items.map((item, idx) => (
+                <div key={idx} className="px-3 py-2.5 border-b border-stone-50 last:border-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-stone-900 text-xs leading-tight truncate">{item.name}</p>
+                      {item.sku && <p className="text-xs text-stone-400">{item.sku}</p>}
+                      {item.is_bulk && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium mt-0.5">
+                          <Tag className="w-2.5 h-2.5" />{t.bulkPrice || 'Bulk Price'}
+                        </span>
+                      )}
+                    </div>
+                    <button onClick={() => removeItem(idx)} className="text-stone-300 hover:text-red-500 shrink-0 mt-0.5">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => updateQtyFull(idx, item.qty - 1)}
+                        disabled={item.qty <= 1}
+                        className="px-2 py-0.5 text-stone-500 hover:bg-stone-100 disabled:opacity-30 text-sm font-bold"
+                      >-</button>
+                      <input
+                        type="number" min="1" value={item.qty}
+                        onChange={e => updateQtyFull(idx, e.target.value)}
+                        className="w-10 text-center border-0 py-0.5 text-sm focus:outline-none"
+                      />
+                      <button
+                        onClick={() => updateQtyFull(idx, item.qty + 1)}
+                        className="px-2 py-0.5 text-stone-500 hover:bg-stone-100 text-sm font-bold"
+                      >+</button>
+                    </div>
+                    <span className="text-xs text-stone-400">×</span>
+                    <input
+                      type="number" min="0" step="0.01" value={item.unit_price}
+                      onChange={e => updatePrice(idx, e.target.value)}
+                      className="w-20 text-right border border-stone-200 rounded-lg px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-stone-400"
+                    />
+                    <span className="text-xs font-semibold text-stone-700 ml-auto">{formatPrice(item.qty * item.unit_price)}</span>
+                  </div>
+                  {item.bulk_quantity && !item.is_bulk && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Add {item.bulk_quantity - item.qty} more for bulk price ({formatPrice(item.bulk_price)})
+                    </p>
+                  )}
+                </div>
+              ))}
+              {/* Totals */}
+              <div className="bg-stone-50 border-t border-stone-100 px-3 py-2 space-y-1">
+                <div className="flex justify-between text-xs text-stone-500">
+                  <span>Subtotal</span><span className="font-medium text-stone-700">{formatPrice(subtotal)}</span>
+                </div>
+                {discountAmt > 0 && (
+                  <div className="flex justify-between text-xs text-green-600">
+                    <span>Discount</span><span className="font-medium">−{formatPrice(discountAmt)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-bold text-stone-900 pt-1 border-t border-stone-200">
+                  <span>Total</span><span>{formatPrice(total)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Discount */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t.discount || 'Discount'}</label>
+            <div className="flex gap-1">
+              <select value={discountType} onChange={e => setDiscountType(e.target.value)}
+                className="border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
+                <option value="amount">$</option>
+                <option value="percent">%</option>
+              </select>
+              <input type="number" min="0" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)}
+                placeholder={discountType === 'percent' ? '0' : '0.00'}
+                className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900" />
+            </div>
+          </div>
+
+          {/* Payment method */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t.paymentMethod || 'Payment Method'}</label>
+            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
+              className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
+              <option value="net30">Net 30</option>
+              <option value="check">Check</option>
+              <option value="credit_card">Credit Card</option>
+              <option value="cash">Cash</option>
+            </select>
+          </div>
+
+          {/* Notes */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-stone-600 mb-1">{t.notes || 'Notes'}</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 resize-none" />
+          </div>
+
+          {errorMsg && <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs">{errorMsg}</div>}
+
           <button
-            type="button"
-            onClick={() => setShowCustomItem(v => !v)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-stone-300 rounded-lg text-stone-500 hover:bg-stone-50 hover:border-stone-400"
+            onClick={handleSubmit}
+            disabled={submitting || items.length === 0 || !customer}
+            className="w-full py-3 bg-stone-900 text-white rounded-xl text-sm font-bold hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Plus className="w-3 h-3" />{t.customItem || 'Custom Item'}
+            <ShoppingCart className="w-4 h-4" />
+            {submitting ? (t.submitting || 'Submitting…') : (t.submitOrder || 'Place Order')}
           </button>
         </div>
-
-        {/* Custom item inline form */}
-        {showCustomItem && (
-          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-            <p className="text-xs font-semibold text-amber-800 mb-2">{t.customItem || 'Custom Item'}</p>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div className="col-span-3 sm:col-span-1">
-                <label className="block text-xs text-stone-500 mb-0.5">Item Name *</label>
-                <input
-                  value={customItem.name}
-                  onChange={e => setCustomItem(c => ({ ...c, name: e.target.value }))}
-                  placeholder="e.g. Delivery Fee"
-                  className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-500 mb-0.5">SKU (optional)</label>
-                <input
-                  value={customItem.sku}
-                  onChange={e => setCustomItem(c => ({ ...c, sku: e.target.value }))}
-                  placeholder="CUSTOM-001"
-                  className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-500 mb-0.5">Unit Price ($)</label>
-                <input
-                  type="number" min="0" step="0.01"
-                  value={customItem.unit_price}
-                  onChange={e => setCustomItem(c => ({ ...c, unit_price: e.target.value }))}
-                  placeholder="0.00"
-                  className="w-full border border-stone-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={addCustomItem} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium">
-                <Plus className="w-3 h-3 inline mr-1" />Add to Order
-              </button>
-              <button onClick={() => setShowCustomItem(false)} className="px-3 py-1.5 border border-stone-200 rounded-lg text-xs text-stone-500 hover:bg-stone-50">Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {/* Category pills */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCat(selectedCat?.id === cat.id ? null : cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                selectedCat?.id === cat.id
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-          {categories.length === 0 && <span className="text-xs text-stone-400">Loading categories…</span>}
-        </div>
-
-        {/* Product list for selected category */}
-        {selectedCat && (
-          <div className="border border-stone-200 rounded-xl overflow-hidden mb-2">
-            <div className="bg-stone-50 px-3 py-2 flex items-center justify-between border-b border-stone-100">
-              <span className="text-xs font-semibold text-stone-700">{selectedCat.name}</span>
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400" />
-                <input
-                  value={productSearch}
-                  onChange={e => setProductSearch(e.target.value)}
-                  placeholder="Filter…"
-                  className="pl-6 pr-3 py-1 text-xs border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-400 w-36"
-                />
-              </div>
-            </div>
-            <div className="max-h-56 overflow-y-auto">
-              {catLoading && <div className="text-center py-4 text-xs text-stone-400">Loading…</div>}
-              {!catLoading && filteredCatProducts.length === 0 && (
-                <div className="text-center py-4 text-xs text-stone-400">No products in this category</div>
-              )}
-              {!catLoading && filteredCatProducts.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => addItem(p)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-blue-50 border-b border-stone-50 last:border-0 flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-medium text-stone-900 text-sm">{p.name}</span>
-                    {p.sku && <span className="text-stone-400 text-xs ml-2">{p.sku}</span>}
-                    {p.brand && <span className="text-stone-400 text-xs ml-2">· {p.brand}</span>}
-                  </div>
-                  <span className="text-stone-700 text-sm font-semibold ml-4 shrink-0">{formatPrice(p.unit_price)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {!selectedCat && categories.length > 0 && (
-          <p className="text-xs text-stone-400 mb-2">Select a category above to browse products</p>
-        )}
       </div>
-
-      {/* Items table */}
-      {items.length > 0 ? (
-        <div className="bg-white rounded-xl border border-stone-100 mb-4 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 border-b border-stone-100">
-              <tr>
-                <th className="text-left px-4 py-2.5 text-stone-500 font-medium">Item</th>
-                <th className="text-center px-3 py-2.5 text-stone-500 font-medium w-20">{t.qty || 'Qty'}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.unitPrice || 'Unit Price'}</th>
-                <th className="text-right px-4 py-2.5 text-stone-500 font-medium">{t.lineTotal || 'Total'}</th>
-                <th className="w-8"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <tr key={idx} className="border-b border-stone-50">
-                  <td className="px-4 py-2.5">
-                    <p className="font-medium text-stone-900">{item.name}</p>
-                    {item.sku && <p className="text-xs text-stone-400">{item.sku}</p>}
-                  </td>
-                  <td className="px-3 py-2.5 text-center">
-                    <input type="number" min="1" value={item.qty} onChange={e => updateQty(idx, e.target.value)}
-                      className="w-16 text-center border border-stone-200 rounded px-1 py-0.5 text-sm" />
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => updatePrice(idx, e.target.value)}
-                      className="w-24 text-right border border-stone-200 rounded px-2 py-0.5 text-sm" />
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-stone-900">{formatPrice(item.qty * item.unit_price)}</td>
-                  <td className="pr-3">
-                    <button onClick={() => removeItem(idx)} className="text-stone-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-stone-50 border-t border-stone-100">
-              <tr>
-                <td colSpan={3} className="px-4 py-2 text-right text-stone-500 text-sm">Subtotal</td>
-                <td className="px-4 py-2 text-right font-semibold text-stone-700">{formatPrice(subtotal)}</td>
-                <td></td>
-              </tr>
-              {discountAmt > 0 && (
-                <tr>
-                  <td colSpan={3} className="px-4 py-2 text-right text-green-600 text-sm">Discount</td>
-                  <td className="px-4 py-2 text-right font-semibold text-green-600">−{formatPrice(discountAmt)}</td>
-                  <td></td>
-                </tr>
-              )}
-              <tr>
-                <td colSpan={3} className="px-4 py-2.5 text-right font-bold text-stone-900">Total</td>
-                <td className="px-4 py-2.5 text-right font-bold text-stone-900 text-base">{formatPrice(total)}</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      ) : (
-        <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-8 text-center mb-4">
-          <ShoppingCart className="w-8 h-8 text-stone-200 mx-auto mb-2" />
-          <p className="text-stone-400 text-sm">{t.noItemsYet || 'Search for products above to add items'}</p>
-        </div>
-      )}
-
-      {/* Discount + Notes + Payment */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-        <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">{t.discount || 'Discount'}</label>
-          <div className="flex gap-1">
-            <select value={discountType} onChange={e => setDiscountType(e.target.value)}
-              className="border border-stone-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
-              <option value="amount">$</option>
-              <option value="percent">%</option>
-            </select>
-            <input type="number" min="0" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)}
-              placeholder={discountType === 'percent' ? '0' : '0.00'}
-              className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900" />
-          </div>
-          {discountAmt > 0 && <p className="text-xs text-green-600 mt-1">−{formatPrice(discountAmt)} off</p>}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">{t.paymentMethod || 'Payment Method'}</label>
-          <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
-            <option value="net30">Net 30</option>
-            <option value="check">Check</option>
-            <option value="credit_card">Credit Card</option>
-            <option value="cash">Cash</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">{t.notes || 'Notes'}</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 resize-none" />
-        </div>
-      </div>
-
-      {errorMsg && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{errorMsg}</div>}
-
-      <button
-        onClick={handleSubmit}
-        disabled={submitting || items.length === 0 || !customer}
-        className="px-6 py-2.5 bg-stone-900 text-white rounded-lg text-sm font-semibold hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {submitting ? (t.submitting || 'Submitting…') : (t.submitOrder || 'Submit Order')}
-      </button>
     </div>
   )
 }

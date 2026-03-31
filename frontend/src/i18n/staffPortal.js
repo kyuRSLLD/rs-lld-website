@@ -624,6 +624,16 @@ export const staffPortalTranslations = {
       creditCard: 'Credit Card',
       check: 'Check',
       net30: 'Net 30',
+      // Cart & catalog
+      catalog: 'Product Catalog',
+      cart: 'Cart',
+      cartEmpty: 'Cart is empty. Click a product to add.',
+      addToCart: 'Add to Cart',
+      tapToAdd: 'tap to add',
+      bulkPrice: 'Bulk Price',
+      selectCategoryHint: 'Select a category above to browse products',
+      customItem: 'Custom Item',
+      noItemsYet: 'Cart is empty. Browse the catalog to add items.',
     },
   },
 
@@ -1250,6 +1260,16 @@ export const staffPortalTranslations = {
       creditCard: '信用卡',
       check: '支票',
       net30: 'Net 30 账期',
+      // 购物车与产品目录
+      catalog: '产品目录',
+      cart: '购物车',
+      cartEmpty: '购物车为空，点击产品即可添加。',
+      addToCart: '加入购物车',
+      tapToAdd: '点击添加',
+      bulkPrice: '批量价',
+      selectCategoryHint: '请在上方选择分类以浏览产品',
+      customItem: '自定义商品',
+      noItemsYet: '购物车为空，请在目录中选择产品。',
     },
   },
 }

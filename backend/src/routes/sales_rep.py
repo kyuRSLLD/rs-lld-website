@@ -467,10 +467,16 @@ def get_calling_list_entries(staff):
     result = [e.to_dict() for e in entries]
 
     # ── Registered customers with phones (merged view) ──────────────────────
+    # Build a set of phones already covered by CallingListEntry rows so we
+    # don't show the same person twice in the list.
+    existing_phones = {e.phone for e in CallingListEntry.query.with_entities(CallingListEntry.phone).all()}
     customers = User.query.filter(
         User.phone.isnot(None), User.phone != '', User.is_active == True
     ).all()
     for c in customers:
+        # Skip if this phone already has a dedicated CallingListEntry
+        if (c.phone or '').strip() in existing_phones:
+            continue
         orders = Order.query.filter_by(user_id=c.id).order_by(Order.created_at.desc()).all()
         last_order = orders[0] if orders else None
         total_spend = sum(o.total_amount for o in orders)
