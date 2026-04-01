@@ -343,8 +343,12 @@ def update_customer(user_id):
     shipping = (data.get('shipping_address') or '').strip() or None
     billing  = (data.get('billing_address')  or '').strip() or None
 
-    # Update username if first/last name provided
+    # Update first_name, last_name columns and username display name
     if first or last:
+        if first:
+            user.first_name = first
+        if last:
+            user.last_name = last
         full = f'{first} {last}'.strip()
         user.username = full if full else user.username
 
@@ -367,6 +371,8 @@ def update_customer(user_id):
         'success': True,
         'id': user.id,
         'username': user.username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
         'email': user.email,
         'company_name': user.company_name,
         'phone': user.phone,
