@@ -9,7 +9,7 @@ const ROLE_CONFIG = {
   manager:   { color: 'text-stone-900',  bg: 'bg-blue-50',   border: 'border-blue-200' },
   staff:     { color: 'text-stone-700',  bg: 'bg-stone-100', border: 'border-stone-200' },
   sales_rep:        { color: 'text-green-700',  bg: 'bg-green-50',   border: 'border-green-200' },
-  shipping_manager: { color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
+  shipping:         { color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
 }
 
 const EMPTY_FORM = {
@@ -140,7 +140,7 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">{t.staffMgmt.role} *</label>
             <div className="flex gap-3">
-              {['sales_rep', 'shipping_manager', 'staff', 'manager', 'admin'].map(r => {
+              {['sales_rep', 'shipping', 'staff', 'manager', 'admin'].map(r => {
                 const cfg = ROLE_CONFIG[r]
                 const label = t.staffMgmt[`role_${r}`]
                 return (
