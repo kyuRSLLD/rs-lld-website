@@ -42,7 +42,7 @@ def shipping_required(f):
                     staff = StaffUser.query.get(staff_id)
                     if not staff or not staff.is_active:
                         return jsonify({'error': 'Account inactive'}), 403
-                    if staff.role not in ('shipping_manager', 'manager', 'admin'):
+                    if staff.role not in ('shipping_manager', 'shipping', 'manager', 'admin'):
                         return jsonify({'error': 'Shipping access required'}), 403
                     g.shipping_staff = staff
                     return f(*args, **kwargs)
@@ -54,7 +54,7 @@ def shipping_required(f):
         staff = StaffUser.query.get(staff_id)
         if not staff or not staff.is_active:
             return jsonify({'error': 'Account inactive'}), 403
-        if staff.role not in ('shipping_manager', 'manager', 'admin'):
+        if staff.role not in ('shipping_manager', 'shipping', 'manager', 'admin'):
             return jsonify({'error': 'Shipping access required'}), 403
         from flask import g
         g.shipping_staff = staff
@@ -75,7 +75,7 @@ def shipping_login():
         return jsonify({'error': 'Invalid credentials'}), 401
     if not staff.is_active:
         return jsonify({'error': 'Account is inactive'}), 403
-    if staff.role not in ('shipping_manager', 'manager', 'admin'):
+    if staff.role not in ('shipping_manager', 'shipping', 'manager', 'admin'):
         return jsonify({'error': 'This account does not have shipping access'}), 403
     session['shipping_staff_id'] = staff.id
     from datetime import timedelta
@@ -98,6 +98,25 @@ def shipping_me():
     return jsonify(staff.to_dict())
 
 # ─── Order Queue ──────────────────────────────────────────────────────────────
+
+import re
+
+def _parse_tracking(staff_notes, field):
+    """Extract tracking number or carrier from staff_notes string.
+    Format stored: '[Shipped] Carrier: UPS | Tracking: 1Z999AA10123456784'
+    """
+    if not staff_notes:
+        return ''
+    # Look for the [Shipped] line
+    for line in staff_notes.splitlines():
+        if '[Shipped]' in line:
+            if field == 'carrier':
+                m = re.search(r'Carrier:\s*([^|\n]+)', line)
+                return m.group(1).strip() if m else ''
+            elif field == 'tracking':
+                m = re.search(r'Tracking:\s*([^|\n]+)', line)
+                return m.group(1).strip() if m else ''
+    return ''
 
 def _order_to_shipping_dict(order):
     """Return only the fields a warehouse worker needs — no sales/pricing info."""
@@ -132,8 +151,9 @@ def _order_to_shipping_dict(order):
         'item_count': sum(i.quantity for i in order.items),
         'items': items,
         # Tracking (stored in staff_notes if not a dedicated column)
-        'tracking_number': '',
-        'carrier': '',
+        'tracking_number': _parse_tracking(order.staff_notes, 'tracking'),
+        'carrier': _parse_tracking(order.staff_notes, 'carrier'),
+        'staff_notes': order.staff_notes or '',
     }
 
 @shipping_bp.route('/shipping/orders', methods=['GET'])

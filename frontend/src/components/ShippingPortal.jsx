@@ -351,10 +351,135 @@ function ShipModal({ order, t, onConfirm, onClose }) {
   )
 }
 
-// ─── Order Row ────────────────────────────────────────────────────────────────
-function OrderRow({ order, t, onConfirm, onShip, onDeliver, onPrint }) {
+// ─── Carrier tracking URL helper ────────────────────────────────────────────
+function trackingUrl(carrier, trackingNumber) {
+  if (!trackingNumber) return null
+  const c = (carrier || '').toLowerCase()
+  if (c.includes('ups')) return `https://www.ups.com/track?tracknum=${trackingNumber}`
+  if (c.includes('fedex')) return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`
+  if (c.includes('usps')) return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`
+  if (c.includes('dhl')) return `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${trackingNumber}`
+  return `https://www.google.com/search?q=${encodeURIComponent((carrier ? carrier + ' ' : '') + 'tracking ' + trackingNumber)}`
+}
+
+// ─── Order Detail Modal ───────────────────────────────────────────────────────
+function OrderDetailModal({ order, t, onClose, onConfirm, onShip, onDeliver, onPrint }) {
+  const url = trackingUrl(order.carrier, order.tracking_number)
   return (
-    <tr className="border-b border-stone-100 hover:bg-stone-50">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div>
+            <h2 className="text-lg font-bold text-stone-900">{order.order_number}</h2>
+            <div className="text-xs text-stone-400 mt-0.5">{fmtDateTime(order.created_at)}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={order.status} t={t} />
+            <button onClick={onClose} className="text-stone-400 hover:text-stone-600 text-xl leading-none ml-2">×</button>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Ship To */}
+          <div className="bg-stone-50 rounded-lg p-3">
+            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">{t.shipTo}</div>
+            <div className="font-semibold text-stone-900">{order.delivery_name}</div>
+            {order.delivery_company && <div className="text-stone-700 text-sm">{order.delivery_company}</div>}
+            <div className="text-stone-600 text-sm">{order.delivery_address}</div>
+            <div className="text-stone-600 text-sm">{order.delivery_city}, {order.delivery_state} {order.delivery_zip}</div>
+            {order.delivery_phone && <div className="text-stone-500 text-sm mt-1">📞 {order.delivery_phone}</div>}
+          </div>
+
+          {/* Shipping Info — shown when shipped */}
+          {(order.status === 'shipped' || order.status === 'delivered') && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <div className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">🚚 Shipping Info</div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-stone-500 text-xs">{t.carrier}</span>
+                  <div className="font-medium text-stone-900">{order.carrier || '—'}</div>
+                </div>
+                <div>
+                  <span className="text-stone-500 text-xs">{t.trackingNumber}</span>
+                  <div className="font-mono text-stone-900 text-xs break-all">
+                    {order.tracking_number ? (
+                      url ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {order.tracking_number} ↗
+                        </a>
+                      ) : order.tracking_number
+                    ) : '—'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-stone-500 text-xs">Shipped</span>
+                  <div className="font-medium text-stone-900">{fmtDateTime(order.shipped_at)}</div>
+                </div>
+                {order.delivered_at && (
+                  <div>
+                    <span className="text-stone-500 text-xs">Delivered</span>
+                    <div className="font-medium text-stone-900">{fmtDateTime(order.delivered_at)}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Special Notes */}
+          {order.special_notes && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">{t.specialNotes}</div>
+              <div className="text-sm text-amber-900">{order.special_notes}</div>
+            </div>
+          )}
+
+          {/* Requested Date */}
+          {order.preferred_delivery_date && (
+            <div className="text-sm text-stone-600">
+              <span className="font-medium">{t.requestedDate}:</span> {order.preferred_delivery_date}
+            </div>
+          )}
+
+          {/* Items */}
+          <div>
+            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">{t.items}</div>
+            <div className="space-y-1">
+              {order.items.map((item, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm py-1 border-b border-stone-100 last:border-0">
+                  <span className="font-bold text-stone-900 w-6 shrink-0">{item.quantity}×</span>
+                  <div>
+                    <div className="text-stone-900">{item.product_name}</div>
+                    <div className="text-xs text-stone-400">{item.product_sku}{item.product_unit_size ? ` · ${item.product_unit_size}` : ''}{item.product_brand ? ` · ${item.product_brand}` : ''}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-stone-100">
+            <button onClick={() => { onPrint(order); onClose(); }} className="text-xs px-3 py-1.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50">🖨 {t.printSlip}</button>
+            {order.status === 'pending' && (
+              <button onClick={() => { onConfirm(order.order_number); onClose(); }} className="text-xs px-3 py-1.5 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium">✓ {t.confirmPick}</button>
+            )}
+            {(order.status === 'pending' || order.status === 'confirmed') && (
+              <button onClick={() => { onShip(order); onClose(); }} className="text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 font-semibold">🚚 {t.markShipped}</button>
+            )}
+            {order.status === 'shipped' && (
+              <button onClick={() => { onDeliver(order.order_number); onClose(); }} className="text-xs px-3 py-1.5 rounded bg-stone-800 text-white hover:bg-stone-700 font-medium">🏠 {t.markDelivered}</button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Order Row ────────────────────────────────────────────────────────────────
+function OrderRow({ order, t, onConfirm, onShip, onDeliver, onPrint, onDetail }) {
+  return (
+    <tr className="border-b border-stone-100 hover:bg-stone-50 cursor-pointer" onClick={() => onDetail(order)}>
       {/* Order # */}
       <td className="px-4 py-3">
         <span className="font-mono font-bold text-stone-900 text-sm">{order.order_number}</span>
@@ -392,6 +517,11 @@ function OrderRow({ order, t, onConfirm, onShip, onDeliver, onPrint }) {
       {/* Status */}
       <td className="px-4 py-3">
         <StatusBadge status={order.status} t={t} />
+        {order.tracking_number && (
+          <div className="text-xs text-green-700 mt-1 font-mono truncate max-w-[130px]" title={order.tracking_number}>
+            🚚 {order.carrier ? `${order.carrier}: ` : ''}{order.tracking_number}
+          </div>
+        )}
         {order.special_notes && (
           <div className="text-xs text-amber-600 mt-1 max-w-[120px] truncate" title={order.special_notes}>
             ⚠ {order.special_notes}
@@ -459,6 +589,7 @@ export default function ShippingPortal() {
 
   const [shipTarget, setShipTarget] = useState(null)   // order to show ship modal for
   const [slipTarget, setSlipTarget] = useState(null)   // order to show packing slip for
+  const [detailOrder, setDetailOrder] = useState(null) // order to show detail modal for
 
   // ── Check existing token on mount ──
   useEffect(() => {
@@ -638,6 +769,17 @@ export default function ShippingPortal() {
           onClose={() => setSlipTarget(null)}
         />
       )}
+      {detailOrder && (
+        <OrderDetailModal
+          order={detailOrder}
+          t={t}
+          onClose={() => setDetailOrder(null)}
+          onConfirm={(orderNum) => { handleConfirm(orderNum); setDetailOrder(null) }}
+          onShip={(order) => { setShipTarget(order); setDetailOrder(null) }}
+          onDeliver={(orderNum) => { handleDeliver(orderNum); setDetailOrder(null) }}
+          onPrint={(order) => { setSlipTarget(order); setDetailOrder(null) }}
+        />
+      )}
 
       {/* Header */}
       <header className="bg-white border-b border-stone-200 px-4 py-3 flex items-center justify-between">
@@ -759,6 +901,7 @@ export default function ShippingPortal() {
                       onShip={setShipTarget}
                       onDeliver={handleDeliver}
                       onPrint={setSlipTarget}
+                      onDetail={setDetailOrder}
                     />
                   ))
                 )}
