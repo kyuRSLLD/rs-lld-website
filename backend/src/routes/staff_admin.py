@@ -60,8 +60,8 @@ def create_staff_user():
         return jsonify({'error': 'Username is required'}), 400
     if not password or len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
-    if role not in ('staff', 'manager', 'admin'):
-        return jsonify({'error': 'Invalid role. Must be staff, manager, or admin'}), 400
+    if role not in ('staff', 'manager', 'admin', 'shipping', 'sales_rep'):
+        return jsonify({'error': 'Invalid role. Must be staff, manager, admin, shipping, or sales_rep'}), 400
 
     if StaffUser.query.filter_by(username=username).first():
         return jsonify({'error': f"Username '{username}' is already taken"}), 409
@@ -107,7 +107,7 @@ def update_staff_user(user_id):
                 return jsonify({'error': f"Email '{new_email}' is already in use"}), 409
             user.email = new_email
     if 'role' in data:
-        if data['role'] not in ('staff', 'manager', 'admin'):
+        if data['role'] not in ('staff', 'manager', 'admin', 'shipping', 'sales_rep'):
             return jsonify({'error': 'Invalid role'}), 400
         user.role = data['role']
     if 'is_active' in data:
