@@ -362,7 +362,7 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
           <table className="w-full text-sm">
             <thead className="bg-stone-50 border-b border-stone-100">
               <tr>
-                {[t.staffMgmt.username, t.staffMgmt.fullName, t.staffMgmt.email, t.staffMgmt.role,
+                {[t.staffMgmt.username, `${t.staffMgmt.firstName || 'First'} / ${t.staffMgmt.lastName || 'Last'}`, t.staffMgmt.email, t.staffMgmt.role,
                   t.staffMgmt.status, t.staffMgmt.created, ''].map((h, i) => (
                   <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
