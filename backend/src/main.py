@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify as _jsonify
 from flask_cors import CORS
 from src.models.user import db
 from src.models.product import Product, Category, ProductImage
@@ -39,7 +39,10 @@ from src.models.voice_analytics import CallLog, AgentPerformance
 from src.models.sourcing import Supplier, RFQ, Shipment, QCInspection, SupplierPayment
 from src.models.supplier_bill import SupplierBill
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+# ⚠️  ARCHITECTURE RULE (DO NOT CHANGE):
+# Frontend is served EXCLUSIVELY by Cloudflare Pages (lld-restaurant-supply.pages.dev / lldrestaurantsupply.com)
+# This Railway backend serves ONLY /api/* routes. It must NEVER serve static frontend files.
+app = Flask(__name__, static_folder=None)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '')
 # Cookie settings — SameSite=None + Secure=True required for cross-origin requests
 # (Bluehost frontend calling Railway backend)
@@ -309,20 +312,16 @@ def ping():
     return jsonify({'status': 'ok'})
 
 
+# ⚠️  ARCHITECTURE RULE: Frontend lives on Cloudflare Pages — Railway serves API only.
+# Non-API routes return a clear error so nothing accidentally serves HTML.
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve(path):
-    static_folder_path = app.static_folder
-    if static_folder_path is None:
-        return "Static folder not configured", 404
-    if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
-        return send_from_directory(static_folder_path, path)
-    else:
-        index_path = os.path.join(static_folder_path, 'index.html')
-        if os.path.exists(index_path):
-            return send_from_directory(static_folder_path, 'index.html')
-        else:
-            return "index.html not found", 404
+def catch_all(path):
+    # Allow /api/* and /api-docs to pass through (handled by blueprints above)
+    return _jsonify({
+        'error': 'Not found',
+        'message': 'This is the LLD Restaurant Supply API server. The frontend is at https://lldrestaurantsupply.com'
+    }), 404
 
 
 if __name__ == '__main__':
