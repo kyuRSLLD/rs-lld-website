@@ -18,8 +18,9 @@ const translations = {
     phone_placeholder: '(xxx) xxx-xxxx',
     email: 'Email Address (optional)',
     email_placeholder: 'your@email.com',
+    consent_required_label: '(Required)',
     consent_label:
-      'I agree to receive recurring automated SMS/text messages from RS LLD Restaurant Supply at the mobile number provided. Message frequency varies. Message and data rates may apply.',
+      'I agree to receive recurring automated SMS/text messages from RS LLD Restaurant Supply at the mobile number provided. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe at any time. Reply HELP for help.',
     submit: 'Opt In to SMS',
     submitting: 'Submitting…',
     success_title: 'You\'re Opted In!',
@@ -66,8 +67,9 @@ const translations = {
     phone_placeholder: '(xxx) xxx-xxxx',
     email: '电子邮件（可选）',
     email_placeholder: 'your@email.com',
+    consent_required_label: '（必填）',
     consent_label:
-      '我同意在所提供的手机号码上接收来自RS LLD餐厅供应的定期自动短信。短信频率不定。可能收取短信和数据费用。',
+      '我同意在所提供的手机号码上接收来自RS LLD餐厅供应的定期自动短信。短信频率不定。可能收取短信和数据费用。回复 STOP 随时退订，回复 HELP 获取帮助。',
     submit: '订阅短信',
     submitting: '提交中…',
     success_title: '订阅成功！',
@@ -113,8 +115,9 @@ const translations = {
     phone_placeholder: '(xxx) xxx-xxxx',
     email: '이메일 주소 (선택)',
     email_placeholder: 'your@email.com',
+    consent_required_label: '(필수)',
     consent_label:
-      '제공한 휴대폰 번호로 RS LLD Restaurant Supply의 반복 자동 SMS/문자 메시지 수신에 동의합니다. 메시지 빈도는 다를 수 있습니다. 메시지 및 데이터 요금이 적용될 수 있습니다.',
+      '제공한 휴대폰 번호로 RS LLD Restaurant Supply의 반복 자동 SMS/문자 메시지 수신에 동의합니다. 메시지 빈도는 다를 수 있습니다. 메시지 및 데이터 요금이 적용될 수 있습니다. 언제든지 STOP으로 수신 거부, HELP로 도움 요청.',
     submit: 'SMS 수신 동의',
     submitting: '제출 중…',
     success_title: '구독 완료!',
@@ -301,20 +304,25 @@ export default function SmsOptInPage() {
                   />
                 </div>
 
-                {/* Consent checkbox */}
-                <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                {/* Consent checkbox — TCR/A2P 10DLC compliant: separate, unchecked by default */}
+                <div className="flex items-start gap-3 bg-blue-50 border-2 border-blue-400 rounded-lg p-4">
                   <input
                     id="consent"
                     type="checkbox"
                     required
                     checked={form.consent}
                     onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
-                    className="mt-1 w-4 h-4 accent-blue-600 flex-shrink-0"
+                    className="mt-1 w-5 h-5 accent-blue-600 flex-shrink-0 cursor-pointer"
                   />
-                  <label htmlFor="consent" className="text-sm text-gray-700 leading-snug cursor-pointer">
+                  <label htmlFor="consent" className="text-sm text-gray-800 leading-snug cursor-pointer">
+                    <span className="font-semibold">{t.consent_required_label}</span>{' '}
                     {t.consent_label}
                   </label>
                 </div>
+                {/* No-sharing notice — required by TCR directly on the form */}
+                <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed">
+                  {t.disc_sharing}
+                </p>
 
                 {/* Error */}
                 {(status === 'error' || errorMsg) && (

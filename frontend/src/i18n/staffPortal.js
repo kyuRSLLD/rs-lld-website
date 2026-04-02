@@ -32,6 +32,7 @@ export const staffPortalTranslations = {
       apiKeys: 'API Keys',
       billAnalyzer: 'Bill Analyzer',
       salesRep: 'Sales Rep',
+      profile: 'Profile',
     },
     // Order statuses
     status: {
@@ -658,6 +659,28 @@ export const staffPortalTranslations = {
       customItem: 'Custom Item',
       noItemsYet: 'Cart is empty. Browse the catalog to add items.',
     },
+    // Profile Settings
+    profile: {
+      title: 'Profile Settings',
+      subtitle: 'Update your account password',
+      username: 'Username',
+      role: 'Role',
+      email: 'Email',
+      changePassword: 'Change Password',
+      currentPassword: 'Current Password',
+      currentPasswordPlaceholder: 'Enter current password',
+      newPassword: 'New Password',
+      newPasswordPlaceholder: 'Min. 6 characters',
+      confirmPassword: 'Confirm New Password',
+      confirmPasswordPlaceholder: 'Re-enter new password',
+      savePassword: 'Update Password',
+      saving: 'Saving...',
+      successMsg: 'Password updated successfully.',
+      errorCurrent: 'Current password is incorrect.',
+      errorMismatch: 'Passwords do not match.',
+      errorShort: 'Password must be at least 6 characters.',
+      errorGeneric: 'Failed to update password. Please try again.',
+    },
   },
 
   zh: {
@@ -689,9 +712,10 @@ export const staffPortalTranslations = {
       stats: '数据面板',
       invoices: '发票',
       staffMgmt: '员工管理',
-      apiKeys: 'API 密钥',
+      apiKeys: 'API 密鑰',
       billAnalyzer: '账单分析',
       salesRep: '销售代表',
+      profile: '个人设置',
     },
     // 订单状态
     status: {
@@ -1316,6 +1340,28 @@ export const staffPortalTranslations = {
       selectCategoryHint: '请在上方选择分类以浏览产品',
       customItem: '自定义商品',
       noItemsYet: '购物车为空，请在目录中选择产品。',
+    },
+    // 个人设置
+    profile: {
+      title: '个人设置',
+      subtitle: '修改您的账号密码',
+      username: '用户名',
+      role: '角色',
+      email: '邮箱',
+      changePassword: '修改密码',
+      currentPassword: '当前密码',
+      currentPasswordPlaceholder: '请输入当前密码',
+      newPassword: '新密码',
+      newPasswordPlaceholder: '最少6个字符',
+      confirmPassword: '确认新密码',
+      confirmPasswordPlaceholder: '再次输入新密码',
+      savePassword: '更新密码',
+      saving: '保存中...',
+      successMsg: '密码已成功更新。',
+      errorCurrent: '当前密码不正确。',
+      errorMismatch: '两次输入的密码不一致。',
+      errorShort: '密码至少需要 6 个字符。',
+      errorGeneric: '密码更新失败，请重试。',
     },
   },
 }

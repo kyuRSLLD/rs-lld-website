@@ -160,3 +160,79 @@ def delete_staff_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': f"Staff user '{user.username}' deleted"})
+
+
+# ─── Self-service: change own password ───────────────────────────────────────
+
+@staff_admin_bp.route('/staff/profile/change-password', methods=['POST'])
+def change_own_password():
+    """Any logged-in staff member can change their own password."""
+    from src.routes.order import _verify_staff_jwt
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        staff_id = _verify_staff_jwt(token)
+        if not staff_id:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+    else:
+        staff_id = session.get('staff_id')
+        if not staff_id:
+            return jsonify({'error': 'Authentication required'}), 401
+
+    staff = StaffUser.query.get(staff_id)
+    if not staff:
+        return jsonify({'error': 'Staff user not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+    confirm_password = data.get('confirm_password', '')
+
+    if not current_password:
+        return jsonify({'error': 'Current password is required'}), 400
+    if not staff.check_password(current_password):
+        return jsonify({'error': 'Current password is incorrect'}), 400
+    if not new_password or len(new_password) < 6:
+        return jsonify({'error': 'New password must be at least 6 characters'}), 400
+    if new_password != confirm_password:
+        return jsonify({'error': 'Passwords do not match'}), 400
+
+    staff.set_password(new_password)
+    db.session.commit()
+
+    # Send security notification email
+    if staff.email:
+        try:
+            from src.utils.email import send_password_changed_email
+            send_password_changed_email(staff, account_type='staff')
+        except Exception as _email_err:
+            print(f"[EMAIL] Staff password-changed notification failed: {_email_err}")
+
+    return jsonify({'message': 'Password changed successfully'})
+
+
+# ─── Self-service: get own profile ───────────────────────────────────────────
+
+@staff_admin_bp.route('/staff/profile', methods=['GET'])
+def get_own_profile():
+    """Return the currently logged-in staff member's profile."""
+    from src.routes.order import _verify_staff_jwt
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        staff_id = _verify_staff_jwt(token)
+        if not staff_id:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+    else:
+        staff_id = session.get('staff_id')
+        if not staff_id:
+            return jsonify({'error': 'Authentication required'}), 401
+
+    staff = StaffUser.query.get(staff_id)
+    if not staff:
+        return jsonify({'error': 'Staff user not found'}), 404
+
+    return jsonify(staff.to_dict())

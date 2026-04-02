@@ -10,7 +10,7 @@ import {
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye, EyeOff,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images, Phone
+  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images, Phone, UserCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
@@ -1274,9 +1274,167 @@ const CombinedInvoicesTab = ({ t, lang, isAdmin }) => {
   )
 }
 
-// ─── Main Staff Portal ─────────────────────────────────────────────────────────
-const StaffPortal = () => {
-  const [staff, setStaff] = useState(null)
+// ─── Profile Tab ──────────────────────────────────────────────────────────────────────────────────
+const ProfileTab = ({ t, staff }) => {
+  const [form, setForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
+
+  const inp = 'border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 w-full'
+
+  const ROLE_LABELS = {
+    admin: 'Admin', manager: 'Manager', staff: 'Staff',
+    sales_rep: 'Sales Rep', shipping: 'Shipping', shipping_manager: 'Shipping'
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    if (!form.current_password) { setError(t.errorCurrent); return }
+    if (!form.new_password || form.new_password.length < 6) { setError(t.errorShort); return }
+    if (form.new_password !== form.confirm_password) { setError(t.errorMismatch); return }
+    setSaving(true)
+    try {
+      const res = await staffFetch('/api/staff/profile/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: form.current_password,
+          new_password: form.new_password,
+          confirm_password: form.confirm_password,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSuccess(t.successMsg)
+        setForm({ current_password: '', new_password: '', confirm_password: '' })
+      } else {
+        setError(data.error || t.errorGeneric)
+      }
+    } catch {
+      setError(t.errorGeneric)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="max-w-lg mx-auto">
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-stone-900">{t.title}</h2>
+        <p className="text-sm text-stone-500 mt-1">{t.subtitle}</p>
+      </div>
+
+      {/* Account info card */}
+      <div className="bg-white rounded-xl border border-stone-200 p-5 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-stone-100 flex items-center justify-center">
+            <UserCircle className="w-8 h-8 text-stone-400" />
+          </div>
+          <div>
+            <p className="font-semibold text-stone-900 text-lg">{staff?.full_name || staff?.username}</p>
+            <p className="text-sm text-stone-500">@{staff?.username}</p>
+            {staff?.email && <p className="text-sm text-stone-400">{staff.email}</p>}
+          </div>
+          <div className="ml-auto">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600 uppercase tracking-wide">
+              {ROLE_LABELS[staff?.role] || staff?.role}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Change password form */}
+      <div className="bg-white rounded-xl border border-stone-200 p-5">
+        <h3 className="font-semibold text-stone-900 mb-4">{t.changePassword}</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Current password */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">{t.currentPassword}</label>
+            <div className="relative">
+              <input
+                className={inp + ' pr-10'}
+                type={showCurrent ? 'text' : 'password'}
+                value={form.current_password}
+                onChange={e => setForm(p => ({ ...p, current_password: e.target.value }))}
+                placeholder={t.currentPasswordPlaceholder}
+                autoComplete="current-password"
+              />
+              <button type="button" onClick={() => setShowCurrent(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600" tabIndex={-1}>
+                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* New password */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">{t.newPassword}</label>
+            <div className="relative">
+              <input
+                className={inp + ' pr-10'}
+                type={showNew ? 'text' : 'password'}
+                value={form.new_password}
+                onChange={e => setForm(p => ({ ...p, new_password: e.target.value }))}
+                placeholder={t.newPasswordPlaceholder}
+                autoComplete="new-password"
+              />
+              <button type="button" onClick={() => setShowNew(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600" tabIndex={-1}>
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm new password */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">{t.confirmPassword}</label>
+            <div className="relative">
+              <input
+                className={inp + ' pr-10'}
+                type={showConfirm ? 'text' : 'password'}
+                value={form.confirm_password}
+                onChange={e => setForm(p => ({ ...p, confirm_password: e.target.value }))}
+                placeholder={t.confirmPasswordPlaceholder}
+                autoComplete="new-password"
+              />
+              <button type="button" onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600" tabIndex={-1}>
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
+          )}
+          {success && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
+              <Check className="w-4 h-4" /> {success}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium disabled:opacity-60"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {saving ? t.saving : t.savePassword}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Staff Portal ──────────────────────────────────────────────────────────────────────────────────
+const StaffPortal = () => {t [staff, setStaff] = useState(null)
   const [activeTab, setActiveTab] = useState('orders')
   const [orders, setOrders] = useState([])
   const [stats, setStats] = useState(null)
@@ -1955,6 +2113,7 @@ const StaffPortal = () => {
         { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
         ...(isAdmin || isManager ? [{ id: 'salesRep', label: t.tabs.salesRep, icon: Phone }] : []),
         ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
+        { id: 'profile', label: t.tabs.profile, icon: UserCircle },
       ]
 
   return (
@@ -2996,6 +3155,11 @@ const StaffPortal = () => {
         {/* ── SALES REP TAB ── */}
         {activeTab === 'salesRep' && (
           <SalesRepTab t={t.salesRep} staff={staff} />
+        )}
+
+        {/* ── PROFILE TAB ── */}
+        {activeTab === 'profile' && (
+          <ProfileTab t={t.profile} staff={staff} />
         )}
       </div>
 
