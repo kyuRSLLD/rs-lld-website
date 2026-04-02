@@ -564,7 +564,35 @@ def staff_stats():
 def staff_search_customers():
     """Search customers by name, company, or phone for autofill in Create Order."""
     from src.models.user import User
+    import re as _re
     q = request.args.get('q', '').strip()
+
+    def _parse_addr(raw):
+        """Split a combined address string into (street, city, state, zip).
+        Handles formats like:
+          '243 N Branch Rd, GLENVIEW, IL 60025'
+          '243 N Branch Rd, GLENVIEW, 60025'
+          '243 N Branch Rd, GLENVIEW, IL, 60025'
+        """
+        if not raw:
+            return '', '', '', ''
+        parts = [p.strip() for p in raw.split(',')]
+        if len(parts) == 1:
+            return raw.strip(), '', '', ''
+        street = parts[0]
+        # Last part often contains 'STATE ZIP' or just 'ZIP'
+        last = parts[-1].strip()
+        zip_match = _re.search(r'(\d{5}(?:-\d{4})?)', last)
+        zip_code = zip_match.group(1) if zip_match else ''
+        state_match = _re.search(r'\b([A-Z]{2})\b', last)
+        state = state_match.group(1) if state_match else ''
+        # City is the part between street and last
+        if len(parts) >= 3:
+            city = parts[1].strip()
+        else:
+            city = ''
+        return street, city, state, zip_code
+
     # Also search past orders for guest customers
     results = []
     seen = set()
@@ -581,6 +609,14 @@ def staff_search_customers():
             key = f'user-{u.id}'
             if key not in seen:
                 seen.add(key)
+                if last_order and last_order.delivery_address:
+                    addr = last_order.delivery_address
+                    city = last_order.delivery_city or ''
+                    state = last_order.delivery_state or ''
+                    zip_code = last_order.delivery_zip or ''
+                else:
+                    # Parse the stored shipping_address string
+                    addr, city, state, zip_code = _parse_addr(u.shipping_address or '')
                 results.append({
                     'id': u.id,
                     'source': 'customer',
@@ -592,10 +628,10 @@ def staff_search_customers():
                     'phone': u.phone or '',
                     'email': u.email or '',
                     'shipping_address': u.shipping_address or '',
-                    'address': last_order.delivery_address if last_order else (u.shipping_address or ''),
-                    'city': last_order.delivery_city if last_order else '',
-                    'state': last_order.delivery_state if last_order else '',
-                    'zip': last_order.delivery_zip if last_order else '',
+                    'address': addr,
+                    'city': city,
+                    'state': state,
+                    'zip': zip_code,
                 })
         # Guest orders
         orders = Order.query.filter(
