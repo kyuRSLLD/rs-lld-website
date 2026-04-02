@@ -54,7 +54,9 @@ def create_staff_user():
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
     role = data.get('role', 'staff')
-    full_name = data.get('full_name', '').strip()
+    first_name = data.get('first_name', '').strip()
+    last_name = data.get('last_name', '').strip()
+    full_name = data.get('full_name', '').strip() or ' '.join(filter(None, [first_name, last_name]))
 
     if not username:
         return jsonify({'error': 'Username is required'}), 400
@@ -72,6 +74,8 @@ def create_staff_user():
         username=username,
         email=email or f'{username}@lldrestaurantsupply.com',
         full_name=full_name or None,
+        first_name=first_name or None,
+        last_name=last_name or None,
         role=role,
         is_active=True,
     )
@@ -100,6 +104,17 @@ def update_staff_user(user_id):
 
     if 'full_name' in data:
         user.full_name = data['full_name'].strip() or None
+    if 'first_name' in data:
+        user.first_name = data['first_name'].strip() or None
+    if 'last_name' in data:
+        user.last_name = data['last_name'].strip() or None
+    # Rebuild full_name if first/last provided but full_name not explicitly set
+    if ('first_name' in data or 'last_name' in data) and 'full_name' not in data:
+        fn = (user.first_name or '').strip()
+        ln = (user.last_name or '').strip()
+        combined = ' '.join(filter(None, [fn, ln]))
+        if combined:
+            user.full_name = combined
     if 'email' in data:
         new_email = data['email'].strip()
         if new_email and new_email != user.email:

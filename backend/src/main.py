@@ -176,6 +176,9 @@ with app.app_context():
     _add_column_if_missing('order', 'ach_account_number', 'VARCHAR(30)')
     _add_column_if_missing('order', 'ach_account_type',   'VARCHAR(20)')
     _add_column_if_missing('order', 'ach_authorized_at',  'TIMESTAMP')
+    # ── StaffUser name columns added 2026-04 ────────────────────────────────
+    _add_column_if_missing('staff_user', 'first_name', 'VARCHAR(100)')
+    _add_column_if_missing('staff_user', 'last_name',  'VARCHAR(100)')
     # ─────────────────────────────────────────────────────────────────────────
 
     # Seed categories

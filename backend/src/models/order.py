@@ -163,7 +163,9 @@ class StaffUser(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(200), nullable=True)
-    role = db.Column(db.String(50), default='staff')  # staff, manager, admin
+    first_name = db.Column(db.String(100), nullable=True)
+    last_name = db.Column(db.String(100), nullable=True)
+    role = db.Column(db.String(50), default='staff')  # staff, manager, admin, shipping, sales_rep
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     reset_token = db.Column(db.String(100), nullable=True, unique=True)
@@ -183,6 +185,8 @@ class StaffUser(db.Model):
             'username': self.username,
             'email': self.email,
             'full_name': self.full_name,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
             'role': self.role,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,

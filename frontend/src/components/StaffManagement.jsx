@@ -13,7 +13,7 @@ const ROLE_CONFIG = {
 }
 
 const EMPTY_FORM = {
-  username: '', email: '', full_name: '', role: 'staff', password: '', confirm_password: '',
+  username: '', email: '', first_name: '', last_name: '', role: 'staff', password: '', confirm_password: '',
 }
 
 // ─── Create / Edit Staff Modal ────────────────────────────────────────────────
@@ -21,7 +21,15 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
   const isEdit = !!user
   const [form, setForm] = useState(
     isEdit
-      ? { username: user.username, email: user.email, full_name: user.full_name || '', role: user.role, password: '', confirm_password: '' }
+      ? {
+          username: user.username,
+          email: user.email,
+          first_name: user.first_name || (user.full_name ? user.full_name.split(' ')[0] : ''),
+          last_name: user.last_name || (user.full_name ? user.full_name.split(' ').slice(1).join(' ') : ''),
+          role: user.role,
+          password: '',
+          confirm_password: '',
+        }
       : { ...EMPTY_FORM }
   )
   const [saving, setSaving] = useState(false)
@@ -41,10 +49,14 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
     if (form.password && form.password !== form.confirm_password) { setError(t.staffMgmt.errorPasswordMismatch); return }
 
     setSaving(true)
+    const firstName = form.first_name.trim()
+    const lastName = form.last_name.trim()
     const payload = {
       username: form.username.trim(),
       email: form.email.trim(),
-      full_name: form.full_name.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      full_name: [firstName, lastName].filter(Boolean).join(' '),
       role: form.role,
     }
     if (form.password) payload.password = form.password
@@ -90,15 +102,26 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
             {isEdit && <p className="text-xs text-stone-400 mt-1">{t.staffMgmt.usernameCannotChange}</p>}
           </div>
 
-          {/* Full Name */}
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">{t.staffMgmt.fullName}</label>
-            <input
-              className={inp}
-              value={form.full_name}
-              onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))}
-              placeholder={t.staffMgmt.fullNamePlaceholder}
-            />
+          {/* First Name / Last Name */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.staffMgmt.firstName || 'First Name'}</label>
+              <input
+                className={inp}
+                value={form.first_name}
+                onChange={e => setForm(p => ({ ...p, first_name: e.target.value }))}
+                placeholder={t.staffMgmt.firstNamePlaceholder || 'John'}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.staffMgmt.lastName || 'Last Name'}</label>
+              <input
+                className={inp}
+                value={form.last_name}
+                onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))}
+                placeholder={t.staffMgmt.lastNamePlaceholder || 'Smith'}
+              />
+            </div>
           </div>
 
           {/* Email */}
