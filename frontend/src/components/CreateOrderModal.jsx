@@ -35,7 +35,10 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   const tO = t?.createOrder || {}
 
   const [form, setForm] = useState({
+    delivery_first_name: '',
+    delivery_last_name: '',
     delivery_name: '',
+    delivery_email: '',
     delivery_company: '',
     delivery_address: '',
     delivery_city: '',
@@ -52,6 +55,34 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
     order_number: '',
     created_at: new Date().toISOString().slice(0, 10),
   })
+
+  // Google Places address autocomplete ref
+  const addressInputRef = useRef(null)
+  const placesAutocompleteRef = useRef(null)
+  useEffect(() => {
+    if (!window.google?.maps?.places || !addressInputRef.current) return
+    if (placesAutocompleteRef.current) return
+    const ac = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+      types: ['address'],
+      componentRestrictions: { country: 'us' },
+      fields: ['address_components', 'formatted_address'],
+    })
+    placesAutocompleteRef.current = ac
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace()
+      if (!place.address_components) return
+      let street = '', city = '', state = '', zip = '', streetNumber = '', route = ''
+      place.address_components.forEach(c => {
+        if (c.types.includes('street_number')) streetNumber = c.long_name
+        if (c.types.includes('route')) route = c.long_name
+        if (c.types.includes('locality')) city = c.long_name
+        if (c.types.includes('administrative_area_level_1')) state = c.short_name
+        if (c.types.includes('postal_code')) zip = c.long_name
+      })
+      street = [streetNumber, route].filter(Boolean).join(' ')
+      setForm(f => ({ ...f, delivery_address: street, delivery_city: city, delivery_state: state || f.delivery_state, delivery_zip: zip }))
+    })
+  }, [])
 
   const [items, setItems] = useState([{ ...EMPTY_ITEM }])
   const [productSearch, setProductSearch] = useState({})
@@ -88,9 +119,15 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   }
 
   function pickCustomer(c) {
+    const nameParts = (c.name || '').trim().split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
     setForm(f => ({
       ...f,
+      delivery_first_name: c.first_name || firstName || f.delivery_first_name,
+      delivery_last_name: c.last_name || lastName || f.delivery_last_name,
       delivery_name: c.name || f.delivery_name,
+      delivery_email: c.email || f.delivery_email,
       delivery_company: c.company || f.delivery_company,
       delivery_phone: c.phone || f.delivery_phone,
       delivery_address: c.address || f.delivery_address,
@@ -304,18 +341,37 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
           <div>
             <h3 className="text-sm font-semibold text-stone-700 mb-3">{tO.customerInfo || 'Customer Information'}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* First Name / Last Name */}
               <div>
-                <label className="block text-xs font-medium text-stone-600 mb-1">{tO.customerName || 'Contact Name'} *</label>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{tO.firstName || 'First Name'} *</label>
                 <input required className={inp}
-                  value={form.delivery_name}
-                  onChange={e => setForm(f => ({ ...f, delivery_name: e.target.value }))} />
+                  value={form.delivery_first_name}
+                  placeholder="John"
+                  onChange={e => setForm(f => ({ ...f, delivery_first_name: e.target.value, delivery_name: [e.target.value, f.delivery_last_name].filter(Boolean).join(' ') }))} />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{tO.lastName || 'Last Name'}</label>
+                <input className={inp}
+                  value={form.delivery_last_name}
+                  placeholder="Smith"
+                  onChange={e => setForm(f => ({ ...f, delivery_last_name: e.target.value, delivery_name: [f.delivery_first_name, e.target.value].filter(Boolean).join(' ') }))} />
+              </div>
+              {/* Company */}
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.company || 'Company / Restaurant'}</label>
                 <input className={inp}
                   value={form.delivery_company}
                   onChange={e => setForm(f => ({ ...f, delivery_company: e.target.value }))} />
               </div>
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-medium text-stone-600 mb-1">{tO.email || 'Email'}</label>
+                <input type="email" className={inp}
+                  value={form.delivery_email}
+                  placeholder="customer@example.com"
+                  onChange={e => setForm(f => ({ ...f, delivery_email: e.target.value }))} />
+              </div>
+              {/* Phone */}
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.phone || 'Phone'}</label>
                 <input className={inp}
@@ -323,11 +379,17 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                   onChange={e => setForm(f => ({ ...f, delivery_phone: e.target.value }))} />
               </div>
 
+              {/* Street Address — Google Places autocomplete */}
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.address || 'Street Address'} *</label>
-                <input required className={inp}
+                <input
+                  ref={addressInputRef}
+                  required
+                  className={inp}
                   value={form.delivery_address}
-                  onChange={e => setForm(f => ({ ...f, delivery_address: e.target.value }))} />
+                  placeholder="Start typing an address..."
+                  onChange={e => setForm(f => ({ ...f, delivery_address: e.target.value }))}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-stone-600 mb-1">{tO.city || 'City'} *</label>

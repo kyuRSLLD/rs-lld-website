@@ -15,6 +15,9 @@ class Order(db.Model):
 
     # Delivery info
     delivery_name = db.Column(db.String(200), nullable=False)
+    delivery_first_name = db.Column(db.String(100), nullable=True)
+    delivery_last_name = db.Column(db.String(100), nullable=True)
+    delivery_email = db.Column(db.String(200), nullable=True)
     delivery_company = db.Column(db.String(200), nullable=True)
     delivery_address = db.Column(db.String(500), nullable=False)
     delivery_city = db.Column(db.String(100), nullable=False)
@@ -71,9 +74,12 @@ class Order(db.Model):
             'user_id': self.user_id,
             'customer_name': self.user.username if self.user else self.delivery_name,
             'customer_company': self.user.company_name if self.user else self.delivery_company,
-            'customer_email': self.user.email if self.user else None,
+            'customer_email': self.user.email if self.user else self.delivery_email,
             'status': self.status,
             'delivery_name': self.delivery_name,
+            'delivery_first_name': self.delivery_first_name,
+            'delivery_last_name': self.delivery_last_name,
+            'delivery_email': self.delivery_email,
             'delivery_company': self.delivery_company,
             'delivery_address': self.delivery_address,
             'delivery_city': self.delivery_city,
