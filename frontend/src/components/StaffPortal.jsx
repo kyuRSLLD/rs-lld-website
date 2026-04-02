@@ -1434,7 +1434,8 @@ const ProfileTab = ({ t, staff }) => {
 }
 
 // ─── Main Staff Portal ──────────────────────────────────────────────────────────────────────────────────
-const StaffPortal = () => {t [staff, setStaff] = useState(null)
+const StaffPortal = () => {
+  const [staff, setStaff] = useState(null)
   const [activeTab, setActiveTab] = useState('orders')
   const [orders, setOrders] = useState([])
   const [stats, setStats] = useState(null)
