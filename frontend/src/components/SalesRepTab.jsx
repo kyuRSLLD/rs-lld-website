@@ -412,6 +412,7 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   const [achLoading, setAchLoading] = useState(false)
   const [showAchForm, setShowAchForm] = useState(false)
   const [achError, setAchError]     = useState('')
+  const [showAchMandate, setShowAchMandate] = useState(false)  // ACH Mandate Agreement modal
 
   const isNetTerms = paymentMethod === 'net15' || paymentMethod === 'net30'
 
@@ -1089,7 +1090,14 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setShowAchForm(v => !v); setAchError('') }}
+                  onClick={() => {
+                    if (showAchForm) {
+                      setShowAchForm(false); setAchError('')
+                    } else {
+                      // Show mandate agreement before revealing the ACH form
+                      setShowAchMandate(true)
+                    }
+                  }}
                   className="text-xs text-blue-600 hover:text-blue-800 underline"
                 >
                   {showAchForm ? (t.achHide || 'Hide') : (achOnFile?.has_ach ? (t.achUpdate || 'Update') : (t.achAdd || 'Add'))}
@@ -1176,6 +1184,57 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
           </button>
         </div>
       </div>
+
+      {/* ACH Mandate Agreement Modal */}
+      {showAchMandate && (
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 overflow-y-auto py-4 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+              <h2 className="text-xl font-bold text-stone-900">
+                {t.achMandateTitle || 'ACH Mandate Agreement'}
+              </h2>
+              <button
+                onClick={() => setShowAchMandate(false)}
+                className="text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              <div className="border border-stone-200 rounded-xl p-5 space-y-4">
+                <p className="text-sm font-semibold text-red-600 text-center">
+                  {t.achMandateRequired || 'Required to proceed with bank account set up'}
+                </p>
+                <p className="text-sm text-stone-700 leading-relaxed">
+                  {t.achMandatePara1 || 'By clicking Accept, you authorize RS LLD Restaurant Supply to debit the bank account being specified for any amount owed for charges arising from your use of RS LLD’s services and/or purchase of products from RS LLD, pursuant to RS LLD’s website and terms, until this authorization is revoked. You may amend or cancel this authorization at any time by providing notice to RS LLD with 30 (thirty) days notice.'}
+                </p>
+                <p className="text-sm text-stone-700 leading-relaxed">
+                  {t.achMandatePara2 || 'If you use RS LLD’s services or purchase additional products periodically pursuant to RS LLD’s terms, you authorize RS LLD to debit your bank account periodically. Payments that fall outside of the regular debits authorized above will only be debited after your authorization is obtained.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-100">
+              <button
+                onClick={() => setShowAchMandate(false)}
+                className="px-6 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-700 transition-colors"
+              >
+                {t.achMandateCancel || 'Cancel'}
+              </button>
+              <button
+                onClick={() => { setShowAchMandate(false); setShowAchForm(true); setAchError('') }}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
+              >
+                {t.achMandateAccept || 'Accept Terms & Proceed'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
