@@ -5,6 +5,7 @@
  * Bilingual: English + Simplified Chinese
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { staffFetch, saveStaffToken, clearStaffToken, getStaffToken, STAFF_TOKEN_KEY } from '../lib/staffApi'
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -809,6 +810,7 @@ export default function ShippingPortal() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const [orders, setOrders] = useState([])
   const [stats, setStats] = useState({ pending: 0, confirmed: 0, shipped_today: 0, active: 0 })
@@ -945,14 +947,24 @@ export default function ShippingPortal() {
             </div>
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">{t.password}</label>
-              <input
-                type="password"
-                value={loginForm.password}
-                onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoComplete="current-password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={loginForm.password}
+                  onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             {loginError && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
