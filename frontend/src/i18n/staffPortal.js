@@ -32,6 +32,7 @@ export const staffPortalTranslations = {
       apiKeys: 'API Keys',
       billAnalyzer: 'Bill Analyzer',
       salesRep: 'Sales Rep',
+      restaurantFinder: 'Restaurant Finder',
       profile: 'Profile',
     },
     // Order statuses
@@ -724,6 +725,7 @@ export const staffPortalTranslations = {
       apiKeys: 'API 密鑰',
       billAnalyzer: '账单分析',
       salesRep: '销售代表',
+      restaurantFinder: '餐厅查找器',
       profile: '个人设置',
     },
     // 订单状态

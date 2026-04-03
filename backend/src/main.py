@@ -33,6 +33,8 @@ from src.routes.sales_rep import sales_rep_bp, SalesScript, CallingListEntry
 from src.routes.payment_links import payment_links_bp
 from src.routes.sms_optin import sms_optin_bp
 from src.routes.shipping import shipping_bp
+from src.routes.restaurant_finder import restaurant_finder_bp
+from src.models.restaurant_finder import RestaurantLead
 from src.models.api_key import APIKey
 from src.models.voice_analytics import CallLog, AgentPerformance
 # SalesScript imported from sales_rep blueprint
@@ -86,6 +88,7 @@ app.register_blueprint(payment_links_bp, url_prefix='/api')
 app.register_blueprint(sales_rep_bp, url_prefix='/api')
 app.register_blueprint(sms_optin_bp, url_prefix='/api')
 app.register_blueprint(shipping_bp, url_prefix='/api')
+app.register_blueprint(restaurant_finder_bp)  # restaurant finder uses its own /api/* prefixes
 
 # Database configuration: use PostgreSQL (DATABASE_URL) if available, else fall back to SQLite
 _database_url = os.environ.get('DATABASE_URL', '')

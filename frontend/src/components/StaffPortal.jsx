@@ -5,12 +5,13 @@ import CreateOrderModal from './CreateOrderModal'
 import { ApiKeyManagerTab } from './ApiKeyManager'
 import { BillAnalyzerTab } from './BillAnalyzer'
 import { SalesRepTab } from './SalesRepTab'
+import { RestaurantFinderTab } from './RestaurantFinder'
 import {
   Package, Truck, CheckCircle, Clock, XCircle, Users, BarChart2,
   RefreshCw, LogOut, Search, ChevronDown, ChevronUp, Edit3,
   Home, ClipboardList, ShoppingBag, AlertCircle, Tag, Eye, EyeOff,
   Plus, Save, X, Upload, Download, Trash2, ToggleLeft, ToggleRight,
-  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images, Phone, UserCircle
+  PenLine, Check, Globe, FileText, Shield, Key, TrendingDown, Star, Images, Phone, UserCircle, Building2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { staffPortalTranslations } from '@/i18n/staffPortal'
@@ -2114,6 +2115,7 @@ const StaffPortal = () => {
         { id: 'invoices', label: t.tabs.invoices, icon: FileText },
         { id: 'stats', label: t.tabs.stats, icon: BarChart2 },
         ...(isAdmin || isManager ? [{ id: 'salesRep', label: t.tabs.salesRep, icon: Phone }] : []),
+        ...(isAdmin || isManager ? [{ id: 'restaurantFinder', label: t.tabs.restaurantFinder, icon: Building2 }] : []),
         ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
         { id: 'profile', label: t.tabs.profile, icon: UserCircle },
       ]
@@ -3163,6 +3165,11 @@ const StaffPortal = () => {
         {/* ── SALES REP TAB ── */}
         {activeTab === 'salesRep' && (
           <SalesRepTab t={t.salesRep} staff={staff} />
+        )}
+
+        {/* ── RESTAURANT FINDER TAB ── */}
+        {activeTab === 'restaurantFinder' && (
+          <RestaurantFinderTab lang={lang} />
         )}
 
         {/* ── PROFILE TAB ── */}
