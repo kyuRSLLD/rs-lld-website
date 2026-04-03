@@ -107,6 +107,8 @@ const T = {
     scrapeCity: 'City',
     scrapeState: 'State',
     scrapeLimit: 'Max Results',
+    scrapeEnrich: 'Find Owner Name & Email (uses extra credits)',
+    scrapeEnrichHint: 'Visits each restaurant website to extract owner/contact info. Slower and uses more Outscraper credits.',
     scrapeBtn: 'Start Scrape',
     scraping: 'Scraping...',
     scrapeSuccess: 'Scrape complete',
@@ -114,6 +116,7 @@ const T = {
     scrapeNoKey: 'OUTSCRAPER_API_KEY not configured on Railway. Add it to enable scraping.',
     imported: 'imported',
     skipped: 'skipped (duplicates)',
+    errors: 'errors',
     // Stats
     byGroup: 'By Ethnic Group',
     byState: 'By State',
@@ -182,6 +185,8 @@ const T = {
     scrapeCity: '城市',
     scrapeState: '州',
     scrapeLimit: '最大数量',
+    scrapeEnrich: '查找负责人姓名和邮箱（消耗额外积分）',
+    scrapeEnrichHint: '访问每家餐厅网站以提取负责人/联系人信息。速度较慢，消耗更多 Outscraper 积分。',
     scrapeBtn: '开始抓取',
     scraping: '抓取中...',
     scrapeSuccess: '抓取完成',
@@ -189,6 +194,7 @@ const T = {
     scrapeNoKey: 'Railway 未配置 OUTSCRAPER_API_KEY，请添加后启用抓取功能。',
     imported: '已导入',
     skipped: '已跳过（重复）',
+    errors: '错误',
     byGroup: '按族裔分类',
     byState: '按州分类',
     byStatus: '按状态分类',
@@ -482,7 +488,7 @@ const RestaurantFormModal = ({ restaurant, ethnicGroups, eastCoastStates, lang, 
 // ── Scrape Modal ───────────────────────────────────────────────────────────────
 const ScrapeModal = ({ ethnicGroups, eastCoastStates, lang, onClose, onDone }) => {
   const t = T[lang]
-  const [form, setForm] = useState({ ethnic_group: 'Chinese', city: 'New York', state: 'NY', limit: 50 })
+  const [form, setForm] = useState({ ethnic_group: 'Chinese', city: 'New York', state: 'NY', limit: 50, enrich_contacts: false })
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
@@ -548,6 +554,21 @@ const ScrapeModal = ({ ethnicGroups, eastCoastStates, lang, onClose, onDone }) =
             <input className={inputCls} type="number" min={1} max={500} value={form.limit} onChange={e => setForm(f => ({ ...f, limit: parseInt(e.target.value) || 50 }))} />
           </div>
 
+          {/* Owner Name / Email Enrichment Toggle */}
+          <div className="flex items-start gap-3 bg-stone-50 border border-stone-200 rounded-lg px-4 py-3">
+            <input
+              id="enrich-toggle"
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-stone-300 cursor-pointer accent-stone-800"
+              checked={form.enrich_contacts}
+              onChange={e => setForm(f => ({ ...f, enrich_contacts: e.target.checked }))}
+            />
+            <div>
+              <label htmlFor="enrich-toggle" className="text-sm font-medium text-stone-700 cursor-pointer">{t.scrapeEnrich}</label>
+              <p className="text-xs text-stone-500 mt-0.5">{t.scrapeEnrichHint}</p>
+            </div>
+          </div>
+
           {error && (
             <div className="flex items-start gap-2 text-amber-700 text-sm bg-amber-50 rounded-lg px-4 py-3">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -558,7 +579,11 @@ const ScrapeModal = ({ ethnicGroups, eastCoastStates, lang, onClose, onDone }) =
           {result && (
             <div className="flex items-center gap-2 text-green-700 text-sm bg-green-50 rounded-lg px-4 py-3">
               <CheckCircle className="w-4 h-4 shrink-0" />
-              <span>{t.scrapeSuccess}: <strong>{result.imported}</strong> {t.imported}, <strong>{result.skipped_duplicates}</strong> {t.skipped}</span>
+              <span>
+                {t.scrapeSuccess}: <strong>{result.imported}</strong> {t.imported},&nbsp;
+                <strong>{result.skipped_duplicates}</strong> {t.skipped}
+                {result.errors > 0 ? `, ${result.errors} ${t.errors}` : ''}
+              </span>
             </div>
           )}
 

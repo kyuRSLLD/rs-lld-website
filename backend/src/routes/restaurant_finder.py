@@ -498,6 +498,7 @@ def scrape_restaurants():
       - limit: max results (default 50)
     Requires OUTSCRAPER_API_KEY env var.
     """
+    import re as _re
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -506,6 +507,8 @@ def scrape_restaurants():
     city = data.get('city', '')
     state = data.get('state', '')
     limit = min(500, max(1, int(data.get('limit', 50))))
+    # Optional: enrich contacts to attempt to find owner name/email from website
+    enrich_contacts = bool(data.get('enrich_contacts', False))
 
     api_key = os.environ.get('OUTSCRAPER_API_KEY')
     if not api_key:
@@ -519,85 +522,113 @@ def scrape_restaurants():
     query = f'{ethnic_group} restaurant'
 
     try:
+        params = {
+            'query': f'{query} {location}',
+            'limit': limit,
+            'language': 'en',
+            'fields': 'name,full_address,street,city,state,postal_code,phone,site,type,subtypes,rating,reviews,place_id,google_id,working_hours,working_hours_old_format,owner_name,owner_id,price_level,latitude,longitude',
+            'async': 'false',
+        }
+        if enrich_contacts:
+            params['enrichments'] = 'emails_and_contacts'
         resp = requests.get(
             'https://api.app.outscraper.com/maps/search-v3',
-            params={
-                'query': f'{query} {location}',
-                'limit': limit,
-                'language': 'en',
-                'fields': 'name,full_address,street,city,state,postal_code,phone,site,type,subtypes,rating,reviews,place_id,google_id,working_hours,owner_name,owner_id,price_level,latitude,longitude',
-            },
+            params=params,
             headers={'X-API-KEY': api_key},
-            timeout=120
+            timeout=180
         )
         resp.raise_for_status()
         result = resp.json()
     except requests.exceptions.Timeout:
-        return jsonify({'error': 'Scrape request timed out. Try a smaller limit.'}), 504
+        return jsonify({'error': 'Scrape request timed out. Try a smaller limit or disable contact enrichment.'}), 504
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Scrape API error: {str(e)}'}), 502
 
     # Parse and import results
+    # Outscraper may wrap results in a nested array: [[{...}, {...}]]
     places = result.get('data', [])
     if isinstance(places, list) and len(places) > 0 and isinstance(places[0], list):
-        places = places[0]  # Outscraper wraps in nested array
+        places = places[0]
 
     imported = 0
     skipped = 0
+    errors = 0
+
+    def _parse_time_range(raw):
+        """Parse Outscraper time string like '9AM-5PM' or '11AM\u20133PM,5-9:30PM'.
+        Returns (open_str, close_str) tuple. Uses first period if multiple.
+        En-dash (\u2013) is Outscraper's standard separator.
+        """
+        if not raw or raw.lower() == 'closed':
+            return None, None
+        # Take only the first time period (before any comma)
+        first = raw.split(',')[0].strip()
+        # Replace en-dash and em-dash with regular hyphen
+        first = first.replace('\u2013', '-').replace('\u2014', '-')
+        # Match pattern: "<open>-<close>" where close starts with a digit or digit-like char
+        m = _re.match(r'^(.+?)-(\d.+)$', first)
+        if m:
+            return m.group(1).strip(), m.group(2).strip()
+        return first, ''
 
     for place in places:
         try:
             place_id = place.get('place_id') or place.get('google_id')
 
-            # Dedup check
+            # Deduplication: skip if already in database by Google Place ID
             if place_id:
                 existing = RestaurantLead.query.filter_by(google_place_id=place_id).first()
                 if existing:
                     skipped += 1
                     continue
 
-            # Parse working hours
+            # Parse working hours dict from Outscraper
             working_hours = place.get('working_hours') or {}
-            hours_map = {}
             day_map = {
                 'Monday': 'monday', 'Tuesday': 'tuesday', 'Wednesday': 'wednesday',
                 'Thursday': 'thursday', 'Friday': 'friday', 'Saturday': 'saturday', 'Sunday': 'sunday'
             }
+            hours_map = {}
             for day_name, day_key in day_map.items():
                 raw = working_hours.get(day_name, '')
-                if raw and raw.lower() not in ('closed', ''):
-                    parts = raw.replace('\u2013', '-').split('-')
-                    if len(parts) == 2:
-                        hours_map[day_key] = {
-                            'open': parts[0].strip(),
-                            'close': parts[1].strip()
-                        }
-                    else:
-                        hours_map[day_key] = {'open': raw.strip(), 'close': ''}
-                else:
-                    hours_map[day_key] = None
+                open_t, close_t = _parse_time_range(raw)
+                hours_map[day_key] = {'open': open_t, 'close': close_t} if open_t else None
+
+            # Extract owner/contact info from enrichment if available
+            contacts = place.get('contacts') or []
+            enriched_owner = contacts[0].get('name') if contacts else None
+            enriched_email = contacts[0].get('email') if contacts else None
+
+            # Build cuisine detail from type/subtypes
+            cuisine = place.get('type') or ''
+            subtypes = place.get('subtypes') or ''
+            if isinstance(subtypes, list):
+                subtypes = ', '.join(subtypes)
+            cuisine_detail = cuisine or subtypes or ''
 
             r = RestaurantLead(
                 name=place.get('name', 'Unknown'),
                 ethnic_group=ethnic_group,
-                cuisine_detail=place.get('type') or place.get('subtypes', ''),
+                cuisine_detail=cuisine_detail[:255] if cuisine_detail else None,
                 address_street=place.get('street'),
                 address_city=place.get('city'),
-                address_state=(place.get('state') or '').upper() or None,
+                address_state=(place.get('state') or '').upper()[:2] or None,
                 address_zip=place.get('postal_code'),
                 address_full=place.get('full_address'),
                 phone=place.get('phone'),
                 website=place.get('site'),
-                owner_name=place.get('owner_name'),
+                email=place.get('email') or enriched_email,
+                owner_name=place.get('owner_name') or enriched_owner,
                 google_rating=place.get('rating'),
                 google_review_count=place.get('reviews'),
                 google_place_id=place_id,
                 google_maps_url=f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else None,
-                price_level=place.get('price_level'),
+                price_level=str(place.get('price_level', '')) or None,
                 lead_status='new',
-                data_source='Google Maps (Outscraper)',
+                data_source='Google Maps (Outscraper)' + (' + Enrichment' if enrich_contacts else ''),
             )
 
+            # Set hours per day
             for day_key, val in hours_map.items():
                 if val:
                     setattr(r, f'hours_{day_key}_open', val.get('open'))
@@ -606,8 +637,8 @@ def scrape_restaurants():
             db.session.add(r)
             imported += 1
 
-        except Exception:
-            skipped += 1
+        except Exception as e:
+            errors += 1
 
     db.session.commit()
 
@@ -617,4 +648,6 @@ def scrape_restaurants():
         'total_found': len(places),
         'imported': imported,
         'skipped_duplicates': skipped,
+        'errors': errors,
+        'enrichment_enabled': enrich_contacts,
     })
