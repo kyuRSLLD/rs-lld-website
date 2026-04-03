@@ -305,3 +305,134 @@ def shipping_stats():
         'shipped_today': shipped_today,
         'active': pending_count + confirmed_count,
     })
+
+# ─── EasyPost Shipping Labels ─────────────────────────────────────────────────
+
+EASYPOST_FROM_ADDRESS = {
+    'name':    'RS LLD LLC',
+    'street1': '218 Terrace Dr',
+    'city':    'Mundelein',
+    'state':   'IL',
+    'zip':     '60060',
+    'country': 'US',
+    'phone':   '8479999999',
+}
+
+def _get_easypost_client():
+    import os
+    import easypost
+    api_key = os.environ.get('EASYPOST_API_KEY')
+    if not api_key:
+        raise ValueError('EASYPOST_API_KEY environment variable is not set')
+    return easypost.EasyPostClient(api_key)
+
+
+@shipping_bp.route('/shipping/orders/<order_number>/label/rates', methods=['POST'])
+@shipping_required
+def get_label_rates(order_number):
+    """
+    Create an EasyPost shipment for the order and return available rates.
+    Body: { weight_oz: float, length_in: float, width_in: float, height_in: float }
+    """
+    order = Order.query.filter_by(order_number=order_number).first_or_404()
+    data  = request.get_json() or {}
+
+    weight_oz = float(data.get('weight_oz', 16))
+    length    = float(data.get('length_in', 12))
+    width     = float(data.get('width_in', 12))
+    height    = float(data.get('height_in', 6))
+
+    # Build to_address from order
+    to_address = {
+        'name':    order.customer_name or order.customer_company or 'Recipient',
+        'company': order.customer_company or '',
+        'street1': order.shipping_address or order.address or '',
+        'phone':   order.customer_phone or '',
+        'country': 'US',
+    }
+
+    try:
+        client   = _get_easypost_client()
+        shipment = client.shipment.create(
+            to_address   = to_address,
+            from_address = EASYPOST_FROM_ADDRESS,
+            parcel       = {
+                'weight': weight_oz,
+                'length': length,
+                'width':  width,
+                'height': height,
+            },
+        )
+        rates = []
+        for r in (shipment.rates or []):
+            rates.append({
+                'id':       r.id,
+                'carrier':  r.carrier,
+                'service':  r.service,
+                'rate':     r.rate,
+                'currency': r.currency,
+                'est_days': r.est_delivery_days,
+            })
+        # Sort by rate ascending
+        rates.sort(key=lambda x: float(x['rate'] or 0))
+        return jsonify({
+            'shipment_id': shipment.id,
+            'rates':       rates,
+            'to_address':  {
+                'name':    to_address['name'],
+                'street1': to_address['street1'],
+            },
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@shipping_bp.route('/shipping/orders/<order_number>/label/buy', methods=['POST'])
+@shipping_required
+def buy_label(order_number):
+    """
+    Purchase a specific rate and return the label URL.
+    Body: { shipment_id: str, rate_id: str, label_format: 'PDF'|'PNG'|'ZPL' }
+    """
+    order = Order.query.filter_by(order_number=order_number).first_or_404()
+    data  = request.get_json() or {}
+
+    shipment_id  = data.get('shipment_id')
+    rate_id      = data.get('rate_id')
+    label_format = data.get('label_format', 'PDF').upper()
+
+    if not shipment_id or not rate_id:
+        return jsonify({'error': 'shipment_id and rate_id are required'}), 400
+
+    try:
+        client   = _get_easypost_client()
+        shipment = client.shipment.buy(
+            shipment_id,
+            rate={'id': rate_id},
+            label_format=label_format,
+        )
+        label_url    = shipment.postage_label.label_url if shipment.postage_label else None
+        tracking_num = shipment.tracking_code or ''
+        carrier      = shipment.selected_rate.carrier if shipment.selected_rate else ''
+        service      = shipment.selected_rate.service if shipment.selected_rate else ''
+        rate_cost    = shipment.selected_rate.rate    if shipment.selected_rate else ''
+
+        # Auto-save tracking number to the order notes
+        if tracking_num:
+            existing_notes = order.staff_notes or ''
+            if tracking_num not in existing_notes:
+                carrier_prefix = carrier.upper() if carrier else 'CARRIER'
+                tracking_line  = f'[TRACKING:{carrier_prefix}:{tracking_num}]'
+                order.staff_notes = (existing_notes + '\n' + tracking_line).strip()
+                db.session.commit()
+
+        return jsonify({
+            'label_url':    label_url,
+            'tracking_num': tracking_num,
+            'carrier':      carrier,
+            'service':      service,
+            'rate':         rate_cost,
+            'shipment_id':  shipment.id,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400

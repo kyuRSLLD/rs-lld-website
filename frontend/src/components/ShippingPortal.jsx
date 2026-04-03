@@ -73,6 +73,25 @@ const T = {
     refreshing: 'Refreshing…',
     refresh: 'Refresh',
     lang: '中文',
+    // Label printing
+    printLabel: 'Print Label',
+    labelTitle: 'Print Shipping Label',
+    parcelDetails: 'Parcel Details',
+    weightOz: 'Weight (oz)',
+    lengthIn: 'Length (in)',
+    widthIn: 'Width (in)',
+    heightIn: 'Height (in)',
+    getRates: 'Get Rates',
+    gettingRates: 'Getting rates…',
+    selectRate: 'Select a shipping rate',
+    buyLabel: 'Buy & Print Label',
+    buyingLabel: 'Purchasing…',
+    labelReady: 'Label Ready!',
+    openLabel: 'Open / Print Label',
+    trackingAssigned: 'Tracking assigned:',
+    labelError: 'Error getting rates. Check address and try again.',
+    noRates: 'No rates available for this shipment.',
+    estDays: 'est. days',
   },
   zh: {
     title: 'RS LLD 发货管理系统',
@@ -131,6 +150,25 @@ const T = {
     refreshing: '刷新中…',
     refresh: '刷新',
     lang: 'English',
+    // Label printing
+    printLabel: '打印面单',
+    labelTitle: '打印快递面单',
+    parcelDetails: '包裹信息',
+    weightOz: '重量（盎司）',
+    lengthIn: '长度（英寸）',
+    widthIn: '宽度（英寸）',
+    heightIn: '高度（英寸）',
+    getRates: '获取运费报价',
+    gettingRates: '查询中…',
+    selectRate: '选择运费方案',
+    buyLabel: '购买并打印面单',
+    buyingLabel: '购买中…',
+    labelReady: '面单已生成！',
+    openLabel: '打开/打印面单',
+    trackingAssigned: '快递单号：',
+    labelError: '获取运费失败，请检查地址后重试。',
+    noRates: '暂无可用运费方案。',
+    estDays: '预计天数',
   },
 }
 
@@ -476,8 +514,192 @@ function OrderDetailModal({ order, t, onClose, onConfirm, onShip, onDeliver, onP
   )
 }
 
-// ─── Order Row ────────────────────────────────────────────────────────────────
-function OrderRow({ order, t, onConfirm, onShip, onDeliver, onPrint, onDetail }) {
+// ─── Print Label Modal ────────────────────────────────────────────────────────────────────────────────
+function PrintLabelModal({ order, t, onClose, onLabelBought }) {
+  const [parcel, setParcel] = useState({ weight_oz: '', length_in: '', width_in: '', height_in: '' })
+  const [rates, setRates] = useState([])
+  const [shipmentId, setShipmentId] = useState(null)
+  const [selectedRate, setSelectedRate] = useState(null)
+  const [step, setStep] = useState('form') // 'form' | 'rates' | 'done'
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [labelUrl, setLabelUrl] = useState(null)
+  const [trackingNum, setTrackingNum] = useState('')
+  const [carrier, setCarrier] = useState('')
+
+  const handleGetRates = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      const res = await shippingFetch(`/api/shipping/orders/${order.order_number}/label/rates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weight_oz: parseFloat(parcel.weight_oz) || 16,
+          length_in: parseFloat(parcel.length_in) || 12,
+          width_in:  parseFloat(parcel.width_in)  || 12,
+          height_in: parseFloat(parcel.height_in) || 6,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) { setError(data.error || t.labelError); setLoading(false); return }
+      if (!data.rates || data.rates.length === 0) { setError(t.noRates); setLoading(false); return }
+      setRates(data.rates)
+      setShipmentId(data.shipment_id)
+      setSelectedRate(data.rates[0])
+      setStep('rates')
+    } catch (e) {
+      setError(t.labelError)
+    }
+    setLoading(false)
+  }
+
+  const handleBuyLabel = async () => {
+    if (!selectedRate) return
+    setError('')
+    setLoading(true)
+    try {
+      const res = await shippingFetch(`/api/shipping/orders/${order.order_number}/label/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shipment_id: shipmentId,
+          rate_id: selectedRate.id,
+          label_format: 'PDF',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) { setError(data.error || 'Failed to purchase label.'); setLoading(false); return }
+      setLabelUrl(data.label_url)
+      setTrackingNum(data.tracking_num)
+      setCarrier(data.carrier)
+      setStep('done')
+      if (onLabelBought) onLabelBought(data.tracking_num, data.carrier)
+    } catch (e) {
+      setError('Failed to purchase label.')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 overflow-y-auto py-4 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+          <h2 className="text-lg font-bold text-stone-900">🏷 {t.labelTitle}</h2>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
+            <span className="text-xl">×</span>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Ship to summary */}
+          <div className="bg-stone-50 rounded-xl p-3 text-sm">
+            <div className="font-semibold text-stone-800">{order.delivery_name || order.delivery_company}</div>
+            <div className="text-stone-500 text-xs mt-0.5">{order.delivery_address}, {order.delivery_city}, {order.delivery_state} {order.delivery_zip}</div>
+          </div>
+
+          {step === 'form' && (
+            <>
+              <p className="text-sm font-semibold text-stone-700">{t.parcelDetails}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[['weight_oz', t.weightOz], ['length_in', t.lengthIn], ['width_in', t.widthIn], ['height_in', t.heightIn]].map(([key, label]) => (
+                  <div key={key}>
+                    <label className="block text-xs text-stone-500 mb-1">{label}</label>
+                    <input
+                      type="number" min="0" step="0.1"
+                      value={parcel[key]}
+                      onChange={e => setParcel(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder={key === 'weight_oz' ? '16' : '12'}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                ))}
+              </div>
+              {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+              <button
+                onClick={handleGetRates}
+                disabled={loading}
+                className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? t.gettingRates : t.getRates}
+              </button>
+            </>
+          )}
+
+          {step === 'rates' && (
+            <>
+              <p className="text-sm font-semibold text-stone-700">{t.selectRate}</p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {rates.map(rate => (
+                  <button
+                    key={rate.id}
+                    onClick={() => setSelectedRate(rate)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-colors ${
+                      selectedRate?.id === rate.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-stone-200 hover:border-stone-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-stone-900 text-sm">{rate.carrier} {rate.service}</span>
+                        {rate.est_days && <span className="text-xs text-stone-400 ml-2">{rate.est_days} {t.estDays}</span>}
+                      </div>
+                      <span className="font-bold text-blue-700 text-sm">${parseFloat(rate.rate).toFixed(2)}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+              <div className="flex gap-3">
+                <button onClick={() => setStep('form')} className="flex-1 py-2.5 border border-stone-200 text-stone-600 rounded-xl text-sm hover:bg-stone-50">
+                  {t.cancel}
+                </button>
+                <button
+                  onClick={handleBuyLabel}
+                  disabled={loading || !selectedRate}
+                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? t.buyingLabel : t.buyLabel}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'done' && (
+            <div className="text-center space-y-4">
+              <div className="text-4xl">✅</div>
+              <p className="text-lg font-bold text-stone-900">{t.labelReady}</p>
+              {trackingNum && (
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <p className="text-xs text-stone-500">{t.trackingAssigned}</p>
+                  <p className="font-mono font-bold text-green-800 text-sm mt-0.5">{carrier && `${carrier}: `}{trackingNum}</p>
+                </div>
+              )}
+              {labelUrl && (
+                <a
+                  href={labelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 text-center"
+                >
+                  🖨 {t.openLabel}
+                </a>
+              )}
+              <button onClick={onClose} className="w-full py-2.5 border border-stone-200 text-stone-600 rounded-xl text-sm hover:bg-stone-50">
+                {t.close}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Order Row ────────────────────────────────────────────────────────────────────────────────
+function OrderRow({ order, t, onConfirm, onShip, onDeliver, onPrint, onDetail, onLabel }) {
   return (
     <tr className="border-b border-stone-100 hover:bg-stone-50 cursor-pointer" onClick={() => onDetail(order)}>
       {/* Order # */}
@@ -538,6 +760,13 @@ function OrderRow({ order, t, onConfirm, onShip, onDeliver, onPrint, onDetail })
           >
             🖨 {t.printSlip}
           </button>
+          {/* Print Label — always visible */}
+          <button
+            onClick={e => { e.stopPropagation(); onLabel(order) }}
+            className="text-xs px-2.5 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 flex items-center gap-1 font-medium"
+          >
+            🏷 {t.printLabel}
+          </button>
           {/* Confirm Pick */}
           {order.status === 'pending' && (
             <button
@@ -590,6 +819,7 @@ export default function ShippingPortal() {
   const [shipTarget, setShipTarget] = useState(null)   // order to show ship modal for
   const [slipTarget, setSlipTarget] = useState(null)   // order to show packing slip for
   const [detailOrder, setDetailOrder] = useState(null) // order to show detail modal for
+  const [labelTarget, setLabelTarget] = useState(null) // order to print label for
 
   // ── Check existing token on mount ──
   useEffect(() => {
@@ -769,6 +999,18 @@ export default function ShippingPortal() {
           onClose={() => setSlipTarget(null)}
         />
       )}
+      {labelTarget && (
+        <PrintLabelModal
+          order={labelTarget}
+          t={t}
+          onClose={() => setLabelTarget(null)}
+          onLabelBought={(trackingNum, carrier) => {
+            // Refresh orders so tracking number shows up
+            fetchOrders()
+            fetchStats()
+          }}
+        />
+      )}
       {detailOrder && (
         <OrderDetailModal
           order={detailOrder}
@@ -909,6 +1151,7 @@ export default function ShippingPortal() {
                       onDeliver={handleDeliver}
                       onPrint={setSlipTarget}
                       onDetail={setDetailOrder}
+                      onLabel={setLabelTarget}
                     />
                   ))
                 )}
