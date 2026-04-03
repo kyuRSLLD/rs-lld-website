@@ -31,7 +31,7 @@ const EMPTY_ITEM = {
   is_bulk_price: false,
 }
 
-export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
+export default function CreateOrderModal({ t, lang, onClose, onCreated, currentStaff }) {
   const tO = t?.createOrder || {}
 
   const [form, setForm] = useState({
@@ -89,6 +89,30 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   const [searchResults, setSearchResults] = useState({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // ── Salesperson ──────────────────────────────────────────────────────────────
+  const [salesReps, setSalesReps] = useState([])
+  const [salesRepId, setSalesRepId] = useState('')
+  const [salesRepLocked, setSalesRepLocked] = useState(false)
+
+  useEffect(() => {
+    // Fetch all sales reps for the dropdown
+    staffFetch('/api/staff/sales-reps', {}).then(async r => {
+      if (!r.ok) return
+      const reps = await r.json()
+      setSalesReps(reps)
+
+      if (currentStaff?.role === 'sales_rep') {
+        // Auto-fill and lock to the logged-in sales rep
+        setSalesRepId(String(currentStaff.id))
+        setSalesRepLocked(true)
+      } else {
+        // Default to kyusales if exists, otherwise leave blank
+        const kyu = reps.find(r => r.username === 'kyusales')
+        if (kyu) setSalesRepId(String(kyu.id))
+      }
+    }).catch(() => {})
+  }, [])
 
   // Customer autofill
   const [customerQuery, setCustomerQuery] = useState('')
@@ -232,6 +256,7 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
         ...form,
         discount_amount: discount,
         delivery_fee: deliveryFee,
+        sales_rep_id: salesRepId ? parseInt(salesRepId) : null,
         items: validItems.map(it => ({
           product_id: it.product_id,
           product_name: it.product_name,
@@ -302,6 +327,33 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
                 <option value="cancelled">{tO.statusCancelled || 'Cancelled'}</option>
               </select>
             </div>
+          </div>
+
+          {/* ── Salesperson ── */}
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1">
+              {tO.salesperson || 'Salesperson'}{!salesRepLocked && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
+            {salesRepLocked ? (
+              <div className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm bg-stone-50 text-stone-700">
+                {salesReps.find(r => String(r.id) === salesRepId)?.full_name || salesReps.find(r => String(r.id) === salesRepId)?.username || '—'}
+                <span className="ml-2 text-xs text-stone-400">({tO.salespersonAuto || 'auto-assigned'})</span>
+              </div>
+            ) : (
+              <select
+                className={inp}
+                value={salesRepId}
+                onChange={e => setSalesRepId(e.target.value)}
+                required
+              >
+                <option value="">{tO.salespersonPlaceholder || '— Select salesperson —'}</option>
+                {salesReps.map(r => (
+                  <option key={r.id} value={String(r.id)}>
+                    {r.full_name || r.username} (@{r.username})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* ── Customer Autofill Search ── */}

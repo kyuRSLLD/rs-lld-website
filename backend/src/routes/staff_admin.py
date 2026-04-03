@@ -236,3 +236,11 @@ def get_own_profile():
         return jsonify({'error': 'Staff user not found'}), 404
 
     return jsonify(staff.to_dict())
+
+
+@staff_admin_bp.route('/staff/sales-reps', methods=['GET'])
+@staff_required
+def list_sales_reps():
+    """Return all staff users with role=sales_rep for the salesperson dropdown."""
+    reps = StaffUser.query.filter_by(role='sales_rep').order_by(StaffUser.username.asc()).all()
+    return jsonify([{'id': r.id, 'username': r.username, 'full_name': r.full_name or r.username} for r in reps])

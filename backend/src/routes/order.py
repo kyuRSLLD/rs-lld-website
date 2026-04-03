@@ -753,10 +753,19 @@ def staff_create_order():
             except Exception:
                 pass
 
+        # Resolve salesperson
+        sales_rep_id = data.get('sales_rep_id')
+        if sales_rep_id:
+            from src.models.order import StaffUser
+            sr = StaffUser.query.get(int(sales_rep_id))
+            if not sr:
+                sales_rep_id = None
+
         order = Order(
             order_number=order_number,
             user_id=None,
             status=data.get('status', 'pending'),
+            sales_rep_id=sales_rep_id,
             delivery_name=data['delivery_name'],
             delivery_first_name=data.get('delivery_first_name', ''),
             delivery_last_name=data.get('delivery_last_name', ''),

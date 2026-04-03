@@ -3176,6 +3176,7 @@ const StaffPortal = () => {
         <CreateOrderModal
           t={t}
           lang={lang}
+          currentStaff={staff}
           onClose={() => setShowCreateOrder(false)}
           onCreated={(newOrder) => {
             setShowCreateOrder(false)
