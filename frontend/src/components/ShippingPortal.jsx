@@ -808,15 +808,23 @@ export default function ShippingPortal() {
       <div className="bg-white border-b border-stone-100 px-4 py-3">
         <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: t.active, value: stats.active, color: 'text-blue-700' },
-            { label: t.pending, value: stats.pending, color: 'text-amber-600' },
-            { label: t.confirmed, value: stats.confirmed, color: 'text-blue-600' },
-            { label: t.shippedToday, value: stats.shipped_today, color: 'text-green-600' },
+            { label: t.active,       value: stats.active,       color: 'text-blue-700',  filter: 'active' },
+            { label: t.pending,      value: stats.pending,      color: 'text-amber-600', filter: 'pending' },
+            { label: t.confirmed,    value: stats.confirmed,    color: 'text-blue-600',  filter: 'confirmed' },
+            { label: t.shippedToday, value: stats.shipped_today,color: 'text-green-600', filter: 'shipped' },
           ].map(s => (
-            <div key={s.label} className="text-center">
+            <button
+              key={s.label}
+              onClick={() => setStatusFilter(s.filter)}
+              className={`text-center rounded-lg px-2 py-1.5 transition-colors w-full ${
+                statusFilter === s.filter
+                  ? 'bg-stone-100 ring-1 ring-stone-300'
+                  : 'hover:bg-stone-50'
+              }`}
+            >
               <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
               <div className="text-xs text-stone-500 mt-0.5">{s.label}</div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

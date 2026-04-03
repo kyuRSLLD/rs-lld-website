@@ -6,7 +6,7 @@ No sales rep info, no pricing details beyond packing slip.
 """
 from flask import Blueprint, request, jsonify, session
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
 import jwt as pyjwt
 
 from src.models.user import db
@@ -289,9 +289,15 @@ def shipping_stats():
     """Quick counts for the dashboard header."""
     pending_count   = Order.query.filter_by(status='pending').count()
     confirmed_count = Order.query.filter_by(status='confirmed').count()
+    # Use CDT offset (UTC-5) to calculate local midnight as a UTC boundary.
+    # CDT = UTC-5; CST = UTC-6. Using -5 covers CDT (Apr–Nov).
+    CDT_OFFSET = timedelta(hours=5)
+    local_now = datetime.utcnow() - CDT_OFFSET
+    local_midnight = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    utc_midnight = local_midnight + CDT_OFFSET  # convert local midnight back to UTC
     shipped_today   = Order.query.filter(
         Order.status == 'shipped',
-        Order.shipped_at >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        Order.shipped_at >= utc_midnight
     ).count()
     return jsonify({
         'pending': pending_count,

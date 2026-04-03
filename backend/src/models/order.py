@@ -104,7 +104,7 @@ class Order(db.Model):
             'ach_routing_number': self.ach_routing_number,
             'ach_account_number_masked': f'****{self.ach_account_number[-4:]}' if self.ach_account_number and len(self.ach_account_number) >= 4 else (self.ach_account_number or None),
             'ach_account_type': self.ach_account_type,
-            'ach_authorized_at': self.ach_authorized_at.isoformat() if self.ach_authorized_at else None,
+            'ach_authorized_at': (self.ach_authorized_at.isoformat() + '+00:00') if self.ach_authorized_at else None,
             'has_ach': bool(self.ach_routing_number and self.ach_account_number),
             'staff_notes': self.staff_notes,
             'assigned_to': self.assigned_to,
@@ -112,11 +112,11 @@ class Order(db.Model):
             'sales_rep_name': self.sales_rep.full_name if self.sales_rep else None,
             'sales_source': self.sales_source,
             'item_count': len(self.items),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'confirmed_at': self.confirmed_at.isoformat() if self.confirmed_at else None,
-            'shipped_at': self.shipped_at.isoformat() if self.shipped_at else None,
-            'delivered_at': self.delivered_at.isoformat() if self.delivered_at else None,
+            'created_at': (self.created_at.isoformat() + '+00:00') if self.created_at else None,
+            'updated_at': (self.updated_at.isoformat() + '+00:00') if self.updated_at else None,
+            'confirmed_at': (self.confirmed_at.isoformat() + '+00:00') if self.confirmed_at else None,
+            'shipped_at': (self.shipped_at.isoformat() + '+00:00') if self.shipped_at else None,
+            'delivered_at': (self.delivered_at.isoformat() + '+00:00') if self.delivered_at else None,
         }
         if include_items:
             data['items'] = [item.to_dict() for item in self.items]
@@ -195,5 +195,5 @@ class StaffUser(db.Model):
             'last_name': self.last_name,
             'role': self.role,
             'is_active': self.is_active,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': (self.created_at.isoformat() + '+00:00') if self.created_at else None,
         }
