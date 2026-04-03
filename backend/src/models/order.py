@@ -50,6 +50,7 @@ class Order(db.Model):
     # Internal staff notes
     staff_notes = db.Column(db.Text, nullable=True)
     assigned_to = db.Column(db.String(100), nullable=True)  # staff member handling the order
+    tracking_number = db.Column(db.String(200), nullable=True)  # shipping tracking number
 
     # Sales attribution
     sales_rep_id = db.Column(db.Integer, db.ForeignKey('staff_user.id'), nullable=True)  # which sales rep closed this
@@ -108,6 +109,7 @@ class Order(db.Model):
             'has_ach': bool(self.ach_routing_number and self.ach_account_number),
             'staff_notes': self.staff_notes,
             'assigned_to': self.assigned_to,
+            'tracking_number': self.tracking_number,
             'sales_rep_id': self.sales_rep_id,
             'sales_rep_name': self.sales_rep.full_name if self.sales_rep else None,
             'sales_source': self.sales_source,

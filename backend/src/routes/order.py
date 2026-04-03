@@ -505,6 +505,8 @@ def update_order_notes(order_id):
     data = request.json
     order.staff_notes = data.get('staff_notes', order.staff_notes)
     order.assigned_to = data.get('assigned_to', order.assigned_to)
+    if 'tracking_number' in data:
+        order.tracking_number = data['tracking_number'].strip() if data['tracking_number'] else None
     db.session.commit()
     return jsonify({'success': True, 'order': order.to_dict()})
 

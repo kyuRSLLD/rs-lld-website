@@ -334,6 +334,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(order.staff_notes || '')
   const [assignedTo, setAssignedTo] = useState(order.assigned_to || '')
+  const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '')
   const [updating, setUpdating] = useState(false)
 
   const cfg = statusConfig[order.status] || statusConfig.pending
@@ -373,7 +374,7 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
   }
 
   const handleSaveNotes = async () => {
-    await onNotesUpdate(order.id, notes, assignedTo)
+    await onNotesUpdate(order.id, notes, assignedTo, trackingNumber)
     setEditingNotes(false)
   }
 
@@ -478,6 +479,12 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
               type="text" value={assignedTo}
               onChange={e => setAssignedTo(e.target.value)}
               placeholder={t.orders.assignTo}
+              className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-stone-400 focus:border-stone-400"
+            />
+            <input
+              type="text" value={trackingNumber}
+              onChange={e => setTrackingNumber(e.target.value)}
+              placeholder={t.orders.trackingNumberPlaceholder || 'Tracking number (e.g. 1Z999AA10123456784)'}
               className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-stone-400 focus:border-stone-400"
             />
             <textarea
@@ -620,6 +627,39 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
                       ✗ {t.orders.rejectCheck}
                     </Button>
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tracking Number — shown for shipped/delivered orders */}
+          {(order.status === 'shipped' || order.status === 'delivered') && (
+            <div>
+              <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">
+                🚚 {t.orders.trackingNumber || 'Tracking Number'}
+              </h4>
+              <div className="bg-white rounded-lg p-3 border border-stone-100">
+                {(trackingNumber || order.tracking_number) ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-semibold text-stone-800">
+                      {trackingNumber || order.tracking_number}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingNotes(true)}
+                      className="text-xs text-blue-600 hover:underline ml-auto"
+                    >
+                      {t.orders.editTracking || 'Edit'}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingNotes(true)}
+                    className="text-xs text-stone-400 hover:text-stone-700 italic"
+                  >
+                    + {t.orders.addTracking || 'Add tracking number...'}
+                  </button>
                 )}
               </div>
             </div>
@@ -1629,12 +1669,14 @@ const StaffPortal = () => {
     } catch {}
   }
 
-  const handleNotesUpdate = async (orderId, notes, assignedTo) => {
+  const handleNotesUpdate = async (orderId, notes, assignedTo, trackingNumber) => {
     try {
+      const payload = { staff_notes: notes, assigned_to: assignedTo }
+      if (trackingNumber !== undefined) payload.tracking_number = trackingNumber
       await staffFetch(`/api/staff/orders/${orderId}/notes`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_notes: notes, assigned_to: assignedTo }),
+        body: JSON.stringify(payload),
       })
       fetchOrders()
     } catch {}

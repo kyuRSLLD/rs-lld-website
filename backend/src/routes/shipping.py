@@ -150,8 +150,8 @@ def _order_to_shipping_dict(order):
         'special_notes': order.special_notes or '',
         'item_count': sum(i.quantity for i in order.items),
         'items': items,
-        # Tracking (stored in staff_notes if not a dedicated column)
-        'tracking_number': _parse_tracking(order.staff_notes, 'tracking'),
+        # Tracking — use dedicated column first, fall back to staff_notes parse
+        'tracking_number': order.tracking_number or _parse_tracking(order.staff_notes, 'tracking'),
         'carrier': _parse_tracking(order.staff_notes, 'carrier'),
         'staff_notes': order.staff_notes or '',
     }
@@ -239,7 +239,9 @@ def mark_shipped(order_number):
     data = request.json or {}
     tracking = data.get('tracking_number', '').strip()
     carrier = data.get('carrier', '').strip()
-    # Store tracking info in staff_notes if model doesn't have dedicated columns
+    # Save tracking to dedicated column and staff_notes
+    if tracking:
+        order.tracking_number = tracking
     if tracking or carrier:
         existing_notes = order.staff_notes or ''
         tracking_note = f'[Shipped] Carrier: {carrier} | Tracking: {tracking}'
@@ -420,14 +422,15 @@ def buy_label(order_number):
         service      = shipment.selected_rate.service if shipment.selected_rate else ''
         rate_cost    = shipment.selected_rate.rate    if shipment.selected_rate else ''
 
-        # Auto-save tracking number to the order notes
+        # Auto-save tracking number to dedicated column and staff_notes
         if tracking_num:
+            order.tracking_number = tracking_num
             existing_notes = order.staff_notes or ''
             if tracking_num not in existing_notes:
                 carrier_prefix = carrier.upper() if carrier else 'CARRIER'
                 tracking_line  = f'[TRACKING:{carrier_prefix}:{tracking_num}]'
                 order.staff_notes = (existing_notes + '\n' + tracking_line).strip()
-                db.session.commit()
+            db.session.commit()
 
         return jsonify({
             'label_url':    label_url,

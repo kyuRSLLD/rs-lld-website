@@ -82,6 +82,10 @@ export const staffPortalTranslations = {
       bulk: 'Bulk',
       moveBack: 'Move Back',
       moveBackConfirm: 'Move this order back to',
+      trackingNumber: 'Tracking Number',
+      trackingNumberPlaceholder: 'Tracking number (e.g. 1Z999AA10123456784)',
+      addTracking: 'Add tracking number...',
+      editTracking: 'Edit',
     },
     // Payment methods
     payment: {
@@ -775,6 +779,10 @@ export const staffPortalTranslations = {
       bulk: '批量',
       moveBack: '回退状态',
       moveBackConfirm: '将此订单回退至',
+      trackingNumber: '追踪号',
+      trackingNumberPlaceholder: '输入追踪号（如 1Z999AA10123456784）',
+      addTracking: '添加追踪号...',
+      editTracking: '编辑',
     },
     // 支付方式
     payment: {
