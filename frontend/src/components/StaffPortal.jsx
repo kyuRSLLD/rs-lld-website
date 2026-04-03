@@ -194,7 +194,7 @@ const StaffLogin = ({ onLogin }) => {
               <div>
                 <label className={labelClass}>{t.login.username}</label>
                 <input type="text" value={form.username}
-                  onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
+                  onChange={e => setForm(p => ({ ...p, username: e.target.value.toLowerCase().replace(/\s/g, '') }))}
                   className={inputClass} placeholder={t.login.usernamePlaceholder}
                   autoCapitalize="none" autoCorrect="off" autoComplete="username" spellCheck={false} />
               </div>

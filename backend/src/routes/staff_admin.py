@@ -50,7 +50,7 @@ def create_staff_user():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
-    username = data.get('username', '').strip()
+    username = data.get('username', '').strip().lower()
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
     role = data.get('role', 'staff')

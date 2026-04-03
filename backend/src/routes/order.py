@@ -386,7 +386,8 @@ def get_current_staff_id():
 def staff_login():
     from src.models.order import StaffUser
     data = request.json
-    staff = StaffUser.query.filter_by(username=data.get('username')).first()
+    username_input = (data.get('username') or '').strip().lower()
+    staff = StaffUser.query.filter_by(username=username_input).first()
     if staff and staff.check_password(data.get('password', '')):
         session['staff_id'] = staff.id
         # Also issue a JWT token for cross-domain auth (Bluehost frontend -> Railway backend)
