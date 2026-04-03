@@ -213,8 +213,8 @@ function PackingSlipModal({ order, t, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto my-auto">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-bold text-stone-900">{t.packingSlip} — {order.order_number}</h2>
           <div className="flex gap-2">
@@ -311,8 +311,8 @@ function ShipModal({ order, t, onConfirm, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5 sm:p-6 my-auto">
         <h2 className="text-lg font-bold text-stone-900 mb-4">{t.shipOrder} — {order.order_number}</h2>
         <div className="space-y-4">
           <div>
@@ -366,8 +366,8 @@ function trackingUrl(carrier, trackingNumber) {
 function OrderDetailModal({ order, t, onClose, onConfirm, onShip, onDeliver, onPrint }) {
   const url = trackingUrl(order.carrier, order.tracking_number)
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto my-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div>
@@ -822,10 +822,10 @@ export default function ShippingPortal() {
       </div>
 
       {/* Filters */}
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          {/* Status tabs */}
-          <div className="flex rounded-lg border border-stone-200 overflow-hidden bg-white">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3">
+        {/* Status tabs — scrollable on mobile */}
+        <div className="overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+          <div className="flex rounded-lg border border-stone-200 overflow-hidden bg-white w-max min-w-full sm:w-auto">
             {[
               { key: 'active', label: t.active },
               { key: 'pending', label: t.pendingOrders },
@@ -836,7 +836,7 @@ export default function ShippingPortal() {
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
                   statusFilter === tab.key
                     ? 'bg-blue-600 text-white'
                     : 'text-stone-600 hover:bg-stone-50'
@@ -846,22 +846,21 @@ export default function ShippingPortal() {
               </button>
             ))}
           </div>
-
-          {/* Search */}
+        </div>
+        {/* Search + Refresh */}
+        <div className="flex gap-2 mt-2">
           <input
             value={searchQ}
             onChange={e => setSearchQ(e.target.value)}
             placeholder={t.search}
-            className="flex-1 min-w-[200px] border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="flex-1 min-w-0 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           />
-
-          {/* Refresh */}
           <button
             onClick={loadOrders}
             disabled={loadingOrders}
-            className="px-3 py-1.5 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50 disabled:opacity-50"
+            className="px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50 disabled:opacity-50 whitespace-nowrap flex-shrink-0"
           >
-            {loadingOrders ? t.refreshing : `↻ ${t.refresh}`}
+            {loadingOrders ? '…' : '↻'}
           </button>
         </div>
       </div>

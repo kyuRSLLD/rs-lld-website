@@ -113,8 +113,8 @@ const InvoicePrintView = ({ invoice, t, lang, onClose }) => {
   const handlePrint = () => window.print()
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:fixed print:inset-0">
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:rounded-none print:max-h-none print:overflow-visible">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto my-auto print:shadow-none print:rounded-none print:max-h-none print:overflow-visible">
         {/* Print controls — hidden when printing */}
         <div className="flex items-center justify-between p-4 border-b border-stone-200 print:hidden">
           <h2 className="font-bold text-stone-900">{t.invoices.printInvoice}</h2>

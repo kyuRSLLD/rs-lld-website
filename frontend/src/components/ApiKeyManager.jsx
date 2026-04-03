@@ -81,8 +81,8 @@ function CreateKeyModal({ t, lang, onClose, onCreated }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-stone-900/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+    <div className="fixed inset-0 bg-stone-900/40 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
           <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
             <Key className="w-4 h-4 text-purple-600" />
@@ -174,8 +174,8 @@ function NewKeyDisplay({ keyData, t, lang, onClose }) {
   const cfg = prefixConfig(keyData.prefix)
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-auto">
         <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
           <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-500" />

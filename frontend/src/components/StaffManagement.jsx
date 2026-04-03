@@ -77,8 +77,8 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-stone-900/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-md">
+    <div className="fixed inset-0 bg-stone-900/40 flex items-start sm:items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-md my-auto">
         <div className="flex items-center justify-between p-5 border-b border-stone-100">
           <h2 className="text-lg font-bold text-stone-900">
             {isEdit ? t.staffMgmt.editStaff : t.staffMgmt.createStaff}
@@ -139,7 +139,7 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
           {/* Role */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">{t.staffMgmt.role} *</label>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {['sales_rep', 'shipping', 'staff', 'manager', 'admin'].map(r => {
                 const cfg = ROLE_CONFIG[r]
                 const label = t.staffMgmt[`role_${r}`]
@@ -148,7 +148,7 @@ const StaffFormModal = ({ user, t, onSave, onClose }) => {
                     key={r}
                     type="button"
                     onClick={() => setForm(p => ({ ...p, role: r }))}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    className={`py-2 rounded-lg text-sm font-medium border transition-all ${
                       form.role === r
                         ? `${cfg.bg} ${cfg.color} ${cfg.border} ring-2 ring-offset-1 ring-blue-300`
                         : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'
@@ -305,12 +305,12 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
           <h2 className="text-xl font-bold text-stone-900">{t.staffMgmt.title}</h2>
           <p className="text-sm text-stone-500 mt-0.5">{t.staffMgmt.subtitle}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={fetchUsers}
             className="flex items-center gap-1.5 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50"
@@ -359,7 +359,8 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
         <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin text-stone-400 mx-auto" /></div>
       ) : (
         <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-stone-50 border-b border-stone-100">
               <tr>
                 {[t.staffMgmt.username, `${t.staffMgmt.firstName || 'First'} / ${t.staffMgmt.lastName || 'Last'}`, t.staffMgmt.email, t.staffMgmt.role,
@@ -445,6 +446,7 @@ export const StaffManagementTab = ({ t, lang, currentStaff }) => {
               })}
             </tbody>
           </table>
+          </div>
           <div className="px-4 py-2 border-t border-gray-50 text-xs text-stone-400">
             {users.length} {t.staffMgmt.totalAccounts}
           </div>

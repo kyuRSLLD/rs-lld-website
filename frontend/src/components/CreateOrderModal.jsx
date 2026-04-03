@@ -268,15 +268,15 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
   const inp = 'w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 focus:border-transparent'
 
   return (
-    <div className="fixed inset-0 bg-stone-900/40 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+    <div className="fixed inset-0 bg-stone-900/40 z-50 flex items-start justify-center overflow-y-auto py-4 sm:py-8 px-3 sm:px-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-stone-200 sticky top-0 bg-white z-10 rounded-t-xl">
           <h2 className="text-lg font-bold text-stone-900">{tO.title || 'Create Order'}</h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-stone-100"><X className="w-5 h-5 text-stone-500" /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 sm:space-y-6">
           {/* ── Row 1: Order meta ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -626,13 +626,13 @@ export default function CreateOrderModal({ t, lang, onClose, onCreated }) {
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{error}</div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-stone-100">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2 border-t border-stone-100">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors">
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors text-center">
               {tO.cancel || 'Cancel'}
             </button>
             <button type="submit" disabled={saving}
-              className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors">
+              className="w-full sm:w-auto px-6 py-2.5 sm:py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors text-center">
               {saving ? (tO.saving || 'Saving...') : (tO.saveOrder || 'Save Order')}
             </button>
           </div>
