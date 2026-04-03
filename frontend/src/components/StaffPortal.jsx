@@ -195,7 +195,8 @@ const StaffLogin = ({ onLogin }) => {
                 <label className={labelClass}>{t.login.username}</label>
                 <input type="text" value={form.username}
                   onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-                  className={inputClass} placeholder={t.login.usernamePlaceholder} />
+                  className={inputClass} placeholder={t.login.usernamePlaceholder}
+                  autoCapitalize="none" autoCorrect="off" autoComplete="username" spellCheck={false} />
               </div>
               <div>
                 <label className={labelClass}>{t.login.password}</label>
