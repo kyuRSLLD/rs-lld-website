@@ -185,11 +185,13 @@ with app.app_context():
     # ── StaffUser name columns added 2026-04 ────────────────────────────────
     _add_column_if_missing('staff_user', 'first_name', 'VARCHAR(100)')
     _add_column_if_missing('staff_user', 'last_name',  'VARCHAR(100)')
-    # ── Order contact name/email columns added 2026-04 ────────────────────────
+    # ── Order contact name/email columns added 2026-04 ────────────────────
     _add_column_if_missing('order', 'delivery_first_name', 'VARCHAR(100)')
     _add_column_if_missing('order', 'delivery_last_name',  'VARCHAR(100)')
     _add_column_if_missing('order', 'delivery_email',      'VARCHAR(200)')
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── Order tracking number column added 2026-04 ──────────────────────────
+    _add_column_if_missing('order', 'tracking_number',     'VARCHAR(200)')
+    # ─────────────────────────────────────────────────────────────────────────────
 
     # Seed categories
     if Category.query.count() == 0:
