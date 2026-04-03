@@ -344,10 +344,13 @@ def get_label_rates(order_number):
 
     # Build to_address from order
     to_address = {
-        'name':    order.customer_name or order.customer_company or 'Recipient',
-        'company': order.customer_company or '',
-        'street1': order.shipping_address or order.address or '',
-        'phone':   order.customer_phone or '',
+        'name':    order.delivery_name or order.delivery_company or 'Recipient',
+        'company': order.delivery_company or '',
+        'street1': order.delivery_address or '',
+        'city':    order.delivery_city or '',
+        'state':   order.delivery_state or '',
+        'zip':     order.delivery_zip or '',
+        'phone':   order.delivery_phone or '',
         'country': 'US',
     }
 
