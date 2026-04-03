@@ -210,12 +210,46 @@ def change_own_password():
             send_password_changed_email(staff, account_type='staff')
         except Exception as _email_err:
             print(f"[EMAIL] Staff password-changed notification failed: {_email_err}")
-
     return jsonify({'message': 'Password changed successfully'})
 
 
-# ─── Self-service: get own profile ───────────────────────────────────────────
+# ─── Self-service: update own email ─────────────────────────────────────────
 
+@staff_admin_bp.route('/staff/profile/update-email', methods=['POST'])
+def update_own_email():
+    """Any logged-in staff member can update their own email address."""
+    from src.routes.order import _verify_staff_jwt
+    import re
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        staff_id = _verify_staff_jwt(token)
+        if not staff_id:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+    else:
+        staff_id = session.get('staff_id')
+        if not staff_id:
+            return jsonify({'error': 'Authentication required'}), 401
+
+    staff = StaffUser.query.get(staff_id)
+    if not staff:
+        return jsonify({'error': 'Staff user not found'}), 404
+
+    data = request.get_json() or {}
+    new_email = data.get('new_email', '').strip()
+
+    if not new_email:
+        return jsonify({'error': 'Email address is required'}), 400
+    if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', new_email):
+        return jsonify({'error': 'Please enter a valid email address'}), 400
+
+    staff.email = new_email
+    db.session.commit()
+
+    return jsonify({'success': True, 'email': new_email})
+
+
+# ─── Self-service: get own profile ─────────────────────────────────────────────
 @staff_admin_bp.route('/staff/profile', methods=['GET'])
 def get_own_profile():
     """Return the currently logged-in staff member's profile."""

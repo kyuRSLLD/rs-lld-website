@@ -1317,7 +1317,7 @@ const CombinedInvoicesTab = ({ t, lang, isAdmin }) => {
 }
 
 // ─── Profile Tab ──────────────────────────────────────────────────────────────────────────────────
-const ProfileTab = ({ t, staff }) => {
+const ProfileTab = ({ t, staff, onStaffUpdate }) => {
   const [form, setForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
@@ -1325,6 +1325,11 @@ const ProfileTab = ({ t, staff }) => {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  // Email update state
+  const [emailForm, setEmailForm] = useState({ new_email: '' })
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailSuccess, setEmailSuccess] = useState('')
+  const [emailError, setEmailError] = useState('')
 
   const inp = 'border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 w-full'
 
@@ -1365,12 +1370,39 @@ const ProfileTab = ({ t, staff }) => {
     }
   }
 
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault()
+    setEmailError('')
+    setEmailSuccess('')
+    const email = emailForm.new_email.trim()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError(t.emailInvalid || 'Please enter a valid email address.')
+      return
+    }
+    setEmailSaving(true)
+    try {
+      const res = await staffFetch('/api/staff/profile/update-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_email: email }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setEmailSuccess(t.emailSuccess || 'Email updated successfully.')
+        setEmailForm({ new_email: '' })
+        if (onStaffUpdate) onStaffUpdate({ email })
+      } else {
+        setEmailError(data.error || t.emailError || 'Failed to update email.')
+      }
+    } catch {
+      setEmailError(t.emailError || 'Failed to update email.')
+    } finally {
+      setEmailSaving(false)
+    }
+  }
+
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-stone-900">{t.title}</h2>
-        <p className="text-sm text-stone-500 mt-1">{t.subtitle}</p>
-      </div>
+    <div>
 
       {/* Account info card */}
       <div className="bg-white rounded-xl border border-stone-200 p-4 sm:p-5 mb-6">
@@ -1389,6 +1421,41 @@ const ProfileTab = ({ t, staff }) => {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Update email form */}
+      <div className="bg-white rounded-xl border border-stone-200 p-5 mb-4">
+        <h3 className="font-semibold text-stone-900 mb-4">{t.changeEmail || 'Update Email'}</h3>
+        <p className="text-xs text-stone-500 mb-3">{t.email}: <span className="font-medium text-stone-700">{staff?.email || '—'}</span></p>
+        <form onSubmit={handleEmailSubmit} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">{t.newEmail || 'New Email Address'}</label>
+            <input
+              className={inp}
+              type="email"
+              value={emailForm.new_email}
+              onChange={e => setEmailForm({ new_email: e.target.value })}
+              placeholder={t.newEmailPlaceholder || 'Enter new email address'}
+              autoComplete="email"
+            />
+          </div>
+          {emailError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{emailError}</div>
+          )}
+          {emailSuccess && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
+              <Check className="w-4 h-4" /> {emailSuccess}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={emailSaving}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-stone-900 hover:bg-stone-700 text-white rounded-lg text-sm font-medium disabled:opacity-60"
+          >
+            {emailSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {emailSaving ? t.saving : (t.saveEmail || 'Update Email')}
+          </button>
+        </form>
       </div>
 
       {/* Change password form */}
@@ -1523,6 +1590,7 @@ const StaffPortal = () => {
   const [editBillingSameAsShipping, setEditBillingSameAsShipping] = useState(false)
   const [editCustomerLoading, setEditCustomerLoading] = useState(false)
   const [editCustomerError, setEditCustomerError] = useState(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   const t = staffPortalTranslations[lang]
 
@@ -2159,7 +2227,6 @@ const StaffPortal = () => {
         ...(isAdmin || isManager ? [{ id: 'salesRep', label: t.tabs.salesRep, icon: Phone }] : []),
         ...(isAdmin || isManager ? [{ id: 'restaurantFinder', label: t.tabs.restaurantFinder, icon: Building2 }] : []),
         ...(isAdmin ? [{ id: 'staffMgmt', label: t.tabs.staffMgmt, icon: Shield, adminOnly: true }, { id: 'apiKeys', label: t.tabs.apiKeys, icon: Key, adminOnly: true }] : []),
-        { id: 'profile', label: t.tabs.profile, icon: UserCircle },
       ]
 
   return (
@@ -2179,7 +2246,19 @@ const StaffPortal = () => {
             </div>
           )}
           <LangToggle lang={lang} onToggle={toggleLang} />
-          <span className="hidden sm:inline text-stone-500 text-sm truncate max-w-[120px]">👤 {staff.full_name || staff.username}</span>
+          {/* Initials avatar — opens Profile modal */}
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-8 h-8 rounded-full bg-stone-900 text-white text-xs font-bold flex items-center justify-center hover:bg-stone-700 transition-colors flex-shrink-0 uppercase"
+            title={staff.full_name || staff.username}
+          >
+            {(() => {
+              const name = staff.full_name || staff.username || ''
+              const parts = name.trim().split(/\s+/)
+              if (parts.length >= 2) return parts[0][0] + parts[parts.length - 1][0]
+              return name.slice(0, 2)
+            })()}
+          </button>
           <Button size="sm" variant="ghost" onClick={handleLogout} className="text-stone-500 hover:text-stone-900 text-xs px-2">
             <LogOut className="w-3 h-3 sm:mr-1" /> <span className="hidden sm:inline">{t.header.logout}</span>
           </Button>
@@ -3214,11 +3293,26 @@ const StaffPortal = () => {
           <RestaurantFinderTab lang={lang} />
         )}
 
-        {/* ── PROFILE TAB ── */}
-        {activeTab === 'profile' && (
-          <ProfileTab t={t.profile} staff={staff} />
-        )}
       </div>
+
+      {/* ── PROFILE MODAL ── */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-stone-100">
+              <h2 className="text-lg font-bold text-stone-900">{t.profile.title}</h2>
+              <button onClick={() => setShowProfileModal(false)} className="text-stone-400 hover:text-stone-700 text-xl font-bold leading-none">&times;</button>
+            </div>
+            <div className="p-5">
+              <ProfileTab
+                t={t.profile}
+                staff={staff}
+                onStaffUpdate={(updated) => setStaff(prev => ({ ...prev, ...updated }))}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CREATE ORDER MODAL ── */}
       {showCreateOrder && (
