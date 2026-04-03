@@ -44,6 +44,10 @@ def staff_required(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Allow internal server-to-server calls via INTERNAL_API_KEY header
+        internal_key = os.environ.get('INTERNAL_API_KEY', '')
+        if internal_key and request.headers.get('X-Internal-Key') == internal_key:
+            return f(*args, **kwargs)
         staff = verify_staff_token()
         if not staff:
             return jsonify({'error': 'Staff authentication required'}), 401
@@ -509,6 +513,8 @@ def scrape_restaurants():
     limit = min(500, max(1, int(data.get('limit', 50))))
     # Optional: enrich contacts to attempt to find owner name/email from website
     enrich_contacts = bool(data.get('enrich_contacts', False))
+    # Optional: max price level (1=$, 2=$$, 3=$$$, 4=$$$$). Default 3 = exclude $$$$ restaurants
+    max_price_level = int(data.get('max_price_level', 3))
 
     api_key = os.environ.get('OUTSCRAPER_API_KEY')
     if not api_key:
@@ -605,6 +611,16 @@ def scrape_restaurants():
             if isinstance(subtypes, list):
                 subtypes = ', '.join(subtypes)
             cuisine_detail = cuisine or subtypes or ''
+
+            # Price level filter: skip restaurants priced above max_price_level
+            raw_price = place.get('price_level')
+            if raw_price is not None and str(raw_price).strip() != '':
+                try:
+                    if int(raw_price) > max_price_level:
+                        skipped += 1
+                        continue
+                except (ValueError, TypeError):
+                    pass  # If price_level is unparseable, allow through
 
             r = RestaurantLead(
                 name=place.get('name', 'Unknown'),
