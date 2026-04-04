@@ -562,10 +562,11 @@ def create_payment_link():
             except Exception:
                 pass
 
+        # Note: product_data does not accept 'description' in the Payment Links API
         price = stripe.Price.create(
             unit_amount=amount_cents,
             currency='usd',
-            product_data={'name': f'Order {order_number}', 'description': description},
+            product_data={'name': f'LLD Order {order_number} — {description}'},
         )
         link = stripe.PaymentLink.create(
             line_items=[{'price': price.id, 'quantity': 1}],
