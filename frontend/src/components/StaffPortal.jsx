@@ -1363,6 +1363,10 @@ const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [achNote, setAchNote] = useState('')
+  const [checkFront, setCheckFront] = useState(null)
+  const [checkBack, setCheckBack] = useState(null)
+  const [checkUploading, setCheckUploading] = useState(false)
+  const [checkSuccess, setCheckSuccess] = useState('')
 
   // ACH info: prefer order-level ACH, fall back to customer-level
   const hasAch = order.has_ach || (order.ach_routing_number && order.ach_account_number)
@@ -1392,6 +1396,40 @@ const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
       setError(zh ? '操作失败，请重试。' : 'Failed. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCheckUpload = async () => {
+    if (!checkFront) {
+      setError(zh ? '请选择支票正面图片。' : 'Please select the front check image.')
+      return
+    }
+    setCheckUploading(true)
+    setError('')
+    setCheckSuccess('')
+    try {
+      const formData = new FormData()
+      formData.append('order_number', order.order_number)
+      formData.append('check_front', checkFront)
+      if (checkBack) formData.append('check_back', checkBack)
+      const token = getStaffToken()
+      const res = await fetch(`${API_BASE}/api/payments/upload-check`, {
+        method: 'POST',
+        headers: token ? { [STAFF_TOKEN_KEY]: token } : {},
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCheckSuccess(zh ? '支票图片已上传，待审核。' : 'Check images uploaded. Pending review.')
+        setCheckFront(null)
+        setCheckBack(null)
+      } else {
+        setError(data.error || (zh ? '上传失败，请重试。' : 'Upload failed. Please try again.'))
+      }
+    } catch {
+      setError(zh ? '上传失败，请重试。' : 'Upload failed. Please try again.')
+    } finally {
+      setCheckUploading(false)
     }
   }
 
@@ -1508,66 +1546,113 @@ const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
             </div>
           )}
 
-          {/* Option 2: ACH Pull */}
+          {/* Option 2: ACH Pull / Check Deposit */}
           {mode !== 'stripe' && mode !== 'manual' && (
             <div className="border border-blue-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">🏦</span>
                 <span className="font-semibold text-sm text-stone-900">{zh ? 'ACH 扣款 / 支票存款' : 'ACH Pull / Check Deposit'}</span>
               </div>
+
+              {/* Check success banner */}
+              {checkSuccess && (
+                <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 flex items-center gap-2">
+                  <Check className="w-3 h-3" />{checkSuccess}
+                </div>
+              )}
+
+              {/* ── Check Image Upload ── */}
+              <div className="space-y-2 mb-3">
+                <p className="text-xs font-medium text-stone-700">{zh ? '上传支票图片' : 'Upload Check Images'}</p>
+                {/* Front */}
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">{zh ? '正面（必填）' : 'Front (required)'}</label>
+                  <label className="flex items-center gap-2 cursor-pointer border border-dashed border-stone-300 hover:border-blue-400 rounded-lg px-3 py-2 transition-colors">
+                    <Upload className="w-4 h-4 text-stone-400" />
+                    <span className="text-xs text-stone-500 truncate flex-1">
+                      {checkFront ? checkFront.name : (zh ? '点击选择文件…' : 'Click to choose file…')}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => setCheckFront(e.target.files[0] || null)}
+                    />
+                  </label>
+                </div>
+                {/* Back */}
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">{zh ? '背面（可选）' : 'Back (optional)'}</label>
+                  <label className="flex items-center gap-2 cursor-pointer border border-dashed border-stone-300 hover:border-blue-400 rounded-lg px-3 py-2 transition-colors">
+                    <Upload className="w-4 h-4 text-stone-400" />
+                    <span className="text-xs text-stone-500 truncate flex-1">
+                      {checkBack ? checkBack.name : (zh ? '点击选择文件…' : 'Click to choose file…')}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => setCheckBack(e.target.files[0] || null)}
+                    />
+                  </label>
+                </div>
+                <button
+                  onClick={handleCheckUpload}
+                  disabled={checkUploading || !checkFront}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
+                >
+                  {checkUploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                  {zh ? '上传支票图片' : 'Upload Check Images'}
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-stone-100 my-3" />
+
+              {/* ── ACH Pull section ── */}
               {hasAch ? (
                 mode === 'ach' ? (
                   <div className="space-y-3">
-                    {/* Bank info summary */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
                       {achAccountName && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '户名' : 'Account Name'}:</span> {achAccountName}</p>}
                       {achBank && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '银行' : 'Bank'}:</span> {achBank}</p>}
                       {achRouting && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '路由号' : 'Routing'}:</span> {achRouting}</p>}
                       {achMasked && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '账号' : 'Account'}:</span> {achMasked} {achType && <span className="capitalize">({achType})</span>}</p>}
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-stone-700 mb-1">{zh ? '备注（可选）' : 'Note (optional)'}</label>
-                      <input
-                        type="text"
-                        value={achNote}
-                        onChange={e => setAchNote(e.target.value)}
-                        placeholder={zh ? '例：ACH 扣款已发起' : 'e.g. ACH pull submitted to bank'}
-                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={achNote}
+                      onChange={e => setAchNote(e.target.value)}
+                      placeholder={zh ? '备注（可选）' : 'Note (optional)'}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400"
+                    />
                     <div className="flex gap-2">
                       <button
                         onClick={handleAchPull}
                         disabled={loading}
-                        className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
+                        className="flex-1 py-2 bg-stone-900 hover:bg-stone-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
                       >
                         {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                         {zh ? '确认 ACH 扣款' : 'Confirm ACH Pull'}
                       </button>
-                      <button
-                        onClick={() => setMode(null)}
-                        className="px-3 py-2 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs rounded-lg"
-                      >
+                      <button onClick={() => setMode(null)} className="px-3 py-2 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs rounded-lg">
                         {zh ? '取消' : 'Back'}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-xs text-stone-500 mb-3">{zh ? '从客户已登记的银行账户扣款。' : 'Pull payment from the customer\'s bank account on file.'}</p>
+                    <p className="text-xs text-stone-500 mb-2">{zh ? '从客户已登记的银行账户扣款。' : 'Pull payment from the customer\'s bank account on file.'}</p>
                     <button
                       onClick={() => setMode('ach')}
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg"
+                      className="w-full py-2 border border-stone-900 text-stone-900 hover:bg-stone-50 text-xs font-semibold rounded-lg"
                     >
                       {zh ? '发起 ACH 扣款' : 'Initiate ACH Pull'}
                     </button>
                   </div>
                 )
               ) : (
-                <div>
-                  <p className="text-xs text-stone-500 mb-2">{zh ? '该客户未登记 ACH 银行信息。' : 'No ACH bank account on file for this customer.'}</p>
-                  <p className="text-xs text-blue-600">{zh ? '请先在客户资料中添加银行信息。' : 'Add bank info in the customer profile first.'}</p>
-                </div>
+                <p className="text-xs text-stone-400 italic">{zh ? '该客户未登记 ACH 银行信息。' : 'No ACH bank info on file for this customer.'}</p>
               )}
             </div>
           )}
