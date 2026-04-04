@@ -511,6 +511,30 @@ def update_order_notes(order_id):
     return jsonify({'success': True, 'order': order.to_dict()})
 
 
+@order_bp.route('/staff/orders/<int:order_id>/mark-paid', methods=['POST'])
+@staff_required
+def mark_order_paid(order_id):
+    """Mark an order as paid manually (cash, check, ACH, etc.)"""
+    order = Order.query.get_or_404(order_id)
+    data = request.json or {}
+    payment_method = data.get('payment_method', 'cash')
+    note = data.get('note', '').strip()
+
+    order.payment_status = 'paid'
+    # Optionally update payment method if provided
+    if payment_method and payment_method not in ('net30', 'net15', 'ach'):
+        # For manual methods like cash/check/credit_card, update the payment_method field
+        order.payment_method = payment_method
+
+    # Append note to staff_notes if provided
+    if note:
+        existing = order.staff_notes or ''
+        order.staff_notes = f"{existing}\n[Payment: {payment_method}] {note}".strip()
+
+    db.session.commit()
+    return jsonify({'success': True, 'order': order.to_dict()})
+
+
 @order_bp.route('/staff/stats', methods=['GET'])
 @staff_required
 def staff_stats():

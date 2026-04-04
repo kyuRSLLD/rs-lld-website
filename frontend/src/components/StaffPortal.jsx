@@ -336,6 +336,8 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
   const [assignedTo, setAssignedTo] = useState(order.assigned_to || '')
   const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '')
   const [updating, setUpdating] = useState(false)
+  const [showPayModal, setShowPayModal] = useState(false)
+  const [localPaymentStatus, setLocalPaymentStatus] = useState(order.payment_status)
 
   const cfg = statusConfig[order.status] || statusConfig.pending
   const StatusIcon = cfg.icon
@@ -425,6 +427,26 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
         {order.special_notes && (
           <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-xs text-amber-800">
             📝 {order.special_notes}
+          </div>
+        )}
+
+        {/* Payment Status Banner */}
+        {localPaymentStatus !== 'paid' && order.status !== 'cancelled' && (
+          <div className="mt-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-amber-800">
+              ✏️ {lang === 'zh' ? '尚未付款' : 'Not paid yet'}
+            </span>
+            <button
+              onClick={() => setShowPayModal(true)}
+              className="text-xs font-semibold bg-stone-900 hover:bg-stone-700 text-white px-3 py-1 rounded-lg transition-colors"
+            >
+              {lang === 'zh' ? '💳 付款' : '💳 Pay'}
+            </button>
+          </div>
+        )}
+        {localPaymentStatus === 'paid' && (
+          <div className="mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-xs text-green-700 flex items-center gap-1">
+            <Check className="w-3 h-3" /> {lang === 'zh' ? '已付款' : 'Paid'}
           </div>
         )}
 
@@ -676,6 +698,20 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Payment Modal ── */}
+      {showPayModal && (
+        <PaymentModal
+          order={order}
+          lang={lang}
+          t={t}
+          onClose={() => setShowPayModal(false)}
+          onPaid={() => {
+            setLocalPaymentStatus('paid')
+            setShowPayModal(false)
+          }}
+        />
       )}
     </div>
   )
@@ -1316,7 +1352,196 @@ const CombinedInvoicesTab = ({ t, lang, isAdmin }) => {
   )
 }
 
-// ─── Profile Tab ──────────────────────────────────────────────────────────────────────────────────
+// // ─── Payment Modal ─────────────────────────────────────────────────────────────────────────────────
+const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
+  const zh = lang === 'zh'
+  const [mode, setMode] = useState(null) // null | 'stripe' | 'manual'
+  const [manualMethod, setManualMethod] = useState('cash')
+  const [manualNote, setManualNote] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [stripeUrl, setStripeUrl] = useState(order.stripe_payment_link || null)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
+
+  const handleGenerateStripeLink = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await staffFetch('/api/payments/create-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_number: order.order_number }),
+      })
+      const data = await res.json()
+      if (data.payment_url || data.success) {
+        setStripeUrl(data.payment_url)
+        setMode('stripe')
+      } else {
+        setError(data.error || (zh ? '生成支付链接失败' : 'Failed to generate payment link'))
+      }
+    } catch {
+      setError(zh ? '生成支付链接失败' : 'Failed to generate payment link')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMarkPaid = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await staffFetch(`/api/staff/orders/${order.id}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_method: manualMethod, note: manualNote }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSuccess(zh ? '订单已标记为已付款。' : 'Order marked as paid.')
+        setTimeout(() => onPaid(), 1200)
+      } else {
+        setError(data.error || (zh ? '操作失败，请重试。' : 'Failed to mark as paid.'))
+      }
+    } catch {
+      setError(zh ? '操作失败，请重试。' : 'Failed to mark as paid.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const MANUAL_METHODS = [
+    { value: 'cash', label: zh ? '现金' : 'Cash' },
+    { value: 'check', label: zh ? '支票' : 'Check' },
+    { value: 'ach', label: 'ACH' },
+    { value: 'credit_card', label: zh ? '信用卡' : 'Credit Card' },
+    { value: 'net30', label: 'Net 30' },
+    { value: 'net15', label: 'Net 15' },
+    { value: 'other', label: zh ? '其他' : 'Other' },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-stone-100">
+          <div>
+            <h2 className="text-base font-bold text-stone-900">{zh ? '付款方式' : 'Payment Options'}</h2>
+            <p className="text-xs text-stone-500 mt-0.5">{order.order_number} — {formatPrice(order.total_amount)}</p>
+          </div>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-700 text-xl font-bold leading-none">&times;</button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
+          {success && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 flex items-center gap-2"><Check className="w-3 h-3" />{success}</div>}
+
+          {/* Option 1: Stripe Payment Link */}
+          {mode !== 'manual' && (
+            <div className="border border-stone-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">💳</span>
+                <span className="font-semibold text-sm text-stone-900">{zh ? '在线支付链接' : 'Online Payment Link'}</span>
+              </div>
+              <p className="text-xs text-stone-500 mb-3">{zh ? '生成 Stripe 支付链接，可发送给客户。' : 'Generate a Stripe link to send to the customer.'}</p>
+              {stripeUrl ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 bg-stone-50 rounded-lg p-2 border border-stone-200">
+                    <span className="text-xs text-stone-700 truncate flex-1">{stripeUrl}</span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(stripeUrl); }}
+                      className="text-xs text-blue-600 hover:underline flex-shrink-0"
+                    >{zh ? '复制' : 'Copy'}</button>
+                  </div>
+                  <a
+                    href={stripeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg"
+                  >
+                    {zh ? '在浏览器中打开' : 'Open in Browser'}
+                  </a>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateStripeLink}
+                  disabled={loading}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
+                >
+                  {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+                  {zh ? '生成支付链接' : 'Generate Payment Link'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Option 2: Mark as Paid manually */}
+          {mode !== 'stripe' && (
+            <div className="border border-stone-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">✅</span>
+                <span className="font-semibold text-sm text-stone-900">{zh ? '手动标记已付款' : 'Mark as Paid'}</span>
+              </div>
+              <p className="text-xs text-stone-500 mb-3">{zh ? '已收到现金、支票或其他付款方式。' : 'Payment received via cash, check, or other method.'}</p>
+              {mode === 'manual' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">{zh ? '付款方式' : 'Payment Method'}</label>
+                    <select
+                      value={manualMethod}
+                      onChange={e => setManualMethod(e.target.value)}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400"
+                    >
+                      {MANUAL_METHODS.map(m => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-stone-700 mb-1">{zh ? '备注（可选）' : 'Note (optional)'}</label>
+                    <input
+                      type="text"
+                      value={manualNote}
+                      onChange={e => setManualNote(e.target.value)}
+                      placeholder={zh ? '例：支票号 1234' : 'e.g. Check #1234'}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleMarkPaid}
+                      disabled={loading}
+                      className="flex-1 py-2 bg-stone-900 hover:bg-stone-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
+                    >
+                      {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      {zh ? '确认已付款' : 'Confirm Paid'}
+                    </button>
+                    <button
+                      onClick={() => setMode(null)}
+                      className="px-3 py-2 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs rounded-lg"
+                    >
+                      {zh ? '取消' : 'Back'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setMode('manual')}
+                  className="w-full py-2 bg-stone-900 hover:bg-stone-700 text-white text-xs font-semibold rounded-lg"
+                >
+                  {zh ? '手动标记已付款' : 'Mark as Paid'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Profile Tab ─────────────────────────────────────────────────────────────────────────────────
 const ProfileTab = ({ t, staff, onStaffUpdate }) => {
   const [form, setForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
   const [showCurrent, setShowCurrent] = useState(false)
