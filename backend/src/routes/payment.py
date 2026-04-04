@@ -205,11 +205,15 @@ def approve_check(order_number):
 
 @payment_bp.route('/staff/checks/<string:order_number>/reject', methods=['POST'])
 def reject_check(order_number):
-    """Staff rejects a check payment."""
+    """Staff rejects a check payment — resets order to pending so Pay options reappear."""
     if 'staff_id' not in session:
         return jsonify({'error': 'Staff authentication required'}), 401
     order = Order.query.filter_by(order_number=order_number).first_or_404()
-    order.payment_status = 'rejected'
-    order.status = 'cancelled'
+    # Reset payment status back to pending so the Pay button reappears
+    order.payment_status = 'pending'
+    # Keep the order status as-is (do NOT cancel) — staff may want to collect payment another way
+    # Clear the check images so a new check can be uploaded
+    order.check_image_filename = None
+    order.check_back_image_filename = None
     db.session.commit()
-    return jsonify({'success': True, 'message': 'Check rejected, order cancelled'})
+    return jsonify({'success': True, 'message': 'Check rejected. Order payment status reset to pending.'})

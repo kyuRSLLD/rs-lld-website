@@ -641,8 +641,14 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
                           method: 'POST'
                         })
                         const d = await res.json()
-                        if (d.success) window.location.reload()
-                        else alert(d.error)
+                        if (d.success) {
+                          // Reset payment status to pending locally so Pay button reappears without full reload
+                          onStatusUpdate(order.id, {
+                            payment_status: 'pending',
+                            has_check_image: false,
+                            has_check_back_image: false,
+                          })
+                        } else alert(d.error)
                       }}
                       className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
                     >
@@ -2115,6 +2121,13 @@ const StaffPortal = () => {
   }, [productSearch, productCategoryFilter, activeTab, fetchProducts])
 
   const handleStatusUpdate = async (orderId, newStatus) => {
+    // If newStatus is an object it's a partial order field update (e.g. check rejection)
+    // — just refresh orders so the UI reflects the backend state
+    if (typeof newStatus === 'object') {
+      fetchOrders()
+      fetchStats()
+      return
+    }
     try {
       const res = await staffFetch(`/api/staff/orders/${orderId}/status`, {
         method: 'PUT',
