@@ -1355,13 +1355,45 @@ const CombinedInvoicesTab = ({ t, lang, isAdmin }) => {
 // // ─── Payment Modal ─────────────────────────────────────────────────────────────────────────────────
 const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
   const zh = lang === 'zh'
-  const [mode, setMode] = useState(null) // null | 'stripe' | 'manual'
+  const [mode, setMode] = useState(null) // null | 'stripe' | 'manual' | 'ach'
   const [manualMethod, setManualMethod] = useState('cash')
   const [manualNote, setManualNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [stripeUrl, setStripeUrl] = useState(order.stripe_payment_link || null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [achNote, setAchNote] = useState('')
+
+  // ACH info: prefer order-level ACH, fall back to customer-level
+  const hasAch = order.has_ach || (order.ach_routing_number && order.ach_account_number)
+  const achBank = order.ach_bank_name || ''
+  const achAccountName = order.ach_account_name || ''
+  const achRouting = order.ach_routing_number || ''
+  const achMasked = order.ach_account_number_masked || ''
+  const achType = order.ach_account_type || ''
+
+  const handleAchPull = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await staffFetch(`/api/staff/orders/${order.id}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_method: 'ach', note: achNote || 'ACH pull initiated' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSuccess(zh ? 'ACH 扣款已记录，订单标记为已付款。' : 'ACH pull recorded. Order marked as paid.')
+        setTimeout(() => onPaid(), 1200)
+      } else {
+        setError(data.error || (zh ? '操作失败，请重试。' : 'Failed. Please try again.'))
+      }
+    } catch {
+      setError(zh ? '操作失败，请重试。' : 'Failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const formatPrice = (p) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p)
 
@@ -1433,7 +1465,7 @@ const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
           <button onClick={onClose} className="text-stone-400 hover:text-stone-700 text-xl font-bold leading-none">&times;</button>
         </div>
 
-        <div className="p-5 space-y-3">
+        <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
           {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
           {success && <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 flex items-center gap-2"><Check className="w-3 h-3" />{success}</div>}
 
@@ -1476,8 +1508,72 @@ const PaymentModal = ({ order, lang, t, onClose, onPaid }) => {
             </div>
           )}
 
-          {/* Option 2: Mark as Paid manually */}
-          {mode !== 'stripe' && (
+          {/* Option 2: ACH Pull */}
+          {mode !== 'stripe' && mode !== 'manual' && (
+            <div className="border border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🏦</span>
+                <span className="font-semibold text-sm text-stone-900">{zh ? 'ACH 扣款 / 支票存款' : 'ACH Pull / Check Deposit'}</span>
+              </div>
+              {hasAch ? (
+                mode === 'ach' ? (
+                  <div className="space-y-3">
+                    {/* Bank info summary */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                      {achAccountName && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '户名' : 'Account Name'}:</span> {achAccountName}</p>}
+                      {achBank && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '银行' : 'Bank'}:</span> {achBank}</p>}
+                      {achRouting && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '路由号' : 'Routing'}:</span> {achRouting}</p>}
+                      {achMasked && <p className="text-xs text-stone-700"><span className="font-medium">{zh ? '账号' : 'Account'}:</span> {achMasked} {achType && <span className="capitalize">({achType})</span>}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-stone-700 mb-1">{zh ? '备注（可选）' : 'Note (optional)'}</label>
+                      <input
+                        type="text"
+                        value={achNote}
+                        onChange={e => setAchNote(e.target.value)}
+                        placeholder={zh ? '例：ACH 扣款已发起' : 'e.g. ACH pull submitted to bank'}
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleAchPull}
+                        disabled={loading}
+                        className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2"
+                      >
+                        {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        {zh ? '确认 ACH 扣款' : 'Confirm ACH Pull'}
+                      </button>
+                      <button
+                        onClick={() => setMode(null)}
+                        className="px-3 py-2 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs rounded-lg"
+                      >
+                        {zh ? '取消' : 'Back'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-stone-500 mb-3">{zh ? '从客户已登记的银行账户扣款。' : 'Pull payment from the customer\'s bank account on file.'}</p>
+                    <button
+                      onClick={() => setMode('ach')}
+                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg"
+                    >
+                      {zh ? '发起 ACH 扣款' : 'Initiate ACH Pull'}
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div>
+                  <p className="text-xs text-stone-500 mb-2">{zh ? '该客户未登记 ACH 银行信息。' : 'No ACH bank account on file for this customer.'}</p>
+                  <p className="text-xs text-blue-600">{zh ? '请先在客户资料中添加银行信息。' : 'Add bank info in the customer profile first.'}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Option 3: Mark as Paid manually */}
+          {mode !== 'stripe' && mode !== 'ach' && (
             <div className="border border-stone-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">✅</span>
