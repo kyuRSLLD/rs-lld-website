@@ -669,9 +669,34 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
               <div className="bg-white rounded-lg p-3 border border-stone-100">
                 {(trackingNumber || order.tracking_number) ? (
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-semibold text-stone-800">
-                      {trackingNumber || order.tracking_number}
-                    </span>
+                    {(() => {
+                      const tn = (trackingNumber || order.tracking_number || '').trim()
+                      const getTrackingUrl = (num) => {
+                        if (!num) return null
+                        const n = num.replace(/\s/g, '').toUpperCase()
+                        // UPS: starts with 1Z
+                        if (/^1Z/.test(n)) return `https://www.ups.com/track?tracknum=${n}`
+                        // FedEx: 12 or 15 or 20 digit numbers, or starts with 96
+                        if (/^96\d{20}$/.test(n) || /^\d{12}$/.test(n) || /^\d{15}$/.test(n) || /^\d{20}$/.test(n)) return `https://www.fedex.com/fedextrack/?trknbr=${n}`
+                        // USPS: 20-22 digits or starts with 94/93/92/91/82
+                        if (/^(94|93|92|91|82)\d{18,20}$/.test(n) || /^\d{20,22}$/.test(n)) return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${n}`
+                        // DHL: 10-11 digits or starts with JD
+                        if (/^JD/.test(n) || /^\d{10,11}$/.test(n)) return `https://www.dhl.com/us-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`
+                        // OnTrac: starts with C
+                        if (/^C\d{14}$/.test(n)) return `https://www.ontrac.com/tracking/?number=${n}`
+                        // Default: try a universal tracker
+                        return `https://parcelsapp.com/en/tracking/${n}`
+                      }
+                      const url = getTrackingUrl(tn)
+                      return url ? (
+                        <a href={url} target="_blank" rel="noreferrer"
+                          className="font-mono text-sm font-semibold text-blue-600 hover:underline break-all">
+                          {tn}
+                        </a>
+                      ) : (
+                        <span className="font-mono text-sm font-semibold text-stone-800">{tn}</span>
+                      )
+                    })()}
                     <button
                       type="button"
                       onClick={() => setEditingNotes(true)}
