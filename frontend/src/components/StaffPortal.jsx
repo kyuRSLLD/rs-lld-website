@@ -1991,7 +1991,14 @@ const ProfileTab = ({ t, staff, onStaffUpdate }) => {
 // ─── Main Staff Portal ──────────────────────────────────────────────────────────────────────────────────
 const StaffPortal = () => {
   const [staff, setStaff] = useState(null)
-  const [activeTab, setActiveTab] = useState('orders')
+  const [activeTab, setActiveTab] = useState(() => {
+    // Sales reps land on their own tab by default; everyone else on orders
+    try {
+      const cached = sessionStorage.getItem('staffRole')
+      if (cached === 'sales_rep') return 'salesRep'
+    } catch {}
+    return 'orders'
+  })
   const [orders, setOrders] = useState([])
   const [stats, setStats] = useState(null)
   const [customers, setCustomers] = useState([])
@@ -2052,7 +2059,13 @@ const StaffPortal = () => {
   useEffect(() => {
     staffFetch('/api/staff/me')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setStaff(d) })
+      .then(d => {
+        if (d) {
+          setStaff(d)
+          try { sessionStorage.setItem('staffRole', d.role || '') } catch {}
+          if (d.role === 'sales_rep') setActiveTab('salesRep')
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -2628,7 +2641,11 @@ const StaffPortal = () => {
     setStaff(null)
   }
 
-  if (!staff) return <StaffLogin onLogin={setStaff} />
+  if (!staff) return <StaffLogin onLogin={(s) => {
+    setStaff(s)
+    try { sessionStorage.setItem('staffRole', s.role || '') } catch {}
+    if (s.role === 'sales_rep') setActiveTab('salesRep')
+  }} />
 
   const filteredOrders = orders.filter(o => {
     if (!searchQuery) return true
