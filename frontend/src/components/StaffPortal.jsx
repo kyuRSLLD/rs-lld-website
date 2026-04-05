@@ -3738,7 +3738,7 @@ const StaffPortal = () => {
         )}
         {/* ── SALES REP TAB ── */}
         {activeTab === 'salesRep' && (
-          <SalesRepTab t={t.salesRep} staff={staff} />
+          <SalesRepTab t={t.salesRep} staff={staff} onNewOrder={() => setShowCreateOrder(true)} />
         )}
 
         {/* ── RESTAURANT FINDER TAB ── */}

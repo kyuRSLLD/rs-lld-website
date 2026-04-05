@@ -358,7 +358,7 @@ function CallingListPanel({ t, onSelectCustomer }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Place Order Sub-tab
 // ─────────────────────────────────────────────────────────────────────────────
-function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }) {
+function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced, onNewOrder }) {
   const normalizeCustomer = (c) => c ? ({
     id: c.id,
     full_name: c.full_name || c.name || c.username || '',
@@ -758,6 +758,22 @@ function PlaceOrderPanel({ t, selectedCustomer: initialCustomer, onOrderPlaced }
   // ── Order Page ────────────────────────────────────────────────────────────
   return (
     <div>
+      {/* ── New Order CTA ── */}
+      {onNewOrder && (
+        <div className="mb-5 flex items-center justify-between bg-gradient-to-r from-stone-900 to-stone-700 rounded-2xl px-5 py-4 shadow">
+          <div>
+            <p className="text-white font-bold text-base">{t.newOrderTitle || 'Ready to place an order?'}</p>
+            <p className="text-stone-300 text-xs mt-0.5">{t.newOrderSubtitle || 'Use the quick order form below, or open the full order modal.'}</p>
+          </div>
+          <button
+            onClick={onNewOrder}
+            className="flex items-center gap-2 bg-white text-stone-900 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-stone-100 transition-colors flex-shrink-0 ml-4"
+          >
+            <Plus className="w-4 h-4" />
+            {t.newOrder || 'New Order'}
+          </button>
+        </div>
+      )}
       {/* ── Customer bar ── */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
@@ -1408,7 +1424,7 @@ function MySalesPanel({ t, showLeaderboard }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main SalesRepTab export
 // ─────────────────────────────────────────────────────────────────────────────
-export function SalesRepTab({ t, staff }) {
+export function SalesRepTab({ t, staff, onNewOrder }) {
   const [subTab, setSubTab]                     = useState('callList')
   const [selectedCustomer, setSelectedCustomer] = useState(null)
 
@@ -1450,7 +1466,7 @@ export function SalesRepTab({ t, staff }) {
         ))}
       </div>
       {subTab === 'callList'   && <CallingListPanel t={t} onSelectCustomer={handleSelectCustomer} />}
-      {subTab === 'placeOrder' && <PlaceOrderPanel  key={selectedCustomer?.id || 'none'} t={t} selectedCustomer={selectedCustomer} onOrderPlaced={() => {}} />}
+      {subTab === 'placeOrder' && <PlaceOrderPanel  key={selectedCustomer?.id || 'none'} t={t} selectedCustomer={selectedCustomer} onOrderPlaced={() => {}} onNewOrder={onNewOrder} />}
       {subTab === 'script'     && <ScriptPanel      t={t} canEdit={canEditScript} />}
       {subTab === 'mySales'    && <MySalesPanel     t={t} showLeaderboard={showLeaderboard} />}
     </div>
