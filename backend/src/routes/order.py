@@ -448,6 +448,12 @@ def update_order_status(order_id):
     elif new_status == 'delivered':
         order.delivered_at = now
         order.payment_status = 'paid'
+    elif new_status == 'pending' and old_status == 'cancelled':
+        # Re-deduct stock when a cancelled order is restored to pending
+        deduct_stock(order.items, restore=False)
+        # Reset payment status to pending if it was refunded/cancelled
+        if order.payment_status in ('refunded', 'rejected'):
+            order.payment_status = 'pending'
     elif new_status == 'cancelled' and old_status != 'cancelled':
         # Restore stock quantities when an order is cancelled
         deduct_stock(order.items, restore=True)
@@ -506,7 +512,15 @@ def update_order_notes(order_id):
     order.staff_notes = data.get('staff_notes', order.staff_notes)
     order.assigned_to = data.get('assigned_to', order.assigned_to)
     if 'tracking_number' in data:
-        order.tracking_number = data['tracking_number'].strip() if data['tracking_number'] else None
+        new_tracking = data['tracking_number'].strip() if data['tracking_number'] else None
+        order.tracking_number = new_tracking
+        # Auto-advance order to 'shipped' when a tracking number is added,
+        # but only if the order is not already shipped/delivered/cancelled.
+        # Payment status is intentionally NOT changed — an order can be shipped but unpaid.
+        if new_tracking and order.status not in ('shipped', 'delivered', 'cancelled'):
+            order.status = 'shipped'
+            from datetime import datetime as _dt
+            order.shipped_at = _dt.utcnow()
     db.session.commit()
     return jsonify({'success': True, 'order': order.to_dict()})
 

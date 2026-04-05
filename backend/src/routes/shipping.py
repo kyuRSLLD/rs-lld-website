@@ -234,8 +234,10 @@ def confirm_order(order_number):
 def mark_shipped(order_number):
     """Mark order as shipped. Optionally record tracking number and carrier."""
     order = Order.query.filter_by(order_number=order_number).first_or_404()
-    if order.status not in ('pending', 'confirmed'):
+    if order.status not in ('pending', 'confirmed', 'packed'):
         return jsonify({'error': f'Cannot ship order with status: {order.status}'}), 400
+    # NOTE: payment_status is intentionally NOT changed here.
+    # An order can be shipped but still unpaid (e.g. Net 30, ACH pending).
     data = request.json or {}
     tracking = data.get('tracking_number', '').strip()
     carrier = data.get('carrier', '').strip()

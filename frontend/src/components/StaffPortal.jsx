@@ -476,6 +476,15 @@ const OrderCard = ({ order, onStatusUpdate, onNotesUpdate, onDelete, t, lang }) 
               <XCircle className="w-3 h-3 mr-1" /> {t.orders.cancel}
             </Button>
           )}
+          {order.status === 'cancelled' && (
+            <Button size="sm" variant="outline" onClick={async () => {
+              if (!window.confirm(lang === 'zh' ? '将此订单恢复为待处理状态？' : 'Restore this order to pending status?')) return
+              await onStatusUpdate(order.id, 'pending')
+            }} disabled={updating}
+              className="text-green-700 border-green-300 hover:bg-green-50 text-xs">
+              <RefreshCw className="w-3 h-3 mr-1" /> {lang === 'zh' ? '恢复为待处理' : 'Restore to Pending'}
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={() => setEditingNotes(!editingNotes)}
             className="text-xs">
             <Edit3 className="w-3 h-3 mr-1" /> {t.orders.notes}
